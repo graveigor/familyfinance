@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ambiente, ehTeste } from './ambiente.js';
 import { configurarAutenticacao } from './plugins/autenticacao.js';
@@ -7,6 +8,7 @@ import { rotasAuth } from './rotas/auth.js';
 import { rotasCategorias } from './rotas/categorias.js';
 import { rotasGastos } from './rotas/gastos.js';
 import { rotasHousehold } from './rotas/household.js';
+import { rotasImportacoes } from './rotas/importacoes.js';
 import { rotasResumos } from './rotas/resumos.js';
 
 const BASE = '/api/v1';
@@ -23,6 +25,11 @@ export async function criarServidor(): Promise<FastifyInstance> {
     credentials: true,
   });
 
+  // Envio da planilha. O limite real é conferido na rota, com mensagem própria.
+  await app.register(multipart, {
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  });
+
   configurarErros(app);
   configurarAutenticacao(app);
 
@@ -32,6 +39,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
   await app.register(rotasGastos, { prefix: `${BASE}/gastos` });
   await app.register(rotasCategorias, { prefix: `${BASE}/categorias` });
   await app.register(rotasHousehold, { prefix: `${BASE}/household` });
+  await app.register(rotasImportacoes, { prefix: `${BASE}/importacoes` });
   await app.register(rotasResumos, { prefix: `${BASE}/resumos` });
 
   return app;

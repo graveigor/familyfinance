@@ -18,8 +18,15 @@ import type {
 import type {
   AtualizarGastoEntrada,
   CriarGastoEntrada,
+  ExportarGastosEntrada,
   ListarGastosEntrada,
 } from './schemas/gasto.js';
+import type {
+  ConfirmarImportacaoEntrada,
+  RemapearEntrada,
+} from './schemas/importacao.js';
+import type { PreviaImportacao } from './importacao.js';
+import type { StatusImportacao } from './tipos.js';
 
 /**
  * Cliente HTTP compartilhado entre web e mobile. Só usa `fetch`, sem nenhuma
@@ -88,6 +95,27 @@ export interface Cliente {
     atualizar(id: string, dados: AtualizarGastoEntrada): Promise<Gasto>;
     excluir(id: string): Promise<void>;
     sugestoes(termo: string): Promise<string[]>;
+    /** Arquivo pronto para download; quem chama decide o que fazer com ele. */
+    exportar(filtros?: Partial<ExportarGastosEntrada>): Promise<Blob>;
+  };
+  importacoes: {
+    analisar(arquivo: File | Blob, nomeArquivo: string): Promise<PreviaImportacao>;
+    mapear(id: string, dados: RemapearEntrada): Promise<PreviaImportacao>;
+    confirmar(
+      id: string,
+      dados: ConfirmarImportacaoEntrada,
+    ): Promise<{ importacaoId: string; linhasImportadas: number; totalCentavos: number }>;
+    cancelar(id: string): Promise<void>;
+    historico(): Promise<
+      Array<{
+        id: string;
+        nomeArquivo: string;
+        status: StatusImportacao;
+        totalLinhas: number;
+        linhasImportadas: number;
+        criadoEm: string;
+      }>
+    >;
   };
   categorias: {
     listar(): Promise<Categoria[]>;
@@ -144,11 +172,20 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
   async function requisitar<T>(
     metodo: string,
     caminho: string,
-    opcoes: { corpo?: unknown; parametros?: Parametros; publica?: boolean; tentouRenovar?: boolean } = {},
+    opcoes: {
+      corpo?: unknown;
+      /** FormData e afins: o navegador monta o cabeçalho, não nós. */
+      corpoBruto?: BodyInit;
+      parametros?: Parametros;
+      publica?: boolean;
+      tentouRenovar?: boolean;
+      binaria?: boolean;
+    } = {},
   ): Promise<T> {
     const sessao = opcoes.publica ? null : await armazenamento.ler();
 
-    const cabecalhos: Record<string, string> = { accept: 'application/json' };
+    const cabecalhos: Record<string, string> = {};
+    if (!opcoes.binaria) cabecalhos.accept = 'application/json';
     if (opcoes.corpo !== undefined) cabecalhos['content-type'] = 'application/json';
     if (sessao?.accessToken) cabecalhos.authorization = `Bearer ${sessao.accessToken}`;
 
@@ -157,7 +194,11 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
       resposta = await fetch(montarUrl(baseUrl, caminho, opcoes.parametros), {
         method: metodo,
         headers: cabecalhos,
-        ...(opcoes.corpo !== undefined ? { body: JSON.stringify(opcoes.corpo) } : {}),
+        ...(opcoes.corpoBruto !== undefined
+          ? { body: opcoes.corpoBruto }
+          : opcoes.corpo !== undefined
+            ? { body: JSON.stringify(opcoes.corpo) }
+            : {}),
       });
     } catch {
       throw new ErroApp(
@@ -178,6 +219,7 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
 
     if (!resposta.ok) throw await lerErro(resposta);
     if (resposta.status === 204) return undefined as T;
+    if (opcoes.binaria) return (await resposta.blob()) as T;
     return (await resposta.json()) as T;
   }
 
@@ -230,6 +272,37 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
           { parametros: { termo } },
         );
         return descricoes;
+      },
+      exportar: (filtros = {}) =>
+        requisitar<Blob>('GET', '/api/v1/gastos/exportar', {
+          parametros: filtros as Parametros,
+          binaria: true,
+        }),
+    },
+
+    importacoes: {
+      analisar(arquivo, nomeArquivo) {
+        const formulario = new FormData();
+        formulario.append('arquivo', arquivo, nomeArquivo);
+        return requisitar('POST', '/api/v1/importacoes/analisar', { corpoBruto: formulario });
+      },
+      mapear: (id, dados) =>
+        requisitar('POST', `/api/v1/importacoes/${id}/mapear`, { corpo: dados }),
+      confirmar: (id, dados) =>
+        requisitar('POST', `/api/v1/importacoes/${id}/confirmar`, { corpo: dados }),
+      cancelar: (id) => requisitar('DELETE', `/api/v1/importacoes/${id}`),
+      async historico() {
+        const { itens } = await requisitar<{
+          itens: Array<{
+            id: string;
+            nomeArquivo: string;
+            status: StatusImportacao;
+            totalLinhas: number;
+            linhasImportadas: number;
+            criadoEm: string;
+          }>;
+        }>('GET', '/api/v1/importacoes');
+        return itens;
       },
     },
 

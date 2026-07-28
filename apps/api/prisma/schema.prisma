@@ -83,6 +83,11 @@ model Importacao {
   criadoEm         DateTime         @default(now())
   gastos           Gasto[]
 
+  // Planilha já lida, guardada entre as etapas de conferência para que trocar
+  // o mapeamento das colunas não obrigue a enviar o arquivo de novo.
+  // Limpa ao confirmar ou cancelar — não guardamos arquivo do usuário à toa.
+  dadosBrutos Json?
+
   @@index([householdId, criadoEm])
 }
 

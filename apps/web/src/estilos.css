@@ -21,6 +21,12 @@
     @apply outline-none ring-4 ring-marca-500/40;
   }
 
+  /* Caixas de seleção na cor da marca, sem plugin de formulário. */
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: #16a34a;
+  }
+
   /* Tira as setinhas do input numérico, que só atrapalham no campo de valor. */
   input[type='number']::-webkit-outer-spin-button,
   input[type='number']::-webkit-inner-spin-button {

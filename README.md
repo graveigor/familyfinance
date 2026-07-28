@@ -4,8 +4,9 @@ Aplicativo para substituir a planilha de gastos da família. Roda no navegador e
 no celular, importa as planilhas antigas e organiza tudo por categoria, pessoa e
 período.
 
-**Estado atual: Fases 1 e 2 concluídas** — backend completo com testes, e o
-aplicativo web pronto e **instalável no celular e no computador** (PWA).
+**Estado atual: Fases 1, 2 e 3 concluídas** — backend com testes, aplicativo web
+**instalável no celular e no computador** (PWA), e importação/exportação de
+planilhas do Excel.
 
 ## Estrutura
 
@@ -83,6 +84,44 @@ Os ícones são gerados por script, sem dependência de imagem:
 npm run icones -w @gastos/web
 ```
 
+## Importar a planilha antiga
+
+**Ajustes > Importar planilha**, em três passos, sem nada gravado até o fim:
+
+1. **Escolher a planilha** — `.xlsx`, `.xls` ou `.csv`; arrastar e soltar no
+   computador, botão no celular.
+2. **Conferir as colunas** — o app detecta sozinho quais colunas são nome,
+   local, valor, data e categoria, mesmo com título no topo e linha de total no
+   fim. Dá para corrigir qualquer uma. Sem coluna de data, ele pergunta o mês.
+3. **Conferir os gastos** — as linhas aparecem separadas em **Prontas**,
+   **Atenção** e **Não dá para importar**, com o motivo de cada aviso. Dá para
+   editar linha a linha e desmarcar o que não quer.
+
+O que o interpretador aguenta:
+
+| Situação | O que acontece |
+|---|---|
+| `R$ 1.234,56`, `1234,56`, `1234.56`, `1.234` | Vira centavo exato, sem `float` |
+| `(45,90)` ou `-45,90` | Estorno, valor negativo |
+| `dd/mm/aaaa`, `dd/mm/aa`, `aaaa-mm-dd`, número de série do Excel | Data reconhecida |
+| Nome escrito só com o primeiro nome, com acento ou em CAIXA ALTA | Casa com o membro certo |
+| Nome que não está na família | Aviso e fica com quem importou |
+| Categoria que não existe | Aviso e fica sem categoria — o app não inventa |
+| Linha em branco, "TOTAL", "Subtotal", "Soma" | Ignorada em silêncio |
+| Gasto igual (descrição + valor + data) já lançado | Marcado como possível duplicata e **desmarcado** |
+| Valor que não é número | Fica em "Não dá para importar", com a célula original à mostra |
+
+O número da linha mostrado na tela é o mesmo do Excel, para conferir lado a lado.
+
+A planilha enviada fica guardada só entre os passos e é apagada ao confirmar ou
+cancelar.
+
+## Exportar
+
+**Ajustes > Exportar meus dados** baixa tudo em `.xlsx` ou `.csv`, com período
+opcional. O `.csv` sai com ponto e vírgula e BOM, do jeito que o Excel em
+português abre sem bagunçar os acentos.
+
 ## Telas
 
 - **Início** — total do mês em fonte grande, comparação com o mês anterior em
@@ -92,7 +131,9 @@ npm run icones -w @gastos/web
 - **Gastos** — agrupados por dia com subtotal, busca, filtros em gaveta com
   etiquetas removíveis, editar e excluir.
 - **Resumo** — seletor de mês, rosca por categoria e barras por pessoa.
-- **Ajustes** — perfil, família e convites, categorias, instalar o app, sair.
+- **Importar planilha** — os três passos acima, com barra de progresso.
+- **Ajustes** — perfil, família e convites, categorias, importar, exportar,
+  instalar o app, sair.
 
 Navegação com 4 itens: barra inferior no celular, coluna lateral no computador.
 
@@ -116,6 +157,12 @@ Base `/api/v1`. Toda rota fora de `auth/registrar`, `auth/login` e
 | PATCH | `/household/membros/:id` | Troca o papel (só ADMIN) |
 | GET/POST | `/household/convites` | Códigos de convite (só ADMIN) |
 | POST | `/household/entrar` | Entra em outra família com um código |
+| GET | `/gastos/exportar?formato=xlsx\|csv&de=&ate=` | Baixa o histórico |
+| POST | `/importacoes/analisar` | Recebe a planilha (multipart) e devolve a prévia |
+| POST | `/importacoes/:id/mapear` | Refaz a prévia com o mapeamento corrigido |
+| POST | `/importacoes/:id/confirmar` | Grava só as linhas marcadas |
+| DELETE | `/importacoes/:id` | Cancela e apaga a planilha guardada |
+| GET | `/importacoes` | Histórico de importações |
 | GET | `/resumos/mensal?ano=&mes=` | Total do mês, por categoria, por pessoa e comparação com o mês anterior |
 
 Erro sempre no mesmo formato, em português e sem jargão:
@@ -149,10 +196,12 @@ Erro sempre no mesmo formato, em português e sem jargão:
   de dependências do Workbox trazia alertas de segurança em ferramenta de build.
 - `react-router-dom` fica na **7.18.1**, a versão mais nova disponível. O único
   alerta aberto é de modo RSC com server actions, que este SPA não usa.
+- **SheetJS instalado da distribuição oficial** (`cdn.sheetjs.com`), não do npm:
+  o pacote `xlsx` publicado no npm parou na 0.18.5 e tem falhas conhecidas de
+  poluição de protótipo e ReDoS. A 0.20.3 oficial não tem nenhuma.
 
 ## Próximas fases
 
-3. Importação de planilha (`.xlsx`/`.xls`/`.csv`) e exportação
 4. Mobile nativo com Expo (Play Store e App Store)
 5. Fila offline para lançar sem internet, gastos recorrentes, foto do
    comprovante, gráficos de evolução

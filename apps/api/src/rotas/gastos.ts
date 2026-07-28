@@ -1,9 +1,13 @@
 import {
+  ROTULO_FORMA_PAGAMENTO,
   atualizarGastoSchema,
   criarGastoSchema,
   erroNaoEncontrado,
   erroSemPermissao,
   erroValidacao,
+  exportarGastosSchema,
+  formatarData,
+  formatarDataISO,
   listarGastosSchema,
   parseData,
   zId,
@@ -16,6 +20,7 @@ import { z } from 'zod';
 import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 import { INCLUDE_GASTO, serializarGasto } from '../serializadores.js';
+import { gerarArquivo } from '../servicos/planilha.js';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -104,6 +109,57 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
       // O total é do filtro inteiro, não só da página exibida.
       totalCentavos: soma._sum.valorCentavos ?? 0,
     };
+  });
+
+  /**
+   * Exportar de volta para Excel. Existe para ninguém se sentir preso ao app:
+   * o histórico sai a qualquer momento, no formato que a família já conhece.
+   */
+  app.get('/exportar', async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+    const filtros = exportarGastosSchema.parse(request.query);
+
+    const where: Prisma.GastoWhereInput = { householdId: usuario.householdId };
+    if (filtros.de || filtros.ate) {
+      where.data = {
+        ...(filtros.de ? { gte: paraData(filtros.de) } : {}),
+        ...(filtros.ate ? { lte: paraData(filtros.ate) } : {}),
+      };
+    }
+
+    const gastos = await prisma.gasto.findMany({
+      where,
+      include: INCLUDE_GASTO,
+      orderBy: [{ data: 'asc' }, { criadoEm: 'asc' }],
+    });
+
+    const arquivo = gerarArquivo(
+      gastos.map((gasto) => ({
+        Data: formatarData(gasto.data),
+        'Onde foi': gasto.descricao,
+        // Reais com duas casas: é o que o Excel soma. Centavos só existem
+        // dentro do app.
+        Valor: gasto.valorCentavos / 100,
+        Pessoa: gasto.user.nome,
+        Categoria: gasto.categoria?.nome ?? '',
+        'Forma de pagamento': ROTULO_FORMA_PAGAMENTO[gasto.formaPagamento],
+        Observação: gasto.observacao ?? '',
+      })),
+      filtros.formato,
+    );
+
+    const hoje = formatarDataISO(new Date());
+    const nome = `gastos-${hoje}.${filtros.formato}`;
+
+    return reply
+      .header(
+        'content-type',
+        filtros.formato === 'csv'
+          ? 'text/csv; charset=utf-8'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      )
+      .header('content-disposition', `attachment; filename="${nome}"`)
+      .send(arquivo);
   });
 
   /** Autocompletar do campo "Onde foi": descrições já usadas na casa. */

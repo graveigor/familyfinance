@@ -21,7 +21,8 @@ export function Layout(): ReactElement {
   // Lançar/editar gasto é tarefa de tela cheia: a barra inferior sai de cena
   // para o botão "Salvar" ocupar a base e para ninguém perder o que digitou
   // tocando sem querer em outra aba.
-  const ehFormulario = pathname === '/novo' || pathname.endsWith('/editar');
+  const ehFormulario =
+    pathname === '/novo' || pathname === '/importar' || pathname.endsWith('/editar');
 
   return (
     <div className="min-h-dvh md:flex">

@@ -4,6 +4,7 @@ import { Layout } from './componentes/Layout';
 import { Ajustes } from './telas/Ajustes';
 import { Entrar } from './telas/Entrar';
 import { Gastos } from './telas/Gastos';
+import { Importar } from './telas/Importar';
 import { Inicio } from './telas/Inicio';
 import { NovoGasto } from './telas/NovoGasto';
 import { Resumo } from './telas/Resumo';
@@ -21,6 +22,7 @@ export function App(): ReactElement {
         <Route path="/gastos" element={<Gastos />} />
         <Route path="/novo" element={<NovoGasto />} />
         <Route path="/gastos/:id/editar" element={<NovoGasto />} />
+        <Route path="/importar" element={<Importar />} />
         <Route path="/resumo" element={<Resumo />} />
         <Route path="/ajustes" element={<Ajustes />} />
       </Route>

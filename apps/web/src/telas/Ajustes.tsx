@@ -1,6 +1,7 @@
 import { CATEGORIAS_PADRAO, ROTULO_PAPEL, type Categoria, type Usuario } from '@gastos/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { CartaoInstalar } from '../componentes/InstalarApp';
 import { Confirmar, Dialogo } from '../componentes/Dialogo';
@@ -11,15 +12,16 @@ import { useSessao } from '../sessao';
 
 export function Ajustes(): ReactElement {
   const { usuario, sair } = useSessao();
+  const navegar = useNavigate();
   const membros = useMembros();
   const categorias = useCategorias();
   const aviso = useAviso();
 
   const household = useQuery({ queryKey: chaves.household, queryFn: () => api.household.obter() });
 
-  const [painel, setPainel] = useState<'perfil' | 'familia' | 'categorias' | 'instalar' | null>(
-    null,
-  );
+  const [painel, setPainel] = useState<
+    'perfil' | 'familia' | 'categorias' | 'instalar' | 'exportar' | null
+  >(null);
 
   const secoes = [
     { chave: 'perfil', icone: 'pessoa', titulo: 'Meu perfil', descricao: usuario?.email ?? '' },
@@ -37,6 +39,18 @@ export function Ajustes(): ReactElement {
       titulo: 'Categorias',
       descricao: categorias.data ? `${categorias.data.length} categorias` : '...',
     },
+    {
+      chave: 'importar',
+      icone: 'planilha',
+      titulo: 'Importar planilha',
+      descricao: 'Trazer os gastos de um arquivo do Excel',
+    },
+    {
+      chave: 'exportar',
+      icone: 'baixar',
+      titulo: 'Exportar meus dados',
+      descricao: 'Baixar tudo em Excel ou csv',
+    },
     { chave: 'instalar', icone: 'baixar', titulo: 'Instalar o app', descricao: 'No celular ou no computador' },
   ] as const;
 
@@ -52,7 +66,9 @@ export function Ajustes(): ReactElement {
           <li key={secao.chave}>
             <button
               type="button"
-              onClick={() => setPainel(secao.chave)}
+              onClick={() =>
+                secao.chave === 'importar' ? navegar('/importar') : setPainel(secao.chave)
+              }
               className="flex min-h-toque w-full items-center gap-4 px-4 py-4 text-left hover:bg-slate-50"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600">
@@ -92,6 +108,10 @@ export function Ajustes(): ReactElement {
 
       <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo="Categorias">
         <PainelCategorias categorias={categorias.data ?? []} />
+      </Dialogo>
+
+      <Dialogo aberto={painel === 'exportar'} aoFechar={() => setPainel(null)} titulo="Exportar meus dados">
+        <PainelExportar />
       </Dialogo>
 
       <Dialogo aberto={painel === 'instalar'} aoFechar={() => setPainel(null)} titulo="Instalar o app">
@@ -365,6 +385,89 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
         aoConfirmar={() => void confirmarExclusao()}
         aoCancelar={() => setAExcluir(null)}
       />
+    </div>
+  );
+}
+
+function PainelExportar(): ReactElement {
+  const aviso = useAviso();
+  const [formato, setFormato] = useState<'xlsx' | 'csv'>('xlsx');
+  const [de, setDe] = useState('');
+  const [ate, setAte] = useState('');
+  const [baixando, setBaixando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function baixar(): Promise<void> {
+    setBaixando(true);
+    setErro(null);
+    try {
+      const arquivo = await api.gastos.exportar({
+        formato,
+        ...(de ? { de } : {}),
+        ...(ate ? { ate } : {}),
+      });
+
+      // Link temporário: é como o navegador entrega um arquivo gerado na hora.
+      const endereco = URL.createObjectURL(arquivo);
+      const link = document.createElement('a');
+      link.href = endereco;
+      link.download = `gastos.${formato}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(endereco);
+
+      aviso.mostrar('Arquivo baixado.');
+    } catch (falha) {
+      setErro(traduzirErro(falha).mensagem);
+    } finally {
+      setBaixando(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <CaixaDeErro mensagem={erro} />
+      <p className="text-base text-slate-700">
+        Baixe seus gastos a qualquer momento. O arquivo abre no Excel e nos programas de planilha.
+      </p>
+
+      <div>
+        <p className="rotulo">Formato</p>
+        <div className="flex gap-2">
+          {(['xlsx', 'csv'] as const).map((opcao) => (
+            <button
+              key={opcao}
+              type="button"
+              aria-pressed={formato === opcao}
+              onClick={() => setFormato(opcao)}
+              className={`min-h-toque flex-1 rounded-xl border-2 px-4 text-base font-semibold ${
+                formato === opcao
+                  ? 'border-marca-600 bg-marca-50 text-marca-900'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              {opcao === 'xlsx' ? 'Excel (.xlsx)' : 'Texto (.csv)'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="text-sm font-medium text-slate-600">
+          De (opcional)
+          <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="campo mt-1" />
+        </label>
+        <label className="text-sm font-medium text-slate-600">
+          Até (opcional)
+          <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="campo mt-1" />
+        </label>
+      </div>
+      <p className="text-sm text-slate-600">Sem período escolhido, baixa o histórico inteiro.</p>
+
+      <Botao larguraTotal icone="baixar" carregando={baixando} onClick={() => void baixar()}>
+        Baixar arquivo
+      </Botao>
     </div>
   );
 }
