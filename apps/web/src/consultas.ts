@@ -3,8 +3,11 @@ import type {
   Categoria,
   CriarCategoriaEntrada,
   CriarGastoEntrada,
+  CriarRecorrenciaEntrada,
+  Evolucao,
   ListaDeGastos,
   ListarGastosEntrada,
+  Recorrencia,
   ResumoMensal,
   Usuario,
 } from '@gastos/core';
@@ -26,6 +29,8 @@ export const chaves = {
   membros: ['household', 'membros'] as const,
   household: ['household'] as const,
   resumo: (ano: number, mes: number) => ['resumos', ano, mes] as const,
+  evolucao: (meses: number) => ['resumos', 'evolucao', meses] as const,
+  recorrencias: ['recorrencias'] as const,
 };
 
 /** Tudo que depende de gasto: lista, resumo e sugestões de descrição. */
@@ -68,6 +73,83 @@ export function useResumoMensal(ano: number, mes: number): UseQueryResult<Resumo
   return useQuery({
     queryKey: chaves.resumo(ano, mes),
     queryFn: () => api.resumos.mensal(ano, mes),
+  });
+}
+
+export function useEvolucao(meses = 6): UseQueryResult<Evolucao, Error> {
+  return useQuery({
+    queryKey: chaves.evolucao(meses),
+    queryFn: () => api.resumos.evolucao(meses),
+  });
+}
+
+export function useRecorrencias(): UseQueryResult<
+  Array<Recorrencia & { proximoEm: string | null }>,
+  Error
+> {
+  return useQuery({
+    queryKey: chaves.recorrencias,
+    queryFn: () => api.recorrencias.listar(),
+  });
+}
+
+export function useCriarRecorrencia(): UseMutationResult<unknown, Error, CriarRecorrenciaEntrada> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dados: CriarRecorrenciaEntrada) => api.recorrencias.criar(dados),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chaves.recorrencias });
+      // A conta fixa já lança o gasto do mês corrente.
+      await invalidarGastos(queryClient);
+    },
+  });
+}
+
+export function useExcluirRecorrencia(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.recorrencias.excluir(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chaves.recorrencias });
+      await invalidarGastos(queryClient);
+    },
+  });
+}
+
+export function useAlternarRecorrencia(): UseMutationResult<
+  unknown,
+  Error,
+  { id: string; ativa: boolean }
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ativa }: { id: string; ativa: boolean }) =>
+      api.recorrencias.atualizar(id, { ativa }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chaves.recorrencias });
+      await invalidarGastos(queryClient);
+    },
+  });
+}
+
+export function useEnviarComprovante(): UseMutationResult<
+  unknown,
+  Error,
+  { id: string; arquivo: File }
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, arquivo }: { id: string; arquivo: File }) =>
+      api.gastos.enviarComprovante(id, arquivo, arquivo.name),
+    onSuccess: () => invalidarGastos(queryClient),
+  });
+}
+
+export function useRemoverComprovante(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.gastos.removerComprovante(id),
+    onSuccess: () => invalidarGastos(queryClient),
   });
 }
 

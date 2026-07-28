@@ -11,13 +11,21 @@ import {
   somarCentavos,
   type Gasto,
 } from '@gastos/core';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialogo, Confirmar } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
 import { ItemDeGasto } from '../componentes/ItemDeGasto';
 import { Botao, CaixaDeErro, Carregando, Vazio, traduzirErro, useAviso } from '../componentes/ui';
-import { useCategorias, useExcluirGasto, useGastos, useMembros } from '../consultas';
+import { api } from '../api';
+import {
+  useCategorias,
+  useEnviarComprovante,
+  useExcluirGasto,
+  useGastos,
+  useMembros,
+  useRemoverComprovante,
+} from '../consultas';
 
 interface Filtros {
   busca: string;
@@ -287,7 +295,15 @@ export function Gastos(): ReactElement {
               />
               <Linha rotulo="Categoria" valor={emFoco.categoria?.nome ?? 'Sem categoria'} />
               {emFoco.observacao && <Linha rotulo="Observação" valor={emFoco.observacao} />}
+              {emFoco.recorrenciaId && (
+                <Linha rotulo="Origem" valor="Lançado por uma conta fixa" />
+              )}
             </dl>
+
+            <Comprovante
+              gasto={emFoco}
+              aoMudar={(atualizado) => setEmFoco(atualizado)}
+            />
 
             <div className="flex gap-3">
               <Botao
@@ -338,6 +354,105 @@ export function Gastos(): ReactElement {
         }}
         membros={membros.data ?? []}
         categorias={categorias.data ?? []}
+      />
+    </div>
+  );
+}
+
+/**
+ * Foto ou PDF do comprovante. Fica dentro do painel do gasto porque é onde a
+ * pessoa procura: "quanto foi isso mesmo?" e "cadê a nota?".
+ */
+function Comprovante({
+  gasto,
+  aoMudar,
+}: {
+  gasto: Gasto;
+  aoMudar: (gasto: Gasto) => void;
+}): ReactElement {
+  const enviar = useEnviarComprovante();
+  const remover = useRemoverComprovante();
+  const aviso = useAviso();
+  const entrada = useRef<HTMLInputElement>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function escolher(arquivo: File): Promise<void> {
+    setErro(null);
+    try {
+      const atualizado = (await enviar.mutateAsync({ id: gasto.id, arquivo })) as Gasto;
+      aoMudar(atualizado);
+      aviso.mostrar('Comprovante anexado.');
+    } catch (falha) {
+      setErro(traduzirErro(falha).mensagem);
+    }
+  }
+
+  return (
+    <div className="space-y-3 border-t border-slate-200 pt-4">
+      <CaixaDeErro mensagem={erro} />
+
+      {gasto.temComprovante ? (
+        <>
+          <a
+            href={api.gastos.urlDoComprovante(gasto.id)}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-h-toque items-center gap-3 rounded-xl border-2 border-slate-200 px-4 text-base font-medium text-marca-800 hover:bg-slate-50"
+          >
+            <Icone nome="planilha" tamanho={22} />
+            Ver comprovante
+          </a>
+          <div className="flex gap-3">
+            <Botao
+              variante="secundario"
+              larguraTotal
+              carregando={enviar.isPending}
+              onClick={() => entrada.current?.click()}
+            >
+              Trocar
+            </Botao>
+            <Botao
+              variante="secundario"
+              larguraTotal
+              carregando={remover.isPending}
+              onClick={() => {
+                remover.mutate(gasto.id, {
+                  onSuccess: () => {
+                    aoMudar({ ...gasto, temComprovante: false });
+                    aviso.mostrar('Comprovante removido.');
+                  },
+                  onError: (falha) => setErro(traduzirErro(falha).mensagem),
+                });
+              }}
+            >
+              Remover
+            </Botao>
+          </div>
+        </>
+      ) : (
+        <Botao
+          variante="secundario"
+          larguraTotal
+          icone="planilha"
+          carregando={enviar.isPending}
+          onClick={() => entrada.current?.click()}
+        >
+          Anexar comprovante
+        </Botao>
+      )}
+
+      <input
+        ref={entrada}
+        type="file"
+        // `capture` faz o celular abrir a câmera direto, que é o caso comum.
+        accept="image/*,application/pdf"
+        capture="environment"
+        className="sr-only"
+        onChange={(e) => {
+          const arquivo = e.target.files?.[0];
+          if (arquivo) void escolher(arquivo);
+          e.target.value = '';
+        }}
       />
     </div>
   );

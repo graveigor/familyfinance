@@ -15,11 +15,13 @@ import { Icone } from '../../src/componentes/Icone';
 import { ItemDeGasto } from '../../src/componentes/ItemDeGasto';
 import { CaixaDeErro, Carregando, Cartao, Vazio, traduzirErro } from '../../src/componentes/ui';
 import { useGastos, useResumoMensal } from '../../src/consultas';
+import { useConexao } from '../../src/conexao';
 import { useSessao } from '../../src/sessao';
 import { cores, espaco, fonte, raio } from '../../src/tema';
 
 export default function Inicio(): ReactElement {
   const { usuario } = useSessao();
+  const { online, aguardando } = useConexao();
   const router = useRouter();
   const margens = useSafeAreaInsets();
 
@@ -53,6 +55,18 @@ export default function Inicio(): ReactElement {
             {nomeDoMes(mes).replace(/^./, (l) => l.toUpperCase())} de {ano}
           </Text>
         </View>
+
+        {/* Sem internet ou com fila pendente: a pessoa precisa saber, sem susto. */}
+        {(!online || aguardando > 0) && (
+          <View style={estilos.faixaOffline}>
+            <Icone nome="aviso" tamanho={22} cor={cores.aviso} />
+            <Text style={estilos.textoDaFaixa}>
+              {aguardando > 0
+                ? `${pluralizar(aguardando, 'gasto guardado', 'gastos guardados')} no celular. Entram sozinhos quando a internet voltar.`
+                : 'Sem internet. Você pode lançar gastos mesmo assim.'}
+            </Text>
+          </View>
+        )}
 
         {/* O total do mês é o maior elemento da tela. */}
         <Cartao estilo={estilos.cartaoDoTotal}>
@@ -131,6 +145,17 @@ export default function Inicio(): ReactElement {
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: cores.fundo },
   conteudo: { padding: espaco.lg, gap: espaco.lg, paddingBottom: 120 },
+  faixaOffline: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: espaco.md,
+    backgroundColor: cores.avisoClaro,
+    borderRadius: raio.md,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: espaco.lg,
+  },
+  textoDaFaixa: { flex: 1, fontSize: fonte.corpo, color: '#78350F' },
   saudacao: { fontSize: fonte.corpo, color: cores.textoSuave },
   mes: { fontSize: fonte.titulo, fontWeight: '700', color: cores.texto },
 

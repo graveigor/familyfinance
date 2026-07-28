@@ -11,39 +11,42 @@ datasource db {
 }
 
 model Household {
-  id          String       @id @default(uuid())
-  nome        String
-  criadoEm    DateTime     @default(now())
-  membros     User[]
-  gastos      Gasto[]
-  categorias  Categoria[]
-  convites    Convite[]
-  importacoes Importacao[]
+  id           String        @id @default(uuid())
+  nome         String
+  criadoEm     DateTime      @default(now())
+  membros      User[]
+  gastos       Gasto[]
+  categorias   Categoria[]
+  convites     Convite[]
+  importacoes  Importacao[]
+  recorrencias Recorrencia[]
 }
 
 model User {
-  id          String    @id @default(uuid())
-  nome        String
-  email       String    @unique
-  senhaHash   String
-  papel       Papel     @default(MEMBRO)
-  householdId String
-  household   Household @relation(fields: [householdId], references: [id])
-  gastos      Gasto[]
-  convites    Convite[] @relation("ConvitesCriados")
-  criadoEm    DateTime  @default(now())
+  id           String        @id @default(uuid())
+  nome         String
+  email        String        @unique
+  senhaHash    String
+  papel        Papel         @default(MEMBRO)
+  householdId  String
+  household    Household     @relation(fields: [householdId], references: [id])
+  gastos       Gasto[]
+  convites     Convite[]     @relation("ConvitesCriados")
+  recorrencias Recorrencia[]
+  criadoEm     DateTime      @default(now())
 
   @@index([householdId])
 }
 
 model Categoria {
-  id          String    @id @default(uuid())
-  nome        String
-  icone       String
-  cor         String
-  householdId String
-  household   Household @relation(fields: [householdId], references: [id])
-  gastos      Gasto[]
+  id           String        @id @default(uuid())
+  nome         String
+  icone        String
+  cor          String
+  householdId  String
+  household    Household     @relation(fields: [householdId], references: [id])
+  gastos       Gasto[]
+  recorrencias Recorrencia[]
 
   // Duas categorias com o mesmo nome na mesma casa só confundem o usuário.
   @@unique([householdId, nome])
@@ -64,8 +67,17 @@ model Gasto {
   household          Household      @relation(fields: [householdId], references: [id])
   origemImportacaoId String?
   importacao         Importacao?    @relation(fields: [origemImportacaoId], references: [id])
-  criadoEm           DateTime       @default(now())
-  atualizadoEm       DateTime       @updatedAt
+
+  // Nome do arquivo guardado em disco. A imagem em si nunca vai para o banco.
+  comprovante String?
+
+  // Quando o gasto nasceu de uma recorrência, guardamos a origem para não
+  // gerar o mesmo lançamento duas vezes e para o usuário saber de onde veio.
+  recorrenciaId String?
+  recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
   @@index([householdId, data])
   @@index([householdId, userId])
@@ -103,6 +115,36 @@ model Convite {
   criadoEm    DateTime  @default(now())
 
   @@index([householdId])
+}
+
+/// Gasto que se repete todo mês (aluguel, internet, mensalidade).
+/// Nada é criado automaticamente em segundo plano: os lançamentos do mês são
+/// gerados quando alguém abre o app, de forma idempotente.
+model Recorrencia {
+  id              String         @id @default(uuid())
+  descricao       String
+  valorCentavos   Int
+  /// Dia do mês (1-31). Quando o mês não tem esse dia, cai no último.
+  diaDoMes        Int
+  formaPagamento  FormaPagamento @default(OUTRO)
+  observacao      String?
+  categoriaId     String?
+  categoria       Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+  householdId     String
+  household       Household      @relation(fields: [householdId], references: [id])
+  ativa           Boolean        @default(true)
+  /// Primeiro mês em que vale, e último (opcional).
+  inicioEm        DateTime       @db.Date
+  fimEm           DateTime?      @db.Date
+  /// "aaaa-mm" do último mês já gerado — é o que torna a geração idempotente.
+  ultimoMesGerado String?
+  criadoEm        DateTime       @default(now())
+  atualizadoEm    DateTime       @updatedAt
+  gastos          Gasto[]
+
+  @@index([householdId, ativa])
 }
 
 enum Papel {

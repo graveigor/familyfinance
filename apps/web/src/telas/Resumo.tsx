@@ -9,9 +9,10 @@ import {
   type ResumoMensal,
 } from '@gastos/core';
 import { useState, type ReactElement } from 'react';
+import { GraficoDeEvolucao } from '../componentes/GraficoDeEvolucao';
 import { Icone } from '../componentes/Icone';
 import { CaixaDeErro, Carregando, Vazio, traduzirErro } from '../componentes/ui';
-import { useResumoMensal } from '../consultas';
+import { useEvolucao, useResumoMensal } from '../consultas';
 
 export function Resumo(): ReactElement {
   const agora = hoje();
@@ -76,7 +77,31 @@ export function Resumo(): ReactElement {
       ) : (
         <ConteudoDoResumo resumo={consulta.data} />
       )}
+
+      <SecaoDeEvolucao />
     </div>
+  );
+}
+
+/** Últimos seis meses lado a lado — a pergunta "estou gastando mais?". */
+function SecaoDeEvolucao(): ReactElement {
+  const evolucao = useEvolucao(6);
+
+  return (
+    <section className="cartao p-5" aria-labelledby="titulo-evolucao">
+      <h2 id="titulo-evolucao" className="mb-4 text-base font-semibold text-slate-800">
+        Últimos 6 meses
+      </h2>
+      {evolucao.isPending ? (
+        <Carregando />
+      ) : evolucao.isError ? (
+        <CaixaDeErro mensagem={traduzirErro(evolucao.error).mensagem} />
+      ) : evolucao.data.maiorCentavos === 0 ? (
+        <p className="text-base text-slate-600">Ainda não há gastos para comparar.</p>
+      ) : (
+        <GraficoDeEvolucao evolucao={evolucao.data} />
+      )}
+    </section>
   );
 }
 

@@ -9,6 +9,7 @@ import { rotasCategorias } from './rotas/categorias.js';
 import { rotasGastos } from './rotas/gastos.js';
 import { rotasHousehold } from './rotas/household.js';
 import { rotasImportacoes } from './rotas/importacoes.js';
+import { rotasRecorrencias } from './rotas/recorrencias.js';
 import { rotasResumos } from './rotas/resumos.js';
 
 const BASE = '/api/v1';
@@ -40,6 +41,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
   await app.register(rotasCategorias, { prefix: `${BASE}/categorias` });
   await app.register(rotasHousehold, { prefix: `${BASE}/household` });
   await app.register(rotasImportacoes, { prefix: `${BASE}/importacoes` });
+  await app.register(rotasRecorrencias, { prefix: `${BASE}/recorrencias` });
   await app.register(rotasResumos, { prefix: `${BASE}/resumos` });
 
   return app;

@@ -6,6 +6,8 @@ import type {
   Household,
   ListaDeGastos,
   Papel,
+  Evolucao,
+  Recorrencia,
   ResumoMensal,
   Sessao,
   Usuario,
@@ -26,6 +28,10 @@ import type {
   RemapearEntrada,
 } from './schemas/importacao.js';
 import type { PreviaImportacao } from './importacao.js';
+import type {
+  AtualizarRecorrenciaEntrada,
+  CriarRecorrenciaEntrada,
+} from './schemas/recorrencia.js';
 import type { StatusImportacao } from './tipos.js';
 
 /**
@@ -97,6 +103,20 @@ export interface Cliente {
     sugestoes(termo: string): Promise<string[]>;
     /** Arquivo pronto para download; quem chama decide o que fazer com ele. */
     exportar(filtros?: Partial<ExportarGastosEntrada>): Promise<Blob>;
+    /** Anexa a foto ou o PDF do comprovante. */
+    enviarComprovante(id: string, arquivo: Blob, nomeArquivo: string): Promise<Gasto>;
+    baixarComprovante(id: string): Promise<Blob>;
+    removerComprovante(id: string): Promise<void>;
+    /** Endereço direto do comprovante, para usar em <img> ou no mobile. */
+    urlDoComprovante(id: string): string;
+  };
+  recorrencias: {
+    listar(): Promise<Array<Recorrencia & { proximoEm: string | null }>>;
+    criar(dados: CriarRecorrenciaEntrada): Promise<Recorrencia>;
+    atualizar(id: string, dados: AtualizarRecorrenciaEntrada): Promise<Recorrencia>;
+    excluir(id: string): Promise<{ gastosMantidos: number }>;
+    /** Cria os lançamentos dos meses pendentes. Repetir não duplica nada. */
+    gerar(): Promise<{ gastosCriados: number; recorrenciasProcessadas: number }>;
   };
   importacoes: {
     analisar(arquivo: File | Blob, nomeArquivo: string): Promise<PreviaImportacao>;
@@ -133,6 +153,7 @@ export interface Cliente {
   };
   resumos: {
     mensal(ano: number, mes: number): Promise<ResumoMensal>;
+    evolucao(meses?: number): Promise<Evolucao>;
   };
 }
 
@@ -278,6 +299,28 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
           parametros: filtros as Parametros,
           binaria: true,
         }),
+      enviarComprovante(id, arquivo, nomeArquivo) {
+        const formulario = new FormData();
+        formulario.append('arquivo', arquivo, nomeArquivo);
+        return requisitar('PUT', `/api/v1/gastos/${id}/comprovante`, { corpoBruto: formulario });
+      },
+      baixarComprovante: (id) =>
+        requisitar<Blob>('GET', `/api/v1/gastos/${id}/comprovante`, { binaria: true }),
+      removerComprovante: (id) => requisitar('DELETE', `/api/v1/gastos/${id}/comprovante`),
+      urlDoComprovante: (id) => `${baseUrl.replace(/\/$/, '')}/api/v1/gastos/${id}/comprovante`,
+    },
+
+    recorrencias: {
+      async listar() {
+        const { itens } = await requisitar<{
+          itens: Array<Recorrencia & { proximoEm: string | null }>;
+        }>('GET', '/api/v1/recorrencias');
+        return itens;
+      },
+      criar: (dados) => requisitar('POST', '/api/v1/recorrencias', { corpo: dados }),
+      atualizar: (id, dados) => requisitar('PATCH', `/api/v1/recorrencias/${id}`, { corpo: dados }),
+      excluir: (id) => requisitar('DELETE', `/api/v1/recorrencias/${id}`),
+      gerar: () => requisitar('POST', '/api/v1/recorrencias/gerar'),
     },
 
     importacoes: {
@@ -336,6 +379,8 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
     resumos: {
       mensal: (ano, mes) =>
         requisitar('GET', '/api/v1/resumos/mensal', { parametros: { ano, mes } }),
+      evolucao: (meses = 6) =>
+        requisitar('GET', '/api/v1/resumos/evolucao', { parametros: { meses } }),
     },
   };
 }

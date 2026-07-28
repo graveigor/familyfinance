@@ -6,7 +6,7 @@ import { criarServidor } from '../servidor.js';
 /** Zera o banco de teste entre os casos, preservando a estrutura das tabelas. */
 export async function limparBanco(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "Gasto", "Importacao", "Convite", "Categoria", "User", "Household" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "Gasto", "Recorrencia", "Importacao", "Convite", "Categoria", "User", "Household" RESTART IDENTITY CASCADE',
   );
 }
 

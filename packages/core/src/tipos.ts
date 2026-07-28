@@ -62,8 +62,47 @@ export interface Gasto {
   categoria: Categoria | null;
   usuario: AutorDoGasto;
   origemImportacaoId: string | null;
+  /** Existe um comprovante anexado a este gasto. */
+  temComprovante: boolean;
+  /** Preenchido quando o gasto nasceu de uma recorrência. */
+  recorrenciaId: string | null;
   criadoEm: string;
   atualizadoEm: string;
+}
+
+export interface Recorrencia {
+  id: string;
+  descricao: string;
+  valorCentavos: number;
+  diaDoMes: number;
+  formaPagamento: FormaPagamento;
+  observacao: string | null;
+  categoria: Categoria | null;
+  usuario: AutorDoGasto;
+  ativa: boolean;
+  /** `aaaa-mm-dd` */
+  inicioEm: string;
+  fimEm: string | null;
+  /** `aaaa-mm` do último mês já lançado. */
+  ultimoMesGerado: string | null;
+  criadoEm: string;
+}
+
+/** Um mês do gráfico de evolução. */
+export interface PontoDeEvolucao {
+  ano: number;
+  mes: number;
+  /** `jan`, `fev`... para o rótulo do gráfico. */
+  rotulo: string;
+  totalCentavos: number;
+  quantidade: number;
+}
+
+export interface Evolucao {
+  pontos: PontoDeEvolucao[];
+  /** Média dos meses com gasto, para a linha de referência. */
+  mediaCentavos: number;
+  maiorCentavos: number;
 }
 
 export interface Paginacao {

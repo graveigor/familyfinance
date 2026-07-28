@@ -4,6 +4,7 @@ import { useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { CartaoInstalar } from '../componentes/InstalarApp';
+import { PainelContasFixas } from '../componentes/PainelContasFixas';
 import { Confirmar, Dialogo } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
@@ -20,7 +21,7 @@ export function Ajustes(): ReactElement {
   const household = useQuery({ queryKey: chaves.household, queryFn: () => api.household.obter() });
 
   const [painel, setPainel] = useState<
-    'perfil' | 'familia' | 'categorias' | 'instalar' | 'exportar' | null
+    'perfil' | 'familia' | 'categorias' | 'contas-fixas' | 'instalar' | 'exportar' | null
   >(null);
 
   const secoes = [
@@ -38,6 +39,12 @@ export function Ajustes(): ReactElement {
       icone: 'etiqueta',
       titulo: 'Categorias',
       descricao: categorias.data ? `${categorias.data.length} categorias` : '...',
+    },
+    {
+      chave: 'contas-fixas',
+      icone: 'calendario',
+      titulo: 'Contas fixas',
+      descricao: 'O que se repete todo mês',
     },
     {
       chave: 'importar',
@@ -108,6 +115,10 @@ export function Ajustes(): ReactElement {
 
       <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo="Categorias">
         <PainelCategorias categorias={categorias.data ?? []} />
+      </Dialogo>
+
+      <Dialogo aberto={painel === 'contas-fixas'} aoFechar={() => setPainel(null)} titulo="Contas fixas">
+        <PainelContasFixas />
       </Dialogo>
 
       <Dialogo aberto={painel === 'exportar'} aoFechar={() => setPainel(null)} titulo="Exportar meus dados">

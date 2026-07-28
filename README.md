@@ -4,9 +4,11 @@ Aplicativo para substituir a planilha de gastos da família. Roda no navegador e
 no celular, importa as planilhas antigas e organiza tudo por categoria, pessoa e
 período.
 
-**Estado atual: Fases 1 a 4 concluídas** — backend com testes, aplicativo web
-**instalável no celular e no computador** (PWA), importação/exportação de
-planilhas do Excel e **app nativo (Expo) para Android e iOS**.
+**Todas as 5 fases da especificação estão concluídas** — backend com testes,
+aplicativo web **instalável no celular e no computador** (PWA),
+importação/exportação de planilhas do Excel, **app nativo (Expo) para Android e
+iOS**, e o refinamento: lançamento offline, contas fixas, foto do comprovante e
+gráfico de evolução.
 
 ## Estrutura
 
@@ -156,6 +158,33 @@ Detalhes de plataforma:
 Para publicar nas lojas é preciso conta de desenvolvedor Apple (US$ 99/ano) e
 Google (US$ 25, uma vez), e gerar os pacotes com EAS Build.
 
+## Contas fixas, comprovante, offline e evolução
+
+**Contas fixas** (Ajustes > Contas fixas) — o que se repete todo mês: aluguel,
+internet, mensalidade. O lançamento entra sozinho na data escolhida. Não há
+tarefa agendada rodando escondida: os meses pendentes são criados quando alguém
+abre o app, de forma idempotente (o campo `ultimoMesGerado` guarda até onde já
+foi). "Todo dia 31" cai no dia 28 em fevereiro — pular o mês seria pior, a conta
+existe de qualquer jeito. Apagar a conta fixa **não** apaga os lançamentos já
+feitos: eles são história e continuam no total.
+
+**Comprovante** — foto ou PDF anexado ao gasto. No celular abre a câmera direto;
+na web, o seletor de arquivo. Os arquivos ficam em disco
+(`apps/api/arquivos/comprovantes/<household>/`), nunca no banco: imagem em
+coluna incha o backup e deixa toda consulta mais lenta. O nome é sorteado e o
+caminho é conferido contra travessia de pasta. Excluir o gasto leva o arquivo
+junto.
+
+**Lançar sem internet** (só no app nativo) — se a chamada falhar por rede, o
+gasto entra numa fila no próprio aparelho e sobe sozinho quando a conexão volta.
+A tela inicial mostra quantos estão esperando. Só falha de rede vai para a fila:
+erro de validação (valor zerado, categoria de outra casa) aparece na hora, para
+a pessoa corrigir, em vez de ficar preso.
+
+**Evolução** — no Resumo, os últimos 6 meses em barras, com uma linha tracejada
+na média. A média considera só os meses que tiveram gasto; incluir mês vazio
+afundaria a linha e daria uma impressão errada.
+
 ## Telas
 
 - **Início** — total do mês em fonte grande, comparação com o mês anterior em
@@ -167,8 +196,8 @@ Google (US$ 25, uma vez), e gerar os pacotes com EAS Build.
 - **Resumo** — seletor de mês, rosca por categoria e barras por pessoa.
 - **Importar planilha** — os três passos acima, com barra de progresso (só na web:
   conferir linha a linha pede tela grande).
-- **Ajustes** — perfil, família e convites, categorias, importar, exportar,
-  instalar o app, sair.
+- **Ajustes** — perfil, família e convites, categorias, contas fixas, importar,
+  exportar, instalar o app, sair.
 
 Navegação com 4 itens: barra inferior no celular, coluna lateral no computador.
 
@@ -198,7 +227,11 @@ Base `/api/v1`. Toda rota fora de `auth/registrar`, `auth/login` e
 | POST | `/importacoes/:id/confirmar` | Grava só as linhas marcadas |
 | DELETE | `/importacoes/:id` | Cancela e apaga a planilha guardada |
 | GET | `/importacoes` | Histórico de importações |
+| PUT/GET/DELETE | `/gastos/:id/comprovante` | Anexa, devolve e remove a foto ou o PDF |
+| GET/POST/PATCH/DELETE | `/recorrencias[/:id]` | Contas fixas |
+| POST | `/recorrencias/gerar` | Cria os lançamentos pendentes (idempotente) |
 | GET | `/resumos/mensal?ano=&mes=` | Total do mês, por categoria, por pessoa e comparação com o mês anterior |
+| GET | `/resumos/evolucao?meses=` | Total mês a mês, para o gráfico |
 
 Erro sempre no mesmo formato, em português e sem jargão:
 
@@ -248,7 +281,13 @@ Erro sempre no mesmo formato, em português e sem jargão:
   ao empacotar, não vão dentro do app. A "correção" automática rebaixaria o
   Expo da versão 57 para a 46.
 
-## Próximas fases
+## O que ficou de fora
 
-5. Fila offline para lançar sem internet, gastos recorrentes, foto do
-   comprovante, gráficos de evolução
+- **Publicação nas lojas** — precisa de conta de desenvolvedor Apple (US$ 99/ano)
+  e Google (US$ 25, uma vez) e de builds pelo EAS. Enquanto isso, o app nativo
+  roda pelo Expo Go e a web instala como PWA sem loja nenhuma.
+- **Importar planilha no app nativo** — conferir linha a linha pede tela grande;
+  o app aponta o caminho para o computador.
+- **Fila offline na web** — o PWA abre offline e mostra o que já carregou, mas
+  lançar exige internet. A fila existe só no app nativo, onde é onde o caso
+  acontece (mercado sem sinal).

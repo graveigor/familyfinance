@@ -2,8 +2,10 @@ import type {
   AtualizarGastoEntrada,
   Categoria,
   CriarGastoEntrada,
+  Evolucao,
   ListaDeGastos,
   ListarGastosEntrada,
+  Recorrencia,
   ResumoMensal,
   Usuario,
 } from '@gastos/core';
@@ -15,6 +17,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { api } from './api';
+import { ehFalhaDeRede, enfileirar } from './fila';
 
 /** As mesmas consultas da web, sobre o mesmo cliente HTTP do `core`. */
 export const chaves = {
@@ -25,6 +28,7 @@ export const chaves = {
   membros: ['household', 'membros'] as const,
   household: ['household'] as const,
   resumo: (ano: number, mes: number) => ['resumos', ano, mes] as const,
+  recorrencias: ['recorrencias'] as const,
 };
 
 async function invalidarGastos(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
@@ -76,11 +80,48 @@ export function useSugestoes(termo: string): UseQueryResult<string[], Error> {
   });
 }
 
-export function useCriarGasto(): UseMutationResult<unknown, Error, CriarGastoEntrada> {
+/** Resultado de lançar um gasto: gravado no servidor ou guardado no aparelho. */
+export interface ResultadoDoLancamento {
+  guardadoOffline: boolean;
+}
+
+export function useCriarGasto(): UseMutationResult<
+  ResultadoDoLancamento,
+  Error,
+  CriarGastoEntrada
+> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dados: CriarGastoEntrada) => api.gastos.criar(dados),
+    mutationFn: async (dados: CriarGastoEntrada): Promise<ResultadoDoLancamento> => {
+      try {
+        await api.gastos.criar(dados);
+        return { guardadoOffline: false };
+      } catch (erro) {
+        // Sem internet: guarda no aparelho em vez de perder o lançamento.
+        // Erro de validação continua subindo, para a pessoa corrigir na hora.
+        if (!ehFalhaDeRede(erro)) throw erro;
+        await enfileirar(dados, `local-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
+        return { guardadoOffline: true };
+      }
+    },
     onSuccess: () => invalidarGastos(queryClient),
+  });
+}
+
+export function useEvolucao(meses = 6): UseQueryResult<Evolucao, Error> {
+  return useQuery({
+    queryKey: ['resumos', 'evolucao', meses],
+    queryFn: () => api.resumos.evolucao(meses),
+  });
+}
+
+export function useRecorrencias(): UseQueryResult<
+  Array<Recorrencia & { proximoEm: string | null }>,
+  Error
+> {
+  return useQuery({
+    queryKey: chaves.recorrencias,
+    queryFn: () => api.recorrencias.listar(),
   });
 }
 

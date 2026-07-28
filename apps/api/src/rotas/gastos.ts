@@ -21,6 +21,14 @@ import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenti
 import { prisma } from '../prisma.js';
 import { INCLUDE_GASTO, serializarGasto } from '../serializadores.js';
 import { gerarArquivo } from '../servicos/planilha.js';
+import {
+  TAMANHO_MAXIMO_COMPROVANTE,
+  apagarComprovante,
+  caminhoDoComprovante,
+  guardarComprovante,
+  tipoDoArquivo,
+} from '../servicos/comprovantes.js';
+import { createReadStream } from 'node:fs';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -259,12 +267,87 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
 
     const existente = await prisma.gasto.findFirst({
       where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, comprovante: true },
     });
     if (!existente) throw erroNaoEncontrado('Esse gasto não existe mais.');
     conferirPermissaoDeEdicao(usuario, existente.userId);
 
     await prisma.gasto.delete({ where: { id } });
+    // O arquivo sai junto: guardar comprovante órfão não serve a ninguém.
+    if (existente.comprovante) {
+      await apagarComprovante(usuario.householdId, existente.comprovante);
+    }
+    return reply.status(204).send();
+  });
+
+  // --- Comprovante ----------------------------------------------------------
+
+  /** Anexa (ou troca) a foto/PDF do comprovante. */
+  app.put('/:id/comprovante', async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+    const { id } = paramsSchema.parse(request.params);
+
+    const gasto = await prisma.gasto.findFirst({
+      where: { id, householdId: usuario.householdId },
+      select: { id: true, userId: true, comprovante: true },
+    });
+    if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
+    conferirPermissaoDeEdicao(usuario, gasto.userId);
+
+    const arquivo = await request.file({ limits: { fileSize: TAMANHO_MAXIMO_COMPROVANTE } });
+    if (!arquivo) throw erroValidacao('Escolha uma foto ou um PDF do comprovante.');
+
+    const conteudo = await arquivo.toBuffer();
+    if (arquivo.file.truncated) {
+      throw erroValidacao('Esse arquivo passa de 8 MB. Tire a foto com qualidade menor.');
+    }
+    if (conteudo.length === 0) throw erroValidacao('O arquivo enviado está vazio.');
+
+    const nome = await guardarComprovante(usuario.householdId, conteudo, arquivo.mimetype);
+    // Troca de comprovante: o anterior sai de cena.
+    if (gasto.comprovante) await apagarComprovante(usuario.householdId, gasto.comprovante);
+
+    const atualizado = await prisma.gasto.update({
+      where: { id },
+      data: { comprovante: nome },
+      include: INCLUDE_GASTO,
+    });
+
+    return reply.status(200).send(serializarGasto(atualizado));
+  });
+
+  app.get('/:id/comprovante', async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+    const { id } = paramsSchema.parse(request.params);
+
+    const gasto = await prisma.gasto.findFirst({
+      where: { id, householdId: usuario.householdId },
+      select: { comprovante: true },
+    });
+    if (!gasto?.comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
+
+    const caminho = caminhoDoComprovante(usuario.householdId, gasto.comprovante);
+    return reply
+      .header('content-type', tipoDoArquivo(gasto.comprovante))
+      .header('cache-control', 'private, max-age=3600')
+      .send(createReadStream(caminho));
+  });
+
+  app.delete('/:id/comprovante', async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+    const { id } = paramsSchema.parse(request.params);
+
+    const gasto = await prisma.gasto.findFirst({
+      where: { id, householdId: usuario.householdId },
+      select: { id: true, userId: true, comprovante: true },
+    });
+    if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
+    conferirPermissaoDeEdicao(usuario, gasto.userId);
+    if (!gasto.comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
+
+    await prisma.gasto.update({ where: { id }, data: { comprovante: null } });
+    await apagarComprovante(usuario.householdId, gasto.comprovante);
+
     return reply.status(204).send();
   });
 }

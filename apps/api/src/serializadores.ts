@@ -47,6 +47,8 @@ export function serializarGasto(gasto: GastoComRelacoes): Gasto {
     categoria: gasto.categoria ? serializarCategoria(gasto.categoria) : null,
     usuario: { id: gasto.user.id, nome: gasto.user.nome },
     origemImportacaoId: gasto.origemImportacaoId,
+    temComprovante: gasto.comprovante !== null,
+    recorrenciaId: gasto.recorrenciaId,
     criadoEm: gasto.criadoEm.toISOString(),
     atualizadoEm: gasto.atualizadoEm.toISOString(),
   };

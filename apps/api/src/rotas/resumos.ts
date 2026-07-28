@@ -1,8 +1,12 @@
 import {
+  evolucaoSchema,
   inicioDoMes,
   inicioDoProximoMes,
   mesAnterior,
+  nomeCurtoDoMes,
   resumoMensalSchema,
+  type Evolucao,
+  type PontoDeEvolucao,
   type ResumoMensal,
   type TotalPorCategoria,
   type TotalPorPessoa,
@@ -94,6 +98,71 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
         totalCentavos: totalAnteriorCentavos,
         diferencaCentavos: totalCentavos - totalAnteriorCentavos,
       },
+    };
+  });
+
+  /**
+   * Evolução mês a mês, para o gráfico de barras. Uma consulta só agrupando
+   * por mês — puxar gasto por gasto para somar no servidor seria desperdício.
+   */
+  app.get('/evolucao', async (request: FastifyRequest): Promise<Evolucao> => {
+    const usuario = usuarioDaRequisicao(request);
+    const { meses } = evolucaoSchema.parse(request.query);
+
+    const agora = new Date();
+    const anoFinal = agora.getUTCFullYear();
+    const mesFinal = agora.getUTCMonth() + 1;
+
+    // Janela: os `meses` últimos meses, terminando no mês atual.
+    let inicio = { ano: anoFinal, mes: mesFinal };
+    for (let i = 1; i < meses; i += 1) inicio = mesAnterior(inicio.ano, inicio.mes);
+
+    const totais = await prisma.gasto.groupBy({
+      by: ['data'],
+      where: {
+        householdId: usuario.householdId,
+        data: {
+          gte: inicioDoMes(inicio.ano, inicio.mes),
+          lt: inicioDoProximoMes(anoFinal, mesFinal),
+        },
+      },
+      _sum: { valorCentavos: true },
+      _count: true,
+    });
+
+    // O agrupamento vem por dia; juntamos por mês aqui, que é barato.
+    const porMes = new Map<string, { total: number; quantidade: number }>();
+    for (const linha of totais) {
+      const chave = `${linha.data.getUTCFullYear()}-${linha.data.getUTCMonth() + 1}`;
+      const atual = porMes.get(chave) ?? { total: 0, quantidade: 0 };
+      atual.total += linha._sum.valorCentavos ?? 0;
+      atual.quantidade += linha._count;
+      porMes.set(chave, atual);
+    }
+
+    const pontos: PontoDeEvolucao[] = [];
+    let cursor = inicio;
+    for (let i = 0; i < meses; i += 1) {
+      const dados = porMes.get(`${cursor.ano}-${cursor.mes}`);
+      pontos.push({
+        ano: cursor.ano,
+        mes: cursor.mes,
+        rotulo: nomeCurtoDoMes(cursor.mes),
+        totalCentavos: dados?.total ?? 0,
+        quantidade: dados?.quantidade ?? 0,
+      });
+      cursor = cursor.mes === 12 ? { ano: cursor.ano + 1, mes: 1 } : { ano: cursor.ano, mes: cursor.mes + 1 };
+    }
+
+    // Média só dos meses que tiveram gasto: incluir mês vazio afundaria a
+    // linha de referência e daria uma impressão errada.
+    const comGasto = pontos.filter((ponto) => ponto.quantidade > 0);
+    const soma = comGasto.reduce((total, ponto) => total + ponto.totalCentavos, 0);
+
+    return {
+      pontos,
+      mediaCentavos: comGasto.length > 0 ? Math.round(soma / comGasto.length) : 0,
+      maiorCentavos: pontos.reduce((maior, ponto) => Math.max(maior, ponto.totalCentavos), 0),
     };
   });
 }

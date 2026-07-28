@@ -8,10 +8,12 @@ import {
   ontem,
   parseData,
 } from '@gastos/core';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import {
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,6 +23,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../src/api';
 import { Icone } from '../src/componentes/Icone';
@@ -120,8 +123,17 @@ export default function TelaDeGasto(): ReactElement {
     try {
       // Ao editar não mandamos a forma de pagamento: o que já estava gravado
       // (Pix, boleto...) continua valendo.
-      if (editando && id) await atualizar.mutateAsync({ id, dados });
-      else await criar.mutateAsync({ ...dados, formaPagamento: 'CARTAO' });
+      if (editando && id) {
+        await atualizar.mutateAsync({ id, dados });
+      } else {
+        const resultado = await criar.mutateAsync({ ...dados, formaPagamento: 'CARTAO' });
+        if (resultado.guardadoOffline) {
+          Alert.alert(
+            'Gasto guardado no celular',
+            'Você está sem internet. Assim que a conexão voltar, ele entra sozinho no app da família.',
+          );
+        }
+      }
       router.back();
     } catch (falha) {
       setErro(traduzirErro(falha));
@@ -256,6 +268,14 @@ export default function TelaDeGasto(): ReactElement {
           </Text>
         </Cartao>
 
+        {/* Comprovante: só depois que o gasto existe, porque a foto vai anexada a ele. */}
+        {editando && id && (
+          <Cartao estilo={estilos.bloco}>
+            <Text style={estilos.rotulo}>Comprovante</Text>
+            <Comprovante gastoId={id} tem={existente.data?.temComprovante ?? false} />
+          </Cartao>
+        )}
+
         {/* 5. Quem gastou — só quando a família tem mais de uma pessoa */}
         {(membros.data?.length ?? 0) > 1 && (
           <Cartao estilo={estilos.bloco}>
@@ -292,7 +312,119 @@ export default function TelaDeGasto(): ReactElement {
   );
 }
 
+/**
+ * Foto do comprovante. Abre a câmera direto — no mercado a pessoa fotografa a
+ * nota, não vai procurar arquivo.
+ */
+function Comprovante({ gastoId, tem }: { gastoId: string; tem: boolean }): ReactElement {
+  const queryClient = useQueryClient();
+  const [enviando, setEnviando] = useState(false);
+  const [temComprovante, setTemComprovante] = useState(tem);
+
+  useEffect(() => setTemComprovante(tem), [tem]);
+
+  async function enviar(uri: string, nome: string, tipo: string): Promise<void> {
+    setEnviando(true);
+    try {
+      const resposta = await fetch(uri);
+      const conteudo = await resposta.blob();
+      await api.gastos.enviarComprovante(gastoId, conteudo, nome);
+      setTemComprovante(true);
+      await queryClient.invalidateQueries({ queryKey: ['gastos'] });
+    } catch (falha) {
+      Alert.alert('Não deu certo', traduzirErro(falha).mensagem);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function escolher(daCamera: boolean): Promise<void> {
+    const permissao = daCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissao.granted) {
+      Alert.alert(
+        'Precisamos da sua permissão',
+        daCamera
+          ? 'Libere o acesso à câmera nos ajustes do aparelho para fotografar o comprovante.'
+          : 'Libere o acesso às fotos nos ajustes do aparelho para escolher o comprovante.',
+      );
+      return;
+    }
+
+    const resultado = daCamera
+      ? await ImagePicker.launchCameraAsync({ quality: 0.6 })
+      : await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+
+    const arquivo = resultado.assets?.[0];
+    if (resultado.canceled || !arquivo) return;
+
+    await enviar(arquivo.uri, arquivo.fileName ?? 'comprovante.jpg', arquivo.mimeType ?? 'image/jpeg');
+  }
+
+  async function remover(): Promise<void> {
+    setEnviando(true);
+    try {
+      await api.gastos.removerComprovante(gastoId);
+      setTemComprovante(false);
+      await queryClient.invalidateQueries({ queryKey: ['gastos'] });
+    } catch (falha) {
+      Alert.alert('Não deu certo', traduzirErro(falha).mensagem);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <View style={{ gap: espaco.md }}>
+      {temComprovante && (
+        <Image
+          source={{ uri: `${api.gastos.urlDoComprovante(gastoId)}?t=${gastoId}` }}
+          style={estilos.previaDoComprovante}
+          resizeMode="cover"
+          accessibilityLabel="Comprovante anexado"
+        />
+      )}
+
+      <View style={{ flexDirection: 'row', gap: espaco.sm }}>
+        <Botao
+          titulo={temComprovante ? 'Trocar foto' : 'Fotografar'}
+          variante="secundario"
+          icone="planilha"
+          estilo={{ flex: 1 }}
+          carregando={enviando}
+          aoTocar={() => void escolher(true)}
+        />
+        <Botao
+          titulo="Da galeria"
+          variante="secundario"
+          estilo={{ flex: 1 }}
+          carregando={enviando}
+          aoTocar={() => void escolher(false)}
+        />
+      </View>
+
+      {temComprovante && (
+        <Botao
+          titulo="Remover comprovante"
+          variante="secundario"
+          icone="lixeira"
+          carregando={enviando}
+          aoTocar={() => void remover()}
+        />
+      )}
+    </View>
+  );
+}
+
 const estilos = StyleSheet.create({
+  previaDoComprovante: {
+    width: '100%',
+    height: 200,
+    borderRadius: raio.md,
+    backgroundColor: '#F1F5F9',
+  },
   tela: { flex: 1, backgroundColor: cores.fundo },
   cabecalho: {
     flexDirection: 'row',

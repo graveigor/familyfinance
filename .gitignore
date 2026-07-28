@@ -18,3 +18,6 @@ coverage/
 
 # build do app web
 apps/web/dist/
+
+# comprovantes enviados pelos usuários — dado de quem usa, não do projeto
+apps/api/arquivos/

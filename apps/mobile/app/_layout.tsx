@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ProvedorDeConexao } from '../src/conexao';
 import { ProvedorDeSessao } from '../src/sessao';
 import { cores } from '../src/tema';
 
@@ -25,6 +26,7 @@ export default function Raiz(): ReactElement {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <ProvedorDeSessao>
+          <ProvedorDeConexao>
           <StatusBar style="dark" />
           <Stack
             screenOptions={{
@@ -37,6 +39,7 @@ export default function Raiz(): ReactElement {
             {/* Lançar gasto sobe como folha, do jeito que o sistema faz. */}
             <Stack.Screen name="gasto" options={{ presentation: 'modal' }} />
           </Stack>
+          </ProvedorDeConexao>
         </ProvedorDeSessao>
       </QueryClientProvider>
     </SafeAreaProvider>

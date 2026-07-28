@@ -1,5 +1,6 @@
 import {
   formatarBRL,
+  formatarBRLCurto,
   fraseComparacaoMensal,
   hoje,
   nomeDoMes,
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { Icone } from '../../src/componentes/Icone';
 import { CaixaDeErro, Carregando, Cartao, Vazio, traduzirErro } from '../../src/componentes/ui';
-import { useResumoMensal } from '../../src/consultas';
+import { useEvolucao, useResumoMensal } from '../../src/consultas';
 import { ALVO_DE_TOQUE, cores, espaco, fonte, raio } from '../../src/tema';
 
 export default function Resumo(): ReactElement {
@@ -84,7 +85,63 @@ export default function Resumo(): ReactElement {
       ) : (
         <Conteudo resumo={consulta.data} />
       )}
+
+      <Evolucao />
     </ScrollView>
+  );
+}
+
+/** Últimos seis meses lado a lado: "estou gastando mais que antes?". */
+function Evolucao(): ReactElement {
+  const evolucao = useEvolucao(6);
+
+  return (
+    <Cartao estilo={estilos.bloco}>
+      <Text style={estilos.tituloDaSecao}>Últimos 6 meses</Text>
+
+      {evolucao.isPending ? (
+        <Carregando />
+      ) : evolucao.isError ? (
+        <CaixaDeErro mensagem={traduzirErro(evolucao.error).mensagem} />
+      ) : evolucao.data.maiorCentavos === 0 ? (
+        <Text style={estilos.textoSuave}>Ainda não há gastos para comparar.</Text>
+      ) : (
+        <>
+          <View style={estilos.grafico}>
+            {evolucao.data.pontos.map((ponto) => {
+              const altura = (ponto.totalCentavos / Math.max(evolucao.data.maiorCentavos, 1)) * 100;
+              const ehMaior = ponto.totalCentavos === evolucao.data.maiorCentavos;
+              return (
+                <View key={`${ponto.ano}-${ponto.mes}`} style={estilos.colunaDoGrafico}>
+                  {/* `adjustsFontSizeToFit`: encolhe em vez de cortar o valor. */}
+                  <Text style={estilos.valorDaColuna} numberOfLines={1} adjustsFontSizeToFit>
+                    {ponto.totalCentavos > 0 ? formatarBRLCurto(ponto.totalCentavos) : ''}
+                  </Text>
+                  <View
+                    accessibilityRole="image"
+                    accessibilityLabel={`${ponto.rotulo}: ${formatarBRL(ponto.totalCentavos)}`}
+                    style={[
+                      estilos.barraDoGrafico,
+                      {
+                        // Os 85% deixam espaço para o valor escrito acima.
+                        height: `${Math.max(altura * 0.85, ponto.totalCentavos > 0 ? 4 : 0)}%`,
+                        backgroundColor: ehMaior ? cores.marcaEscura : cores.marca,
+                      },
+                    ]}
+                  />
+                  <Text style={estilos.rotuloDaColuna}>{ponto.rotulo}</Text>
+                </View>
+              );
+            })}
+          </View>
+          {evolucao.data.mediaCentavos > 0 && (
+            <Text style={estilos.textoSuave}>
+              Média dos meses com gasto: {formatarBRL(evolucao.data.mediaCentavos)}
+            </Text>
+          )}
+        </>
+      )}
+    </Cartao>
   );
 }
 
@@ -233,6 +290,13 @@ const estilos = StyleSheet.create({
   nomeDaCategoria: { flex: 1, fontSize: fonte.corpo, color: cores.textoSuave },
   valorDaCategoria: { fontSize: fonte.corpo, fontWeight: '600', color: cores.texto },
   percentual: { fontSize: fonte.pequeno, color: cores.textoFraco, minWidth: 42, textAlign: 'right' },
+
+  textoSuave: { fontSize: fonte.corpo, color: cores.textoSuave },
+  grafico: { flexDirection: 'row', alignItems: 'flex-end', height: 180, gap: espaco.sm },
+  colunaDoGrafico: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' },
+  valorDaColuna: { fontSize: 11, color: cores.textoSuave, marginBottom: 4 },
+  barraDoGrafico: { width: '100%', borderTopLeftRadius: raio.sm, borderTopRightRadius: raio.sm },
+  rotuloDaColuna: { fontSize: fonte.pequeno, color: cores.textoSuave, marginTop: 6 },
 
   blocoDaPessoa: { gap: 6 },
   linhaDaPessoa: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
