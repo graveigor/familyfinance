@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Nunca menor que 16px: é o mínimo confortável para quem tem dificuldade
+       de leitura, e evita o zoom automático do iOS ao focar um campo. */
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    /* Respeita a área da barra do iPhone quando instalado na tela de início. */
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Foco sempre visível: quem navega por teclado precisa saber onde está. */
+  :focus-visible {
+    @apply outline-none ring-4 ring-marca-500/40;
+  }
+
+  /* Tira as setinhas do input numérico, que só atrapalham no campo de valor. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+@layer components {
+  .cartao {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .rotulo {
+    @apply mb-2 block text-base font-semibold text-slate-700;
+  }
+
+  .campo {
+    @apply min-h-toque w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-base
+      text-slate-900 placeholder:text-slate-400 focus:border-marca-600 focus:outline-none;
+  }
+
+  .campo-com-erro {
+    @apply border-red-500 bg-red-50;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

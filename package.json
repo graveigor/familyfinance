@@ -16,10 +16,12 @@
     "test": "npm run build -w @gastos/core && npm run test -w @gastos/core && npm run test -w @gastos/api",
     "test:core": "npm run test -w @gastos/core",
     "test:api": "npm run build -w @gastos/core && npm run test -w @gastos/api",
-    "typecheck": "npm run typecheck -w @gastos/core && npm run typecheck -w @gastos/api",
+    "typecheck": "npm run typecheck -w @gastos/core && npm run typecheck -w @gastos/api && npm run typecheck -w @gastos/web",
     "db:migrate": "npm run db:migrate -w @gastos/api",
     "db:seed": "npm run db:seed -w @gastos/api",
-    "db:studio": "npm run db:studio -w @gastos/api"
+    "db:studio": "npm run db:studio -w @gastos/api",
+    "dev:web": "npm run dev -w @gastos/web",
+    "build:web": "npm run build -w @gastos/core && npm run build -w @gastos/web"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

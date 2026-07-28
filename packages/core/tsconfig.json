@@ -2,7 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    // DOM só pelo `fetch`/`AbortController`, que existem no navegador, no Node
+    // 18+ e no React Native — o cliente HTTP roda nos três.
+    "lib": ["ES2023", "DOM"]
   },
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts"]

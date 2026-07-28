@@ -1,4 +1,5 @@
 export * from './categorias-padrao.js';
+export * from './cliente.js';
 export * from './datas.js';
 export * from './dinheiro.js';
 export * from './erros.js';

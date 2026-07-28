@@ -1,0 +1,32 @@
+{
+  "name": "Controle de Gastos",
+  "short_name": "Gastos",
+  "description": "O controle de gastos da família, no lugar da planilha.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F8FAFC",
+  "theme_color": "#16A34A",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icone-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Adicionar gasto",
+      "short_name": "Adicionar",
+      "url": "/novo",
+      "icons": [{ "src": "/icone-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

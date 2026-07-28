@@ -1,0 +1,268 @@
+import { ErroApp, ehCorpoErro, type CodigoErro } from './erros.js';
+import type {
+  Categoria,
+  Convite,
+  Gasto,
+  Household,
+  ListaDeGastos,
+  Papel,
+  ResumoMensal,
+  Sessao,
+  Usuario,
+} from './tipos.js';
+import type { AtualizarPerfilEntrada, LoginEntrada, RegistrarEntrada } from './schemas/auth.js';
+import type {
+  AtualizarCategoriaEntrada,
+  CriarCategoriaEntrada,
+} from './schemas/categoria.js';
+import type {
+  AtualizarGastoEntrada,
+  CriarGastoEntrada,
+  ListarGastosEntrada,
+} from './schemas/gasto.js';
+
+/**
+ * Cliente HTTP compartilhado entre web e mobile. Só usa `fetch`, sem nenhuma
+ * dependência de plataforma, e devolve sempre `ErroApp` — a interface nunca
+ * precisa olhar status HTTP nem tratar exceção de rede na mão.
+ */
+
+/** A sessão pode viver no localStorage (web) ou no AsyncStorage (mobile). */
+export interface ArmazenamentoDeSessao {
+  ler(): Sessao | null | Promise<Sessao | null>;
+  gravar(sessao: Sessao | null): void | Promise<void>;
+}
+
+export interface OpcoesCliente {
+  baseUrl: string;
+  armazenamento: ArmazenamentoDeSessao;
+  /** Chamado quando a sessão cai de vez (refresh recusado). */
+  aoPerderSessao?: () => void;
+}
+
+type Parametros = Record<string, string | number | boolean | undefined | null>;
+
+function montarUrl(baseUrl: string, caminho: string, parametros?: Parametros): string {
+  const url = `${baseUrl.replace(/\/$/, '')}${caminho}`;
+  if (!parametros) return url;
+
+  const busca = new URLSearchParams();
+  for (const [chave, valor] of Object.entries(parametros)) {
+    if (valor !== undefined && valor !== null && valor !== '') {
+      busca.set(chave, String(valor));
+    }
+  }
+  const texto = busca.toString();
+  return texto ? `${url}?${texto}` : url;
+}
+
+async function lerErro(resposta: Response): Promise<ErroApp> {
+  let corpo: unknown = null;
+  try {
+    corpo = await resposta.json();
+  } catch {
+    corpo = null;
+  }
+
+  if (ehCorpoErro(corpo)) {
+    return new ErroApp(corpo.erro.codigo as CodigoErro, corpo.erro.mensagem, corpo.erro.campos);
+  }
+  // Servidor fora do ar ou proxy no caminho: resposta que não é do nosso formato.
+  return new ErroApp('INTERNO');
+}
+
+export interface Cliente {
+  autenticado(): Promise<boolean>;
+  sessao(): Promise<Sessao | null>;
+  auth: {
+    registrar(dados: RegistrarEntrada): Promise<Sessao>;
+    login(dados: LoginEntrada): Promise<Sessao>;
+    eu(): Promise<{ usuario: Usuario; household: Household }>;
+    atualizarPerfil(dados: AtualizarPerfilEntrada): Promise<Usuario>;
+    sair(): Promise<void>;
+  };
+  gastos: {
+    listar(filtros?: Partial<ListarGastosEntrada>): Promise<ListaDeGastos>;
+    obter(id: string): Promise<Gasto>;
+    criar(dados: CriarGastoEntrada): Promise<Gasto>;
+    atualizar(id: string, dados: AtualizarGastoEntrada): Promise<Gasto>;
+    excluir(id: string): Promise<void>;
+    sugestoes(termo: string): Promise<string[]>;
+  };
+  categorias: {
+    listar(): Promise<Categoria[]>;
+    criar(dados: CriarCategoriaEntrada): Promise<Categoria>;
+    atualizar(id: string, dados: AtualizarCategoriaEntrada): Promise<Categoria>;
+    excluir(id: string): Promise<{ gastosSemCategoria: number }>;
+  };
+  household: {
+    obter(): Promise<Household>;
+    renomear(nome: string): Promise<Household>;
+    membros(): Promise<Usuario[]>;
+    trocarPapel(id: string, papel: Papel): Promise<Usuario>;
+    criarConvite(validadeDias?: number): Promise<Convite>;
+    entrar(codigo: string): Promise<Usuario>;
+  };
+  resumos: {
+    mensal(ano: number, mes: number): Promise<ResumoMensal>;
+  };
+}
+
+export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesCliente): Cliente {
+  // Um refresh por vez: se três telas receberem 401 juntas, todas esperam a
+  // mesma renovação em vez de disparar três.
+  let renovacaoEmAndamento: Promise<Sessao | null> | null = null;
+
+  async function renovar(): Promise<Sessao | null> {
+    renovacaoEmAndamento ??= (async () => {
+      const atual = await armazenamento.ler();
+      if (!atual?.refreshToken) return null;
+
+      try {
+        const resposta = await fetch(montarUrl(baseUrl, '/api/v1/auth/refresh'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ refreshToken: atual.refreshToken }),
+        });
+        if (!resposta.ok) return null;
+        const nova = (await resposta.json()) as Sessao;
+        await armazenamento.gravar(nova);
+        return nova;
+      } catch {
+        return null;
+      } finally {
+        // Libera para a próxima tentativa, mesmo em caso de falha.
+        setTimeout(() => {
+          renovacaoEmAndamento = null;
+        }, 0);
+      }
+    })();
+
+    return renovacaoEmAndamento;
+  }
+
+  async function requisitar<T>(
+    metodo: string,
+    caminho: string,
+    opcoes: { corpo?: unknown; parametros?: Parametros; publica?: boolean; tentouRenovar?: boolean } = {},
+  ): Promise<T> {
+    const sessao = opcoes.publica ? null : await armazenamento.ler();
+
+    const cabecalhos: Record<string, string> = { accept: 'application/json' };
+    if (opcoes.corpo !== undefined) cabecalhos['content-type'] = 'application/json';
+    if (sessao?.accessToken) cabecalhos.authorization = `Bearer ${sessao.accessToken}`;
+
+    let resposta: Response;
+    try {
+      resposta = await fetch(montarUrl(baseUrl, caminho, opcoes.parametros), {
+        method: metodo,
+        headers: cabecalhos,
+        ...(opcoes.corpo !== undefined ? { body: JSON.stringify(opcoes.corpo) } : {}),
+      });
+    } catch {
+      throw new ErroApp(
+        'INTERNO',
+        'Não conseguimos falar com o aplicativo. Verifique sua internet e tente de novo.',
+      );
+    }
+
+    // Token de acesso vencido: renova uma vez e repete a mesma chamada.
+    if (resposta.status === 401 && !opcoes.publica && !opcoes.tentouRenovar) {
+      const nova = await renovar();
+      if (nova) {
+        return requisitar<T>(metodo, caminho, { ...opcoes, tentouRenovar: true });
+      }
+      await armazenamento.gravar(null);
+      aoPerderSessao?.();
+    }
+
+    if (!resposta.ok) throw await lerErro(resposta);
+    if (resposta.status === 204) return undefined as T;
+    return (await resposta.json()) as T;
+  }
+
+  async function guardarSessao(sessao: Sessao): Promise<Sessao> {
+    await armazenamento.gravar(sessao);
+    return sessao;
+  }
+
+  return {
+    async autenticado() {
+      return Boolean((await armazenamento.ler())?.accessToken);
+    },
+    async sessao() {
+      return armazenamento.ler();
+    },
+
+    auth: {
+      async registrar(dados) {
+        const sessao = await requisitar<Sessao>('POST', '/api/v1/auth/registrar', {
+          corpo: dados,
+          publica: true,
+        });
+        return guardarSessao(sessao);
+      },
+      async login(dados) {
+        const sessao = await requisitar<Sessao>('POST', '/api/v1/auth/login', {
+          corpo: dados,
+          publica: true,
+        });
+        return guardarSessao(sessao);
+      },
+      eu: () => requisitar('GET', '/api/v1/auth/eu'),
+      atualizarPerfil: (dados) => requisitar('PATCH', '/api/v1/auth/eu', { corpo: dados }),
+      async sair() {
+        await armazenamento.gravar(null);
+      },
+    },
+
+    gastos: {
+      listar: (filtros = {}) =>
+        requisitar('GET', '/api/v1/gastos', { parametros: filtros as Parametros }),
+      obter: (id) => requisitar('GET', `/api/v1/gastos/${id}`),
+      criar: (dados) => requisitar('POST', '/api/v1/gastos', { corpo: dados }),
+      atualizar: (id, dados) => requisitar('PATCH', `/api/v1/gastos/${id}`, { corpo: dados }),
+      excluir: (id) => requisitar('DELETE', `/api/v1/gastos/${id}`),
+      async sugestoes(termo) {
+        const { descricoes } = await requisitar<{ descricoes: string[] }>(
+          'GET',
+          '/api/v1/gastos/sugestoes',
+          { parametros: { termo } },
+        );
+        return descricoes;
+      },
+    },
+
+    categorias: {
+      async listar() {
+        const { itens } = await requisitar<{ itens: Categoria[] }>('GET', '/api/v1/categorias');
+        return itens;
+      },
+      criar: (dados) => requisitar('POST', '/api/v1/categorias', { corpo: dados }),
+      atualizar: (id, dados) => requisitar('PATCH', `/api/v1/categorias/${id}`, { corpo: dados }),
+      excluir: (id) => requisitar('DELETE', `/api/v1/categorias/${id}`),
+    },
+
+    household: {
+      obter: () => requisitar('GET', '/api/v1/household'),
+      renomear: (nome) => requisitar('PATCH', '/api/v1/household', { corpo: { nome } }),
+      async membros() {
+        const { itens } = await requisitar<{ itens: Usuario[] }>(
+          'GET',
+          '/api/v1/household/membros',
+        );
+        return itens;
+      },
+      trocarPapel: (id, papel) =>
+        requisitar('PATCH', `/api/v1/household/membros/${id}`, { corpo: { papel } }),
+      criarConvite: (validadeDias = 7) =>
+        requisitar('POST', '/api/v1/household/convites', { corpo: { validadeDias } }),
+      entrar: (codigo) => requisitar('POST', '/api/v1/household/entrar', { corpo: { codigo } }),
+    },
+
+    resumos: {
+      mensal: (ano, mes) =>
+        requisitar('GET', '/api/v1/resumos/mensal', { parametros: { ano, mes } }),
+    },
+  };
+}

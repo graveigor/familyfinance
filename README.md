@@ -4,18 +4,18 @@ Aplicativo para substituir a planilha de gastos da família. Roda no navegador e
 no celular, importa as planilhas antigas e organiza tudo por categoria, pessoa e
 período.
 
-**Estado atual: Fase 1 (Fundação) concluída** — monorepo, banco, autenticação,
-CRUD de gastos e categorias, e testes do backend.
+**Estado atual: Fases 1 e 2 concluídas** — backend completo com testes, e o
+aplicativo web pronto e **instalável no celular e no computador** (PWA).
 
 ## Estrutura
 
 ```
 /apps
   /api        → backend Fastify + Prisma + PostgreSQL
-  /web        → aplicação web (Fase 2)
+  /web        → aplicação web React + Vite + Tailwind (instalável como app)
   /mobile     → app React Native/Expo (Fase 4)
 /packages
-  /core       → tipos, schemas Zod, regras de dinheiro e datas (compartilhado)
+  /core       → tipos, schemas Zod, cliente HTTP, dinheiro e datas (compartilhado)
 ```
 
 Regra que atravessa todo o código: **dinheiro é inteiro em centavos**. Nenhum
@@ -35,7 +35,11 @@ cp apps/api/.env.example apps/api/.env   # ajuste DATABASE_URL e os segredos
 npm run db:migrate
 npm run db:seed                          # dados de exemplo (opcional)
 npm run dev                              # API em http://localhost:3333
+npm run dev:web                          # app em http://localhost:5173
 ```
+
+O `npm run dev:web` já repassa `/api` para o backend — não é preciso configurar
+CORS nem variável de ambiente para desenvolver.
 
 Gere os segredos do JWT com:
 
@@ -54,6 +58,43 @@ npm test
 
 Os testes do `core` são puros; os da API sobem o Fastify de verdade e usam o
 banco `controle_gastos_test`, definido em `apps/api/.env.test`.
+
+## Instalar no celular e no computador
+
+O app web é um PWA: instala sem loja de aplicativos, abre em tela cheia e
+funciona offline para consultar o que já foi carregado (lançar exige internet).
+
+| Onde | Como |
+|---|---|
+| Android (Chrome) | Aparece a faixa "Instalar" na tela inicial, ou menu ⋮ > Instalar aplicativo |
+| iPhone / iPad (Safari) | Botão Compartilhar > **Adicionar à Tela de Início** |
+| Windows / Mac / Linux (Chrome, Edge) | Ícone de instalar na barra de endereço, ou menu > Instalar |
+
+Em **Ajustes > Instalar o app** há o botão e as instruções para cada aparelho.
+
+Requisito: em produção o app precisa ser servido por **HTTPS** (em
+`localhost` funciona sem). O service worker fica em `apps/web/public/sw.js`,
+escrito à mão — guarda os arquivos do app, e **nunca** guarda resposta da API,
+para não exibir total desatualizado.
+
+Os ícones são gerados por script, sem dependência de imagem:
+
+```bash
+npm run icones -w @gastos/web
+```
+
+## Telas
+
+- **Início** — total do mês em fonte grande, comparação com o mês anterior em
+  linguagem simples e os últimos gastos. Botão "+" fixo.
+- **Novo gasto** — valor com teclado numérico e máscara, "onde foi" com
+  autocompletar, categoria em grade de ícones, "Hoje/Ontem" e quem gastou.
+- **Gastos** — agrupados por dia com subtotal, busca, filtros em gaveta com
+  etiquetas removíveis, editar e excluir.
+- **Resumo** — seletor de mês, rosca por categoria e barras por pessoa.
+- **Ajustes** — perfil, família e convites, categorias, instalar o app, sair.
+
+Navegação com 4 itens: barra inferior no celular, coluna lateral no computador.
 
 ## API
 
@@ -98,9 +139,20 @@ Erro sempre no mesmo formato, em português e sem jargão:
 - Login responde igual para senha errada e e-mail inexistente.
 - Senha guardada com scrypt (`node:crypto`), nunca em texto puro.
 
+## Decisões de dependência
+
+- **npm workspaces** no lugar de pnpm: `corepack enable` não instala o pnpm
+  sem sudo nesta máquina. O layout do monorepo é o mesmo.
+- **Sem biblioteca de gráficos e sem pacote de ícones**: a rosca e os ícones
+  são SVG escritos no projeto. Menos peso para baixar e nada quebra offline.
+- **Sem `vite-plugin-pwa`**: o service worker é curto e explícito, e a cadeia
+  de dependências do Workbox trazia alertas de segurança em ferramenta de build.
+- `react-router-dom` fica na **7.18.1**, a versão mais nova disponível. O único
+  alerta aberto é de modo RSC com server actions, que este SPA não usa.
+
 ## Próximas fases
 
-2. Web — todas as telas, menos importação
 3. Importação de planilha (`.xlsx`/`.xls`/`.csv`) e exportação
-4. Mobile (Expo)
-5. Offline, recorrentes, foto do comprovante, gráficos de evolução
+4. Mobile nativo com Expo (Play Store e App Store)
+5. Fila offline para lançar sem internet, gastos recorrentes, foto do
+   comprovante, gráficos de evolução
