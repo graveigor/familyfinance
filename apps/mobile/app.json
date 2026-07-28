@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Controle de Gastos",
+    "slug": "controle-gastos",
+    "scheme": "controlegastos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F8FAFC",
+    "primaryColor": "#16A34A",
+    "locales": {},
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#16A34A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.graveigor.controlegastos",
+      "infoPlist": {
+        "CFBundleDisplayName": "Gastos",
+        "CFBundleDevelopmentRegion": "pt_BR"
+      }
+    },
+    "android": {
+      "package": "com.graveigor.controlegastos",
+      "adaptiveIcon": {
+        "backgroundColor": "#16A34A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

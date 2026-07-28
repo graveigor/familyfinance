@@ -8,12 +8,14 @@
  * legível mesmo em 48px na tela inicial.
  */
 import { deflateSync } from 'node:zlib';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DESTINO = join(RAIZ, 'public');
+// Mesmo desenho para o app nativo, para a marca ser a mesma nos dois.
+const DESTINO_MOBILE = join(RAIZ, '..', 'mobile', 'assets');
 
 const VERDE = [22, 163, 74];
 const BRANCO = [255, 255, 255];
@@ -162,6 +164,18 @@ function desenharIcone(tamanho, { margemSegura = false, fundoTransparente = fals
   return escreverPng(tamanho, tamanho, pixels);
 }
 
+/** Quadrado inteiro na cor da marca, para a camada de fundo do Android. */
+function fundoChapado(tamanho) {
+  const pixels = Buffer.alloc(tamanho * tamanho * 4);
+  for (let i = 0; i < tamanho * tamanho; i += 1) {
+    pixels[i * 4] = VERDE[0];
+    pixels[i * 4 + 1] = VERDE[1];
+    pixels[i * 4 + 2] = VERDE[2];
+    pixels[i * 4 + 3] = 255;
+  }
+  return escreverPng(tamanho, tamanho, pixels);
+}
+
 mkdirSync(DESTINO, { recursive: true });
 
 const arquivos = [
@@ -176,5 +190,24 @@ const arquivos = [
 
 for (const [nome, conteudo] of arquivos) {
   writeFileSync(join(DESTINO, nome), conteudo);
-  console.log(`${nome} — ${(conteudo.length / 1024).toFixed(1)} KB`);
+  console.log(`web/public/${nome} — ${(conteudo.length / 1024).toFixed(1)} KB`);
+}
+
+// Expo pede 1024×1024. O ícone adaptativo do Android é montado em duas camadas:
+// fundo chapado e desenho com margem de recorte.
+if (existsSync(DESTINO_MOBILE)) {
+  const doApp = [
+    ['icon.png', desenharIcone(1024)],
+    ['splash-icon.png', desenharIcone(1024, { margemSegura: true })],
+    ['favicon.png', desenharIcone(48)],
+    ['android-icon-foreground.png', desenharIcone(512, { margemSegura: true, fundoTransparente: true })],
+    ['android-icon-monochrome.png', desenharIcone(432, { margemSegura: true, fundoTransparente: true })],
+  ];
+  for (const [nome, conteudo] of doApp) {
+    writeFileSync(join(DESTINO_MOBILE, nome), conteudo);
+    console.log(`mobile/assets/${nome} — ${(conteudo.length / 1024).toFixed(1)} KB`);
+  }
+  // Fundo do ícone adaptativo: verde chapado, sem desenho.
+  writeFileSync(join(DESTINO_MOBILE, 'android-icon-background.png'), fundoChapado(512));
+  console.log('mobile/assets/android-icon-background.png');
 }

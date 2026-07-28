@@ -4,9 +4,9 @@ Aplicativo para substituir a planilha de gastos da família. Roda no navegador e
 no celular, importa as planilhas antigas e organiza tudo por categoria, pessoa e
 período.
 
-**Estado atual: Fases 1, 2 e 3 concluídas** — backend com testes, aplicativo web
-**instalável no celular e no computador** (PWA), e importação/exportação de
-planilhas do Excel.
+**Estado atual: Fases 1 a 4 concluídas** — backend com testes, aplicativo web
+**instalável no celular e no computador** (PWA), importação/exportação de
+planilhas do Excel e **app nativo (Expo) para Android e iOS**.
 
 ## Estrutura
 
@@ -14,7 +14,7 @@ planilhas do Excel.
 /apps
   /api        → backend Fastify + Prisma + PostgreSQL
   /web        → aplicação web React + Vite + Tailwind (instalável como app)
-  /mobile     → app React Native/Expo (Fase 4)
+  /mobile     → app nativo React Native + Expo (Android e iOS)
 /packages
   /core       → tipos, schemas Zod, cliente HTTP, dinheiro e datas (compartilhado)
 ```
@@ -37,6 +37,7 @@ npm run db:migrate
 npm run db:seed                          # dados de exemplo (opcional)
 npm run dev                              # API em http://localhost:3333
 npm run dev:web                          # app em http://localhost:5173
+npm run dev:mobile                       # app nativo (Expo)
 ```
 
 O `npm run dev:web` já repassa `/api` para o backend — não é preciso configurar
@@ -122,6 +123,39 @@ cancelar.
 opcional. O `.csv` sai com ponto e vírgula e BOM, do jeito que o Excel em
 português abre sem bagunçar os acentos.
 
+## App nativo (Android e iOS)
+
+```bash
+npm run dev:mobile
+```
+
+Leia o QR code com o app **Expo Go** (Play Store / App Store). O celular precisa
+estar na mesma rede do computador — o app descobre o endereço da API sozinho a
+partir do endereço do Expo, então não é preciso configurar IP na mão.
+
+Para apontar para outro servidor, use `EXPO_PUBLIC_API_URL`:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.suacasa.com npm run dev:mobile
+```
+
+O que é compartilhado com a web: **todo** o pacote `core` — tipos, schemas Zod,
+regras de dinheiro e datas e o cliente HTTP com renovação de sessão. Muda só a
+camada de tela e o armazenamento da sessão (AsyncStorage no lugar do
+localStorage).
+
+Detalhes de plataforma:
+
+- Campo de valor abre com o **teclado numérico nativo** (`number-pad`), já com
+  o cursor nele ao abrir a tela.
+- Confirmação de exclusão e de saída usa o **alerta do sistema**.
+- Convite é enviado pela **folha de compartilhamento** do aparelho.
+- "Puxar para atualizar" no Início e na lista de gastos.
+- Ícone e cor da marca gerados pelo mesmo script da web.
+
+Para publicar nas lojas é preciso conta de desenvolvedor Apple (US$ 99/ano) e
+Google (US$ 25, uma vez), e gerar os pacotes com EAS Build.
+
 ## Telas
 
 - **Início** — total do mês em fonte grande, comparação com o mês anterior em
@@ -131,7 +165,8 @@ português abre sem bagunçar os acentos.
 - **Gastos** — agrupados por dia com subtotal, busca, filtros em gaveta com
   etiquetas removíveis, editar e excluir.
 - **Resumo** — seletor de mês, rosca por categoria e barras por pessoa.
-- **Importar planilha** — os três passos acima, com barra de progresso.
+- **Importar planilha** — os três passos acima, com barra de progresso (só na web:
+  conferir linha a linha pede tela grande).
 - **Ajustes** — perfil, família e convites, categorias, importar, exportar,
   instalar o app, sair.
 
@@ -196,12 +231,24 @@ Erro sempre no mesmo formato, em português e sem jargão:
   de dependências do Workbox trazia alertas de segurança em ferramenta de build.
 - `react-router-dom` fica na **7.18.1**, a versão mais nova disponível. O único
   alerta aberto é de modo RSC com server actions, que este SPA não usa.
+- **Metro sem `disableHierarchicalLookup`**: essa configuração é receita para
+  pnpm e yarn; com npm, pacotes de versão conflitante ficam aninhados
+  (`expo-modules-core` mora dentro de `expo/node_modules`) e desligar a busca
+  hierárquica faz o empacotador não encontrá-los.
 - **SheetJS instalado da distribuição oficial** (`cdn.sheetjs.com`), não do npm:
   o pacote `xlsx` publicado no npm parou na 0.18.5 e tem falhas conhecidas de
   poluição de protótipo e ReDoS. A 0.20.3 oficial não tem nenhuma.
 
+### Alertas de segurança abertos
+
+`npm audit` acusa duas cadeias que não têm correção disponível hoje:
+
+- `react-router` — só em modo RSC com server actions, que este SPA não usa.
+- Ferramentas de build do Expo (`@expo/config`, `uuid`) — rodam na sua máquina
+  ao empacotar, não vão dentro do app. A "correção" automática rebaixaria o
+  Expo da versão 57 para a 46.
+
 ## Próximas fases
 
-4. Mobile nativo com Expo (Play Store e App Store)
 5. Fila offline para lançar sem internet, gastos recorrentes, foto do
    comprovante, gráficos de evolução
