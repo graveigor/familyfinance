@@ -1,0 +1,120 @@
+// Modelo de dados do controle de gastos.
+// Regra inegociável: dinheiro é Int em centavos. Nenhum campo Float/Decimal.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Household {
+  id          String       @id @default(uuid())
+  nome        String
+  criadoEm    DateTime     @default(now())
+  membros     User[]
+  gastos      Gasto[]
+  categorias  Categoria[]
+  convites    Convite[]
+  importacoes Importacao[]
+}
+
+model User {
+  id          String    @id @default(uuid())
+  nome        String
+  email       String    @unique
+  senhaHash   String
+  papel       Papel     @default(MEMBRO)
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+  gastos      Gasto[]
+  convites    Convite[] @relation("ConvitesCriados")
+  criadoEm    DateTime  @default(now())
+
+  @@index([householdId])
+}
+
+model Categoria {
+  id          String    @id @default(uuid())
+  nome        String
+  icone       String
+  cor         String
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+  gastos      Gasto[]
+
+  // Duas categorias com o mesmo nome na mesma casa só confundem o usuário.
+  @@unique([householdId, nome])
+}
+
+model Gasto {
+  id                 String         @id @default(uuid())
+  descricao          String
+  valorCentavos      Int
+  data               DateTime       @db.Date
+  formaPagamento     FormaPagamento @default(CARTAO)
+  observacao         String?
+  categoriaId        String?
+  categoria          Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  userId             String
+  user               User           @relation(fields: [userId], references: [id])
+  householdId        String
+  household          Household      @relation(fields: [householdId], references: [id])
+  origemImportacaoId String?
+  importacao         Importacao?    @relation(fields: [origemImportacaoId], references: [id])
+  criadoEm           DateTime       @default(now())
+  atualizadoEm       DateTime       @updatedAt
+
+  @@index([householdId, data])
+  @@index([householdId, userId])
+  @@index([categoriaId])
+}
+
+model Importacao {
+  id               String           @id @default(uuid())
+  nomeArquivo      String
+  status           StatusImportacao @default(PENDENTE)
+  totalLinhas      Int              @default(0)
+  linhasImportadas Int              @default(0)
+  householdId      String
+  household        Household        @relation(fields: [householdId], references: [id])
+  criadoEm         DateTime         @default(now())
+  gastos           Gasto[]
+
+  @@index([householdId, criadoEm])
+}
+
+model Convite {
+  id          String    @id @default(uuid())
+  codigo      String    @unique
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+  criadoPorId String
+  criadoPor   User      @relation("ConvitesCriados", fields: [criadoPorId], references: [id])
+  expiraEm    DateTime
+  usadoEm     DateTime?
+  criadoEm    DateTime  @default(now())
+
+  @@index([householdId])
+}
+
+enum Papel {
+  ADMIN
+  MEMBRO
+}
+
+enum FormaPagamento {
+  CARTAO
+  DINHEIRO
+  PIX
+  BOLETO
+  OUTRO
+}
+
+enum StatusImportacao {
+  PENDENTE
+  CONFIRMADA
+  CANCELADA
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Segredos: .env fica só na máquina. .env.example e .env.test (valores de
+# teste, banco local) vão para o repositório.
+.env
+.env.local
+.env.production
+.env.*.local
+
+.DS_Store
+*.log
+.vscode/
+.idea/

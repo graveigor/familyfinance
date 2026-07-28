@@ -1,0 +1,27 @@
+{
+  "name": "controle-gastos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w @gastos/core && npm run build -w @gastos/api",
+    "dev": "npm run build -w @gastos/core && npm run dev -w @gastos/api",
+    "test": "npm run build -w @gastos/core && npm run test -w @gastos/core && npm run test -w @gastos/api",
+    "test:core": "npm run test -w @gastos/core",
+    "test:api": "npm run build -w @gastos/core && npm run test -w @gastos/api",
+    "typecheck": "npm run typecheck -w @gastos/core && npm run typecheck -w @gastos/api",
+    "db:migrate": "npm run db:migrate -w @gastos/api",
+    "db:seed": "npm run db:seed -w @gastos/api",
+    "db:studio": "npm run db:studio -w @gastos/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
