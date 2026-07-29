@@ -1,133 +1,101 @@
-# Colocar o app no ar — passo a passo no Vercel
+# Colocar o Family Finance no ar
 
-O código já está pronto e enviado (commit `3e1be69`). A API agora vai **junto do
-site**, no mesmo projeto do Vercel — você não precisa de outro serviço.
+O código está pronto e enviado. **Só falta um passo: conectar o banco que você
+já tem.** Não é preciso criar chave, colar segredo nem configurar variável —
+o servidor gera e guarda o que precisa sozinho na primeira vez que sobe.
 
-Falta só: **um banco de dados** e **três variáveis de ambiente**.
-
-> **Importante:** as variáveis de ambiente contêm segredos. **Digite você
-> mesmo**, não peça para o Claude do Chrome preencher — nem para nenhum
-> assistente. Ele pode navegar e conferir, mas senha e chave são suas.
+Cole o bloco abaixo na conversa com o Claude no Chrome, com o painel do Vercel
+aberto.
 
 ---
 
-## Parte 1 — Criar o banco (você, 2 minutos)
+## Cole isto no Claude do Chrome
 
-1. No painel do Vercel, abra o seu projeto.
-2. Vá na aba **Storage**.
-3. Clique em **Create Database** e escolha **Neon** (Serverless Postgres).
-   É gratuito para um app de família.
-4. Aceite o plano **Free** e confirme a criação.
-5. Quando terminar, confirme que ele foi **conectado ao projeto** (o Vercel
-   costuma perguntar; diga que sim).
-
-Isso cria a variável `DATABASE_URL` sozinho.
-
-## Parte 2 — As duas chaves de segurança (você)
-
-São o que assina o login de quem usa o app. Em **Settings → Environment
-Variables**, adicione as duas, marcando os três ambientes (Production, Preview,
-Development):
-
-```
-JWT_SEGREDO
-eaac98addd2e4aee16713164f29c46d61f44fd54888905610cee577d903920c4
-```
-
-```
-JWT_SEGREDO_REFRESH
-415d9255116df3b53a0d8578b265fc0adecbb6f54426cb250135ccae069b3a98
-```
-
-Gerei esses valores agora, aleatórios, só para você. Se preferir gerar outros:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-## Parte 3 — Publicar de novo
-
-Em **Deployments**, abra o mais recente e clique em **Redeploy**, com o cache
-desmarcado.
-
----
-
-## Se preferir que o Claude do Chrome ajude a conferir
-
-Cole isto na conversa com ele. Repare que **nada de segredo é digitado por
-ele** — só navegação e conferência.
-
-> Você está no painel do Vercel, no projeto `app-controlegastos`
-> (repositório `graveigor/app-controlegastos`). Já configurei o código; preciso
-> que você me ajude a conferir o painel e a publicar.
+> Você está no painel do Vercel. Preciso que você conclua a publicação do meu
+> projeto `app-controlegastos` (repositório `graveigor/app-controlegastos`).
+> O código já está corrigido; falta configurar o painel.
 >
-> **Não digite nenhum valor de variável de ambiente, senha ou chave.** Eu mesmo
-> digito. Você só navega, confere e me diz o que está faltando.
+> Faça na ordem e me mostre cada tela antes de salvar.
 >
-> **1. Pasta raiz**
-> - Em **Settings → Build and Deployment**, confira o campo **Root Directory**.
-> - Ele precisa estar **vazio** (a raiz do repositório). Se estiver `apps/web`,
->   limpe e salve — o projeto é um monorepo e o site depende de pastas de fora.
-> - Em Build Command, Output Directory e Install Command: se o botão
->   **Override** estiver ligado em algum, **desligue**. Os comandos certos já
->   vêm do arquivo `vercel.json` do repositório.
+> **1. Corrigir a pasta raiz**
+> - Abra **Settings → Build and Deployment**.
+> - O campo **Root Directory** precisa estar **vazio** (a raiz do repositório).
+>   Se estiver `apps/web`, limpe e salve. É um monorepo: o site depende de
+>   pastas que ficam fora de `apps/web`.
+> - Em **Build Command**, **Output Directory** e **Install Command**: se o botão
+>   **Override** estiver ligado em algum, **desligue**. Os comandos certos vêm
+>   do arquivo `vercel.json` do repositório. Não digite comando nenhum à mão.
+> - Salve e me diga como os campos ficaram.
 >
-> **2. Banco de dados**
-> - Vá na aba **Storage** e me diga se já existe um banco conectado ao projeto.
-> - Se não existir, **pare e me avise** — eu crio, porque envolve escolher plano.
+> **2. Conectar o banco de dados**
+> - Vá na aba **Storage**.
+> - Deve aparecer um banco chamado **neon-teal-feather** com um botão
+>   **Connect** ao lado. Clique em **Connect** e confirme, escolhendo este
+>   projeto (`app-controlegastos-web`).
+> - Se ele pedir para escolher os ambientes, marque **todos**
+>   (Production, Preview e Development).
+> - Isso cria a variável `DATABASE_URL` sozinho. Me confirme quando terminar.
+> - Se **não** existir nenhum banco na lista, pare e me avise — eu crio.
 >
-> **3. Variáveis de ambiente**
-> - Em **Settings → Environment Variables**, me diga **quais nomes** já existem
->   (só os nomes, não os valores).
-> - Preciso que existam três: `DATABASE_URL`, `JWT_SEGREDO` e
->   `JWT_SEGREDO_REFRESH`. Me diga quais estão faltando e eu adiciono.
+> **3. Conferir as variáveis**
+> - Vá em **Settings → Environment Variables** e me diga **só os nomes** das
+>   variáveis que existem (não me mande os valores).
+> - Precisa existir `DATABASE_URL`. Se o Neon tiver criado também
+>   `DATABASE_URL_UNPOOLED`, ótimo, o projeto usa.
+> - **Não crie nenhuma outra variável** e **não digite valor nenhum**. As
+>   chaves de segurança do app são geradas pelo próprio servidor.
 >
 > **4. Publicar**
-> - Quando eu confirmar que está tudo lá, vá em **Deployments**, abra o mais
->   recente e use **Redeploy**, com a opção de cache **desmarcada**.
-> - Acompanhe o log e me diga se terminou com sucesso ou qual erro apareceu.
+> - Vá em **Deployments**, abra o mais recente e clique em **Redeploy**.
+> - **Desmarque** a opção de usar o cache do build anterior.
+> - Acompanhe o log. Deve aparecer `prisma migrate deploy` aplicando as
+>   migrações e terminar com `built in ...`.
+> - Me diga se concluiu ou qual erro apareceu.
 >
-> **5. Testar**
-> - Abra o endereço do site e some `/api/v1/../saude` no fim — por exemplo
->   `https://app-controlegastos-web-eta.vercel.app/saude`. Deve responder
+> **5. Testar de verdade**
+> - Abra `https://app-controlegastos-web-eta.vercel.app/saude`. Deve responder
 >   `{"ok":true,"versao":"0.1.0"}`.
-> - Depois abra o site normalmente e tente **criar uma conta**. Me diga o que
->   aconteceu.
+> - Abra o site, clique em **Ainda não tenho conta** e crie uma conta de teste
+>   com um e-mail qualquer e uma senha de 8+ caracteres. **Use uma senha
+>   descartável, não uma senha sua de verdade.**
+> - Me diga se a conta foi criada e se a tela inicial apareceu.
 >
-> Regras: não mexa em plano, cobrança, domínio nem integrações. Não apague
-> deploys. Se algo estiver diferente do que descrevi, **pare e me pergunte**.
+> Regras: não mexa em plano, cobrança, domínio nem integrações; não apague
+> deploys; não digite nenhuma senha ou chave minha. Se algo estiver diferente
+> do que descrevi, **pare e me pergunte** em vez de adivinhar.
 
 ---
 
-## Como saber que deu certo
+## Por que não há segredo para configurar
 
-O log do deploy deve mostrar as migrações rodando:
+O login é assinado por uma chave secreta. Antes era preciso criar essa chave e
+colá-la no painel — o passo que mais dá errado numa publicação, e o que mais
+leva gente a repetir a mesma senha em vários lugares.
 
-```
-> @gastos/api@0.1.0 db:deploy
-> prisma migrate deploy
-Applying migration `20260728141509_inicial`
-...
-✓ built in ~1s
-```
+Agora, quando a chave não vem do ambiente, o servidor gera uma aleatória na
+primeira vez e guarda no banco, junto com os dados que ela protege. Ela
+continua a mesma entre publicações, então ninguém é desconectado a cada deploy.
 
-E o teste de saúde deve responder:
+Quem quiser controlar isso manualmente ainda pode: basta definir `JWT_SEGREDO`
+e `JWT_SEGREDO_REFRESH` nas variáveis de ambiente, que elas têm prioridade.
 
-```bash
-curl https://SEU-ENDERECO.vercel.app/saude
-# {"ok":true,"versao":"0.1.0"}
-```
+## Se algo falhar
 
-Se der `405` ou vier o HTML da página, a pasta raiz ainda está apontando para
-`apps/web` — volte à Parte 1 do roteiro do Claude.
+| O que aparece | O que é |
+|---|---|
+| `405` ou o HTML da página em `/saude` | A pasta raiz ainda está em `apps/web` (passo 1) |
+| `Environment variable not found: DATABASE_URL` | O banco não foi conectado ao projeto (passo 2) |
+| `prepared statement ... already exists` na migração | O Neon não expôs o endereço direto. Me avise: o projeto já tenta usar `DATABASE_URL_UNPOOLED`, mas posso ajustar |
+| A conta é criada mas some ao recarregar | Provavelmente o banco não persistiu. Me mande o log do deploy |
 
-Se o build falhar com `Environment variable not found: DATABASE_URL`, o banco
-não foi conectado ao projeto (Parte 1).
+## Depois que estiver no ar
 
-## Depois de publicar
-
-A primeira pessoa que criar conta vira **administradora** de uma família nova.
-Para incluir o resto da casa: **Ajustes → Minha família → Gerar código de
-convite**, e a pessoa usa esse código ao criar a conta dela.
-
-O app também instala no celular e no computador: **Ajustes → Instalar o app**.
+- A primeira pessoa que criar conta vira administradora de um grupo novo.
+- Para incluir alguém: aba **Família → Gerar código do grupo**. Sai um código
+  como `FF-9A3K2` para mandar no WhatsApp.
+- **Os gastos de cada pessoa são privados por padrão.** Quem quiser que o grupo
+  acompanhe os seus toca em **Compartilhar meus gastos**, na mesma aba — e pode
+  desligar quando quiser.
+- O app instala no celular e no computador em **Ajustes → Instalar o app**.
+- Na primeira vez que abre cada tela aparece um tutorial. O botão **(?)** no
+  canto superior direito traz de volta a qualquer momento.

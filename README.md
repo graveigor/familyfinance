@@ -1,4 +1,4 @@
-# Controle de Gastos
+# Family Finance
 
 Aplicativo para substituir a planilha de gastos da família. Roda no navegador e
 no celular, importa as planilhas antigas e organiza tudo por categoria, pessoa e
@@ -283,13 +283,23 @@ e o Fastify continua cuidando do resto.
 Como site e API ficam no mesmo domínio, **não é preciso configurar `VITE_API_URL`
 nem CORS**. O site chama `/api/v1/...` e cai na função ao lado.
 
-Falta só um banco PostgreSQL e três variáveis de ambiente no painel da Vercel:
+Falta só **um banco PostgreSQL**. Nenhuma outra variável precisa ser criada:
 
 | Variável | De onde vem |
 |---|---|
 | `DATABASE_URL` | O banco. Pelo Marketplace da Vercel, o Neon tem plano gratuito e preenche essa variável sozinho |
-| `JWT_SEGREDO` | Você gera: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `JWT_SEGREDO_REFRESH` | Outro valor, gerado do mesmo jeito |
+| `JWT_SEGREDO` (opcional) | Se não existir, o servidor gera a sua e guarda no banco — publicar não depende de colar chave em painel |
+
+### Privacidade dos lançamentos
+
+Cada pessoa vê **só o que é dela**, mais o de quem escolheu compartilhar com o
+grupo. A regra está num arquivo só (`apps/api/src/servicos/visibilidade.ts`) e
+toda leitura passa por ela — lista, busca, autocompletar, resumo, evolução,
+exportação e contas fixas. Espalhar essa condição pelas rotas seria pedir para
+um dia alguém esquecer de aplicá-la em uma delas.
+
+O grupo continua mostrando quem participa e as metas conjuntas: a privacidade é
+do dinheiro, não das pessoas.
 
 As migrações do banco rodam sozinhas a cada publicação (`prisma migrate deploy`
 está dentro do `build:vercel`). Se faltar a `DATABASE_URL`, o build **falha na
