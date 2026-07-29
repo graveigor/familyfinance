@@ -34,6 +34,8 @@ export function serializarUsuario(usuario: UserDb): Usuario {
 export type GastoComRelacoes = GastoDb & {
   categoria: CategoriaDb | null;
   user: Pick<UserDb, 'id' | 'nome'>;
+  // Só o id: os bytes da imagem nunca entram numa listagem.
+  comprovante: { id: string } | null;
 };
 
 export function serializarGasto(gasto: GastoComRelacoes): Gasto {
@@ -58,4 +60,7 @@ export function serializarGasto(gasto: GastoComRelacoes): Gasto {
 export const INCLUDE_GASTO = {
   categoria: true,
   user: { select: { id: true, nome: true } },
+  // `select` em vez de `true`: sem isso o Prisma traria os bytes do
+  // comprovante em cada gasto listado.
+  comprovante: { select: { id: true } },
 } as const;

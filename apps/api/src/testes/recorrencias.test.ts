@@ -316,7 +316,7 @@ describe('comprovante', () => {
   });
 
   it('excluir o gasto leva o comprovante junto', async () => {
-    const { autorizacao, sessao } = await criarConta(app);
+    const { autorizacao } = await criarConta(app);
     const id = await novoGasto(autorizacao);
 
     await app.inject({
@@ -326,16 +326,51 @@ describe('comprovante', () => {
       payload: corpo('foto.png', PNG, 'image/png'),
     });
 
-    const { comprovante } = await prisma.gasto.findUniqueOrThrow({
-      where: { id },
-      select: { comprovante: true },
-    });
-    expect(comprovante).toBeTruthy();
+    expect(await prisma.comprovante.count()).toBe(1);
 
     await app.inject({ method: 'DELETE', url: `/api/v1/gastos/${id}`, headers: autorizacao });
 
-    const { existsSync } = await import('node:fs');
-    const { caminhoDoComprovante } = await import('../servicos/comprovantes.js');
-    expect(existsSync(caminhoDoComprovante(sessao.usuario.householdId, comprovante!))).toBe(false);
+    // Cascata no banco: nada de comprovante órfão.
+    expect(await prisma.comprovante.count()).toBe(0);
+  });
+
+  it('trocar o comprovante não deixa o anterior para trás', async () => {
+    const { autorizacao } = await criarConta(app);
+    const id = await novoGasto(autorizacao);
+    const enviar = (conteudo: Buffer, tipo: string) =>
+      app.inject({
+        method: 'PUT',
+        url: `/api/v1/gastos/${id}/comprovante`,
+        headers: { ...autorizacao, 'content-type': `multipart/form-data; boundary=${LIMITE}` },
+        payload: corpo('comprovante', conteudo, tipo),
+      });
+
+    await enviar(PNG, 'image/png');
+    await enviar(Buffer.from('%PDF-1.4 conteudo'), 'application/pdf');
+
+    expect(await prisma.comprovante.count()).toBe(1);
+    const guardado = await prisma.comprovante.findFirstOrThrow();
+    expect(guardado.tipo).toBe('application/pdf');
+  });
+
+  it('não arrasta os bytes da imagem ao listar os gastos', async () => {
+    const { autorizacao } = await criarConta(app);
+    const id = await novoGasto(autorizacao);
+    await app.inject({
+      method: 'PUT',
+      url: `/api/v1/gastos/${id}/comprovante`,
+      headers: { ...autorizacao, 'content-type': `multipart/form-data; boundary=${LIMITE}` },
+      payload: corpo('foto.png', PNG, 'image/png'),
+    });
+
+    const lista = await app.inject({ method: 'GET', url: '/api/v1/gastos', headers: autorizacao });
+    const corpoDaLista = lista.body;
+
+    // A resposta diz que existe comprovante, mas não carrega a imagem.
+    expect(lista.json<{ itens: Array<{ temComprovante: boolean }> }>().itens[0]?.temComprovante).toBe(
+      true,
+    );
+    expect(corpoDaLista).not.toContain('dados');
+    expect(corpoDaLista.length).toBeLessThan(2000);
   });
 });

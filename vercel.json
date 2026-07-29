@@ -1,12 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
 
-  "installCommand": "npm install -w @gastos/core -w @gastos/web --include-workspace-root",
-  "buildCommand": "npm run build:web",
+  "installCommand": "npm install -w @gastos/core -w @gastos/api -w @gastos/web --include-workspace-root",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "apps/web/dist",
 
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": "apps/api/dist/**"
+    }
+  },
+
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

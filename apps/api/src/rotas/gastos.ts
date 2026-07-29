@@ -23,12 +23,8 @@ import { INCLUDE_GASTO, serializarGasto } from '../serializadores.js';
 import { gerarArquivo } from '../servicos/planilha.js';
 import {
   TAMANHO_MAXIMO_COMPROVANTE,
-  apagarComprovante,
-  caminhoDoComprovante,
-  guardarComprovante,
-  tipoDoArquivo,
+  conferirTipo,
 } from '../servicos/comprovantes.js';
-import { createReadStream } from 'node:fs';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -267,16 +263,13 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
 
     const existente = await prisma.gasto.findFirst({
       where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true, comprovante: true },
+      select: { id: true, userId: true },
     });
     if (!existente) throw erroNaoEncontrado('Esse gasto não existe mais.');
     conferirPermissaoDeEdicao(usuario, existente.userId);
 
+    // O comprovante sai junto, por `onDelete: Cascade` no banco.
     await prisma.gasto.delete({ where: { id } });
-    // O arquivo sai junto: guardar comprovante órfão não serve a ninguém.
-    if (existente.comprovante) {
-      await apagarComprovante(usuario.householdId, existente.comprovante);
-    }
     return reply.status(204).send();
   });
 
@@ -289,7 +282,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
 
     const gasto = await prisma.gasto.findFirst({
       where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true, comprovante: true },
+      select: { id: true, userId: true },
     });
     if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
     conferirPermissaoDeEdicao(usuario, gasto.userId);
@@ -297,19 +290,28 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const arquivo = await request.file({ limits: { fileSize: TAMANHO_MAXIMO_COMPROVANTE } });
     if (!arquivo) throw erroValidacao('Escolha uma foto ou um PDF do comprovante.');
 
+    // O tipo é conferido antes de ler o corpo, para não carregar 4 MB à toa.
+    const tipo = conferirTipo(arquivo.mimetype);
+
     const conteudo = await arquivo.toBuffer();
     if (arquivo.file.truncated) {
-      throw erroValidacao('Esse arquivo passa de 8 MB. Tire a foto com qualidade menor.');
+      throw erroValidacao('Esse arquivo passa de 4 MB. Tire a foto com qualidade menor.');
     }
     if (conteudo.length === 0) throw erroValidacao('O arquivo enviado está vazio.');
 
-    const nome = await guardarComprovante(usuario.householdId, conteudo, arquivo.mimetype);
-    // Troca de comprovante: o anterior sai de cena.
-    if (gasto.comprovante) await apagarComprovante(usuario.householdId, gasto.comprovante);
+    // O Prisma tipa `Bytes` como Uint8Array; o Buffer do Node é compatível em
+    // memória, mas não no tipo.
+    const bytes = new Uint8Array(conteudo);
 
-    const atualizado = await prisma.gasto.update({
+    // `upsert`: trocar o comprovante substitui o anterior, sem sobra.
+    await prisma.comprovante.upsert({
+      where: { gastoId: id },
+      create: { gastoId: id, tipo, dados: bytes },
+      update: { tipo, dados: bytes },
+    });
+
+    const atualizado = await prisma.gasto.findFirstOrThrow({
       where: { id },
-      data: { comprovante: nome },
       include: INCLUDE_GASTO,
     });
 
@@ -320,17 +322,17 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const { id } = paramsSchema.parse(request.params);
 
-    const gasto = await prisma.gasto.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { comprovante: true },
+    // O filtro por household é o que impede baixar comprovante de outra casa.
+    const comprovante = await prisma.comprovante.findFirst({
+      where: { gastoId: id, gasto: { householdId: usuario.householdId } },
+      select: { tipo: true, dados: true },
     });
-    if (!gasto?.comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
+    if (!comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
 
-    const caminho = caminhoDoComprovante(usuario.householdId, gasto.comprovante);
     return reply
-      .header('content-type', tipoDoArquivo(gasto.comprovante))
+      .header('content-type', comprovante.tipo)
       .header('cache-control', 'private, max-age=3600')
-      .send(createReadStream(caminho));
+      .send(Buffer.from(comprovante.dados));
   });
 
   app.delete('/:id/comprovante', async (request, reply) => {
@@ -339,14 +341,13 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
 
     const gasto = await prisma.gasto.findFirst({
       where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true, comprovante: true },
+      select: { id: true, userId: true, comprovante: { select: { id: true } } },
     });
     if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
     conferirPermissaoDeEdicao(usuario, gasto.userId);
     if (!gasto.comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
 
-    await prisma.gasto.update({ where: { id }, data: { comprovante: null } });
-    await apagarComprovante(usuario.householdId, gasto.comprovante);
+    await prisma.comprovante.delete({ where: { gastoId: id } });
 
     return reply.status(204).send();
   });

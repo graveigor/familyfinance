@@ -22,7 +22,8 @@
     "db:studio": "npm run db:studio -w @gastos/api",
     "dev:web": "npm run dev -w @gastos/web",
     "build:web": "npm run build -w @gastos/core && npm run build -w @gastos/web",
-    "dev:mobile": "npm run start -w @gastos/mobile"
+    "dev:mobile": "npm run start -w @gastos/mobile",
+    "build:vercel": "npm run build -w @gastos/core && npm run build -w @gastos/api && npm run db:deploy -w @gastos/api && npm run build -w @gastos/web"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

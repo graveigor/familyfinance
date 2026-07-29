@@ -2,7 +2,10 @@
 // Regra inegociável: dinheiro é Int em centavos. Nenhum campo Float/Decimal.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // `rhel-openssl-3.0.x` é o runtime das funções serverless da Vercel; sem ele
+  // o Prisma sobe sem o motor de consulta e quebra só em produção.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -68,8 +71,9 @@ model Gasto {
   origemImportacaoId String?
   importacao         Importacao?    @relation(fields: [origemImportacaoId], references: [id])
 
-  // Nome do arquivo guardado em disco. A imagem em si nunca vai para o banco.
-  comprovante String?
+  // Tabela à parte de propósito: assim listar gastos nunca arrasta as imagens
+  // junto. Ver o comentário em `model Comprovante`.
+  comprovante Comprovante?
 
   // Quando o gasto nasceu de uma recorrência, guardamos a origem para não
   // gerar o mesmo lançamento duas vezes e para o usuário saber de onde veio.
@@ -115,6 +119,24 @@ model Convite {
   criadoEm    DateTime  @default(now())
 
   @@index([householdId])
+}
+
+/// Comprovante (foto ou PDF) de um gasto.
+///
+/// Fica em tabela separada, e não numa coluna do gasto, porque o Prisma traz
+/// todas as colunas escalares em cada consulta: uma coluna de imagem no gasto
+/// faria a lista do mês baixar todas as fotos junto.
+///
+/// E fica no banco, e não em disco, porque o servidor roda sem disco gravável
+/// (função serverless). Um lugar só, um caminho de código só.
+model Comprovante {
+  id       String   @id @default(uuid())
+  gastoId  String   @unique
+  gasto    Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  /// Tipo do arquivo (image/jpeg, application/pdf...), para devolver no download.
+  tipo     String
+  dados    Bytes
+  criadoEm DateTime @default(now())
 }
 
 /// Gasto que se repete todo mês (aluguel, internet, mensalidade).

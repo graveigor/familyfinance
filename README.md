@@ -169,11 +169,11 @@ existe de qualquer jeito. Apagar a conta fixa **não** apaga os lançamentos já
 feitos: eles são história e continuam no total.
 
 **Comprovante** — foto ou PDF anexado ao gasto. No celular abre a câmera direto;
-na web, o seletor de arquivo. Os arquivos ficam em disco
-(`apps/api/arquivos/comprovantes/<household>/`), nunca no banco: imagem em
-coluna incha o backup e deixa toda consulta mais lenta. O nome é sorteado e o
-caminho é conferido contra travessia de pasta. Excluir o gasto leva o arquivo
-junto.
+na web, o seletor de arquivo. Fica no banco, em **tabela separada** da de
+gastos: o Prisma traz todas as colunas escalares em cada consulta, então uma
+coluna de imagem no gasto faria a lista do mês baixar todas as fotos junto —
+tem teste garantindo que a listagem não carrega os bytes. Excluir o gasto leva o
+comprovante junto, por cascata no banco. Limite de 4 MB.
 
 **Lançar sem internet** (só no app nativo) — se a chamada falhar por rede, o
 gasto entra numa fila no próprio aparelho e sobe sozinho quando a conexão volta.
@@ -274,28 +274,28 @@ O `apps/web` também ganhou um script `prebuild` que compila o `core`, então
 `npm run build -w @gastos/web` funciona sozinho, sem depender de ninguém
 lembrar do comando certo.
 
-### A API não roda no Vercel
+### A API vai junto, no mesmo projeto
 
-O Vercel publica **só o site**. O backend é um servidor Fastify com PostgreSQL,
-que precisa de outro lugar (Railway, Render, Fly.io, ou uma máquina sua).
+O arquivo `api/index.ts` publica a **mesma** API Fastify como função da Vercel.
+Nenhuma rota foi reescrita: o `vercel.json` manda todo `/api/*` para essa função
+e o Fastify continua cuidando do resto.
 
-Depois de publicar a API, informe o endereço dela ao site na variável de
-ambiente **`VITE_API_URL`** no Vercel:
+Como site e API ficam no mesmo domínio, **não é preciso configurar `VITE_API_URL`
+nem CORS**. O site chama `/api/v1/...` e cai na função ao lado.
 
-```
-VITE_API_URL = https://api.seudominio.com
-```
+Falta só um banco PostgreSQL e três variáveis de ambiente no painel da Vercel:
 
-Sem essa variável, o site abre normalmente mas nenhuma tela carrega dado: ele
-tenta falar com `/api/v1/...` no próprio domínio do Vercel, onde não há nada.
-A variável é lida **na hora do build**, então é preciso publicar de novo depois
-de defini-la.
+| Variável | De onde vem |
+|---|---|
+| `DATABASE_URL` | O banco. Pelo Marketplace da Vercel, o Neon tem plano gratuito e preenche essa variável sozinho |
+| `JWT_SEGREDO` | Você gera: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `JWT_SEGREDO_REFRESH` | Outro valor, gerado do mesmo jeito |
 
-No backend, lembre de liberar o domínio do site em `CORS_ORIGENS`:
+As migrações do banco rodam sozinhas a cada publicação (`prisma migrate deploy`
+está dentro do `build:vercel`). Se faltar a `DATABASE_URL`, o build **falha na
+hora**, com mensagem clara, em vez de publicar um site quebrado.
 
-```
-CORS_ORIGENS = https://seu-app.vercel.app
-```
+O passo a passo do painel está em [`docs/roteiro-vercel.md`](docs/roteiro-vercel.md).
 
 ## Decisões de dependência
 
