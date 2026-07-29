@@ -254,6 +254,49 @@ Erro sempre no mesmo formato, em português e sem jargão:
 - Login responde igual para senha errada e e-mail inexistente.
 - Senha guardada com scrypt (`node:crypto`), nunca em texto puro.
 
+## Publicar na internet
+
+O repositório traz um `vercel.json` na raiz já configurado. **Importe o projeto
+apontando para a raiz do repositório, não para `apps/web`** — o app web depende
+do pacote `@gastos/core`, que fica fora dessa pasta.
+
+O que o `vercel.json` resolve:
+
+| Campo | Por quê |
+|---|---|
+| `installCommand` com `-w @gastos/core -w @gastos/web` | Instala só o que a web precisa. Sem isso o Vercel baixaria também o Expo e o React Native do app nativo, que não entram no site |
+| `buildCommand: npm run build:web` | Compila o `core` **antes** da web. `packages/core/dist` está no `.gitignore`, então em qualquer CI ele precisa ser gerado na hora |
+| `outputDirectory` | O build sai em `apps/web/dist`, não na raiz |
+| `rewrites` | Sem o desvio para o `index.html`, recarregar a página em `/gastos` devolveria 404 |
+| `headers` do `/sw.js` | Service worker guardado em cache prende a versão antiga do app no aparelho de quem já visitou |
+
+O `apps/web` também ganhou um script `prebuild` que compila o `core`, então
+`npm run build -w @gastos/web` funciona sozinho, sem depender de ninguém
+lembrar do comando certo.
+
+### A API não roda no Vercel
+
+O Vercel publica **só o site**. O backend é um servidor Fastify com PostgreSQL,
+que precisa de outro lugar (Railway, Render, Fly.io, ou uma máquina sua).
+
+Depois de publicar a API, informe o endereço dela ao site na variável de
+ambiente **`VITE_API_URL`** no Vercel:
+
+```
+VITE_API_URL = https://api.seudominio.com
+```
+
+Sem essa variável, o site abre normalmente mas nenhuma tela carrega dado: ele
+tenta falar com `/api/v1/...` no próprio domínio do Vercel, onde não há nada.
+A variável é lida **na hora do build**, então é preciso publicar de novo depois
+de defini-la.
+
+No backend, lembre de liberar o domínio do site em `CORS_ORIGENS`:
+
+```
+CORS_ORIGENS = https://seu-app.vercel.app
+```
+
 ## Decisões de dependência
 
 - **npm workspaces** no lugar de pnpm: `corepack enable` não instala o pnpm
