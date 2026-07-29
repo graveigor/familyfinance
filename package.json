@@ -23,7 +23,7 @@
     "dev:web": "npm run dev -w @gastos/web",
     "build:web": "npm run build -w @gastos/core && npm run build -w @gastos/web",
     "dev:mobile": "npm run start -w @gastos/mobile",
-    "build:vercel": "npm run build -w @gastos/core && npm run build -w @gastos/api && node apps/api/scripts/migrar.mjs && npm run build -w @gastos/web"
+    "build:vercel": "echo '::: 1/4 build core :::' && npm run build -w @gastos/core && echo '::: 2/4 build api :::' && npm run build -w @gastos/api && echo '::: 3/4 migrar banco :::' && node apps/api/scripts/migrar.mjs && echo '::: 4/4 build web :::' && npm run build -w @gastos/web && echo '::: build:vercel concluido :::'"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
