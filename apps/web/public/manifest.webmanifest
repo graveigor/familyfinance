@@ -1,7 +1,7 @@
 {
-  "name": "Controle de Gastos",
-  "short_name": "Gastos",
-  "description": "O controle de gastos da família, no lugar da planilha.",
+  "name": "Family Finance",
+  "short_name": "Family Finance",
+  "description": "Os gastos da família, organizados — com privacidade para cada pessoa.",
   "lang": "pt-BR",
   "dir": "ltr",
   "start_url": "/",
@@ -9,11 +9,24 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#F8FAFC",
-  "theme_color": "#16A34A",
-  "categories": ["finance", "productivity"],
+  "theme_color": "#0F3A5F",
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/icone-maskable-512.png",
       "sizes": "512x512",
@@ -26,7 +39,12 @@
       "name": "Adicionar gasto",
       "short_name": "Adicionar",
       "url": "/novo",
-      "icons": [{ "src": "/icone-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

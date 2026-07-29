@@ -25,6 +25,10 @@ import {
   TAMANHO_MAXIMO_COMPROVANTE,
   conferirTipo,
 } from '../servicos/comprovantes.js';
+import {
+  combinarFiltros,
+  filtroDeGastosVisiveis,
+} from '../servicos/visibilidade.js';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -69,24 +73,27 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const filtros = listarGastosSchema.parse(request.query);
 
-    const where: Prisma.GastoWhereInput = { householdId: usuario.householdId };
-
+    const daTela: Prisma.GastoWhereInput = {};
     if (filtros.de || filtros.ate) {
-      where.data = {
+      daTela.data = {
         ...(filtros.de ? { gte: paraData(filtros.de) } : {}),
         ...(filtros.ate ? { lte: paraData(filtros.ate) } : {}),
       };
     }
-    if (filtros.userId) where.userId = filtros.userId;
+    if (filtros.userId) daTela.userId = filtros.userId;
     if (filtros.categoriaId) {
-      where.categoriaId = filtros.categoriaId === 'sem-categoria' ? null : filtros.categoriaId;
+      daTela.categoriaId = filtros.categoriaId === 'sem-categoria' ? null : filtros.categoriaId;
     }
     if (filtros.busca) {
-      where.OR = [
+      daTela.OR = [
         { descricao: { contains: filtros.busca, mode: 'insensitive' } },
         { observacao: { contains: filtros.busca, mode: 'insensitive' } },
       ];
     }
+
+    // O filtro de privacidade entra por `AND`: os dois `OR` (o da busca e o de
+    // quem compartilha) precisam valer juntos, não um no lugar do outro.
+    const where = combinarFiltros(filtroDeGastosVisiveis(usuario), daTela);
 
     const [itens, totalItens, soma] = await Promise.all([
       prisma.gasto.findMany({
@@ -123,13 +130,16 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const filtros = exportarGastosSchema.parse(request.query);
 
-    const where: Prisma.GastoWhereInput = { householdId: usuario.householdId };
-    if (filtros.de || filtros.ate) {
-      where.data = {
-        ...(filtros.de ? { gte: paraData(filtros.de) } : {}),
-        ...(filtros.ate ? { lte: paraData(filtros.ate) } : {}),
-      };
-    }
+    const where = combinarFiltros(filtroDeGastosVisiveis(usuario), {
+      ...(filtros.de || filtros.ate
+        ? {
+            data: {
+              ...(filtros.de ? { gte: paraData(filtros.de) } : {}),
+              ...(filtros.ate ? { lte: paraData(filtros.ate) } : {}),
+            },
+          }
+        : {}),
+    });
 
     const gastos = await prisma.gasto.findMany({
       where,
@@ -172,10 +182,12 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const { termo } = z.object({ termo: z.string().trim().max(60).default('') }).parse(request.query);
 
     const linhas = await prisma.gasto.findMany({
-      where: {
-        householdId: usuario.householdId,
-        ...(termo ? { descricao: { contains: termo, mode: 'insensitive' } } : {}),
-      },
+      // Autocompletar também respeita a privacidade: nada de sugerir onde
+      // outra pessoa gastou.
+      where: combinarFiltros(
+        filtroDeGastosVisiveis(usuario),
+        termo ? { descricao: { contains: termo, mode: 'insensitive' } } : undefined,
+      ),
       distinct: ['descricao'],
       select: { descricao: true },
       orderBy: { criadoEm: 'desc' },
@@ -190,7 +202,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const { id } = paramsSchema.parse(request.params);
 
     const gasto = await prisma.gasto.findFirst({
-      where: { id, householdId: usuario.householdId },
+      where: combinarFiltros(filtroDeGastosVisiveis(usuario), { id }),
       include: INCLUDE_GASTO,
     });
     if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
@@ -295,7 +307,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
 
     const conteudo = await arquivo.toBuffer();
     if (arquivo.file.truncated) {
-      throw erroValidacao('Esse arquivo passa de 4 MB. Tire a foto com qualidade menor.');
+      throw erroValidacao('Esse arquivo passa de 3 MB. Tire a foto com qualidade menor.');
     }
     if (conteudo.length === 0) throw erroValidacao('O arquivo enviado está vazio.');
 

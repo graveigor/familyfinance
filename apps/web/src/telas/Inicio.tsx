@@ -10,12 +10,34 @@ import {
 import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { FaixaInstalar } from '../componentes/InstalarApp';
+import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { ItemDeGasto } from '../componentes/ItemDeGasto';
 import { Carregando, CaixaDeErro, Vazio, traduzirErro } from '../componentes/ui';
 import { useGastos, useResumoMensal } from '../consultas';
 import { useSessao } from '../sessao';
 
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'inicio-total',
+    titulo: 'Quanto você gastou no mês',
+    texto:
+      'Este é o número que resume o mês, com a comparação com o mês passado logo abaixo. Só entra aqui o que é seu e o de quem escolheu compartilhar com o grupo.',
+  },
+  {
+    alvo: 'inicio-ultimos',
+    titulo: 'Seus últimos lançamentos',
+    texto: 'Os gastos mais recentes ficam aqui. Toque em "Ver todos" para buscar e filtrar.',
+  },
+  {
+    alvo: 'inicio-adicionar',
+    titulo: 'Lançar um gasto',
+    texto:
+      'Este botão abre o lançamento. São dois campos obrigatórios: quanto foi e onde foi — leva menos de dez segundos.',
+  },
+];
+
 export function Inicio(): ReactElement {
+  useTutorialDaPagina('inicio', PASSOS);
   const { usuario } = useSessao();
   const referencia = hoje();
   const ano = referencia.getUTCFullYear();
@@ -42,7 +64,11 @@ export function Inicio(): ReactElement {
 
       {/* O total do mês é o maior elemento da tela — é a informação que a
           pessoa abre o app para ver. */}
-      <section className="cartao px-6 py-7 text-center" aria-labelledby="titulo-total">
+      <section
+        data-tutorial="inicio-total"
+        className="cartao px-6 py-7 text-center"
+        aria-labelledby="titulo-total"
+      >
         <h2 id="titulo-total" className="text-base font-medium text-slate-600">
           Gastos deste mês
         </h2>
@@ -70,7 +96,11 @@ export function Inicio(): ReactElement {
         )}
       </section>
 
-      <section className="cartao overflow-hidden" aria-labelledby="titulo-ultimos">
+      <section
+        data-tutorial="inicio-ultimos"
+        className="cartao overflow-hidden"
+        aria-labelledby="titulo-ultimos"
+      >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 id="titulo-ultimos" className="text-base font-semibold text-slate-800">
             Últimos gastos

@@ -24,7 +24,7 @@
   /* Caixas de seleção na cor da marca, sem plugin de formulário. */
   input[type='checkbox'],
   input[type='radio'] {
-    accent-color: #16a34a;
+    accent-color: #0f3a5f;
   }
 
   /* Tira as setinhas do input numérico, que só atrapalham no campo de valor. */

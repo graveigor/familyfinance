@@ -26,6 +26,7 @@ export function serializarUsuario(usuario: UserDb): Usuario {
     nome: usuario.nome,
     email: usuario.email,
     papel: usuario.papel,
+    compartilhaGastos: usuario.compartilhaGastos,
     householdId: usuario.householdId,
     criadoEm: usuario.criadoEm.toISOString(),
   };

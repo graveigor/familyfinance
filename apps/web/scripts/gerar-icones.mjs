@@ -1,11 +1,16 @@
 /**
- * Gera os ícones PNG do app (instalação no celular e no computador) sem
- * depender de nenhuma biblioteca de imagem: escreve o PNG na mão com zlib.
+ * Gera os ícones PNG do Family Finance sem depender de biblioteca de imagem:
+ * escreve o PNG na mão com zlib.
  *
  *   node scripts/gerar-icones.mjs
  *
- * Desenho: quadrado arredondado verde com três barras brancas crescentes —
- * legível mesmo em 48px na tela inicial.
+ * O desenho é o "FF" da marca: dois F entrelaçados sob um telhado. O traço
+ * horizontal do primeiro F se estende e vira o braço do segundo — daí o
+ * entrelaçamento. O telhado, em verde menta, fecha a ideia de casa; o azul
+ * escuro do fundo é a parte de confiança.
+ *
+ * Tudo é geometria simples de propósito: o ícone precisa continuar legível a
+ * 48px na tela inicial do celular.
  */
 import { deflateSync } from 'node:zlib';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -17,7 +22,9 @@ const DESTINO = join(RAIZ, 'public');
 // Mesmo desenho para o app nativo, para a marca ser a mesma nos dois.
 const DESTINO_MOBILE = join(RAIZ, '..', 'mobile', 'assets');
 
-const VERDE = [22, 163, 74];
+/** Azul escuro: confiança. Verde menta: dinheiro que cresce. */
+const AZUL = [15, 58, 95];
+const MENTA = [45, 212, 167];
 const BRANCO = [255, 255, 255];
 
 // --- PNG mínimo (cor verdadeira com alfa, sem filtro) -----------------------
@@ -94,6 +101,19 @@ function misturar(destino, indice, cor, alfa) {
   destino[indice + 3] = Math.round(destino[indice + 3] * (1 - alfa) + 255 * alfa);
 }
 
+/** Quanto do ponto (x, y) cai dentro de um traço grosso de A até B. */
+function coberturaSegmento(x, y, ax, ay, bx, by, espessura) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const comprimentoQuadrado = dx * dx + dy * dy;
+  const t =
+    comprimentoQuadrado === 0
+      ? 0
+      : Math.min(1, Math.max(0, ((x - ax) * dx + (y - ay) * dy) / comprimentoQuadrado));
+  const distancia = Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+  return distancia <= espessura / 2 ? 1 : 0;
+}
+
 /**
  * `margemSegura` reserva a borda que o Android recorta em ícones "maskable":
  * o desenho fica dentro dos 80% centrais.
@@ -103,60 +123,76 @@ function desenharIcone(tamanho, { margemSegura = false, fundoTransparente = fals
   const AMOSTRAS = 3; // supersampling: bordas sem serrilhado
 
   const margem = margemSegura ? tamanho * 0.1 : 0;
-  const ladoFundo = tamanho - margem * 2;
-  const raioFundo = ladoFundo * (margemSegura ? 0.5 : 0.22);
+  const lado = tamanho - margem * 2;
+  const raioFundo = lado * (margemSegura ? 0.5 : 0.22);
 
-  // Três barras crescentes, centralizadas no fundo.
-  const larguraBarra = ladoFundo * 0.145;
-  const espaco = ladoFundo * 0.075;
-  const larguraTotal = larguraBarra * 3 + espaco * 2;
-  const inicioBarras = margem + (ladoFundo - larguraTotal) / 2;
-  const baseBarras = margem + ladoFundo * 0.74;
-  const alturas = [0.2, 0.33, 0.46].map((fracao) => ladoFundo * fracao);
-  const raioBarra = larguraBarra / 2;
+  // Grade do monograma, em fração do lado.
+  const u = lado / 100;
+  const px0 = margem + 22 * u; // haste do primeiro F
+  const px1 = margem + 55 * u; // haste do segundo F
+  const topo = margem + 40 * u;
+  const base = margem + 78 * u;
+  const traco = 9 * u;
+
+  // Telhado: duas diagonais que se encontram no alto, sobre os dois F.
+  const cumeeiraX = margem + 50 * u;
+  const cumeeiraY = margem + 20 * u;
+  const beiralEsquerdoX = margem + 16 * u;
+  const beiralDireitoX = margem + 84 * u;
+  const beiralY = margem + 33 * u;
 
   for (let y = 0; y < tamanho; y += 1) {
     for (let x = 0; x < tamanho; x += 1) {
       const indice = (y * tamanho + x) * 4;
 
-      let coberturaFundo = 0;
-      let coberturaBarras = 0;
+      let fundo = 0;
+      let telhado = 0;
+      let letras = 0;
+
       for (let sy = 0; sy < AMOSTRAS; sy += 1) {
         for (let sx = 0; sx < AMOSTRAS; sx += 1) {
-          const px = x + (sx + 0.5) / AMOSTRAS;
-          const py = y + (sy + 0.5) / AMOSTRAS;
+          const ax = x + (sx + 0.5) / AMOSTRAS;
+          const ay = y + (sy + 0.5) / AMOSTRAS;
 
-          coberturaFundo += coberturaRetanguloArredondado(
-            px,
-            py,
-            margem,
-            margem,
-            ladoFundo,
-            ladoFundo,
-            raioFundo,
+          fundo += coberturaRetanguloArredondado(ax, ay, margem, margem, lado, lado, raioFundo);
+
+          telhado += Math.min(
+            1,
+            coberturaSegmento(ax, ay, beiralEsquerdoX, beiralY, cumeeiraX, cumeeiraY, traco) +
+              coberturaSegmento(ax, ay, cumeeiraX, cumeeiraY, beiralDireitoX, beiralY, traco),
           );
 
-          for (let b = 0; b < 3; b += 1) {
-            const altura = alturas[b];
-            coberturaBarras += coberturaRetanguloArredondado(
-              px,
-              py,
-              inicioBarras + b * (larguraBarra + espaco),
-              baseBarras - altura,
-              larguraBarra,
-              altura,
-              raioBarra,
-            );
-          }
+          // Hastes verticais dos dois F.
+          let letra =
+            coberturaRetanguloArredondado(ax, ay, px0, topo, traco, base - topo, traco / 2) +
+            coberturaRetanguloArredondado(ax, ay, px1, topo, traco, base - topo, traco / 2);
+
+          // Braço de cima: sai do primeiro F e atravessa até o segundo — é o
+          // traço que entrelaça as duas letras.
+          letra += coberturaRetanguloArredondado(
+            ax,
+            ay,
+            px0,
+            topo,
+            margem + 78 * u - px0,
+            traco,
+            traco / 2,
+          );
+
+          // Braço do meio de cada F, mais curto.
+          letra += coberturaRetanguloArredondado(ax, ay, px0, topo + 15 * u, 18 * u, traco, traco / 2);
+          letra += coberturaRetanguloArredondado(ax, ay, px1, topo + 15 * u, 18 * u, traco, traco / 2);
+
+          letras += Math.min(1, letra);
         }
       }
 
       const total = AMOSTRAS * AMOSTRAS;
-      if (!fundoTransparente && coberturaFundo > 0) {
-        misturar(pixels, indice, VERDE, coberturaFundo / total);
-      }
-      if (coberturaBarras > 0) {
-        misturar(pixels, indice, BRANCO, Math.min(1, coberturaBarras / total));
+      if (!fundoTransparente && fundo > 0) misturar(pixels, indice, AZUL, fundo / total);
+      if (telhado > 0) misturar(pixels, indice, MENTA, Math.min(1, telhado / total));
+      // As letras entram depois: onde encostam no telhado, quem manda é o F.
+      if (letras > 0) {
+        misturar(pixels, indice, fundoTransparente ? MENTA : BRANCO, Math.min(1, letras / total));
       }
     }
   }
@@ -168,9 +204,9 @@ function desenharIcone(tamanho, { margemSegura = false, fundoTransparente = fals
 function fundoChapado(tamanho) {
   const pixels = Buffer.alloc(tamanho * tamanho * 4);
   for (let i = 0; i < tamanho * tamanho; i += 1) {
-    pixels[i * 4] = VERDE[0];
-    pixels[i * 4 + 1] = VERDE[1];
-    pixels[i * 4 + 2] = VERDE[2];
+    pixels[i * 4] = AZUL[0];
+    pixels[i * 4 + 1] = AZUL[1];
+    pixels[i * 4 + 2] = AZUL[2];
     pixels[i * 4 + 3] = 255;
   }
   return escreverPng(tamanho, tamanho, pixels);

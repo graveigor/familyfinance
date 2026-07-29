@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { ProvedorDeTutorial } from './componentes/Tutorial';
 import { ProvedorDeAviso } from './componentes/ui';
 import { ProvedorDeSessao } from './sessao';
 import './estilos.css';
@@ -31,7 +32,9 @@ createRoot(raiz).render(
       <ProvedorDeSessao>
         <ProvedorDeAviso>
           <BrowserRouter>
-            <App />
+            <ProvedorDeTutorial>
+              <App />
+            </ProvedorDeTutorial>
           </BrowserRouter>
         </ProvedorDeAviso>
       </ProvedorDeSessao>

@@ -16,6 +16,7 @@ import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenti
 import { prisma } from '../prisma.js';
 import { serializarCategoria } from '../serializadores.js';
 import { gerarPendentes, proximoLancamento } from '../servicos/recorrencias.js';
+import { filtroDeRecorrenciasVisiveis } from '../servicos/visibilidade.js';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -60,7 +61,9 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
   app.get('/', async (request: FastifyRequest) => {
     const usuario = usuarioDaRequisicao(request);
     const itens = await prisma.recorrencia.findMany({
-      where: { householdId: usuario.householdId },
+      // Mesma privacidade dos gastos: conta fixa de quem não compartilha não
+      // aparece para os outros.
+      where: filtroDeRecorrenciasVisiveis(usuario),
       include: INCLUDE,
       orderBy: [{ ativa: 'desc' }, { diaDoMes: 'asc' }],
     });

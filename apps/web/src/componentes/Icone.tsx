@@ -163,6 +163,20 @@ const DESENHOS: Record<string, JSX.Element> = {
       <path d="M12 10v4M12 17h.01" />
     </>
   ),
+  cadeado: (
+    <>
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+      <path d="M12 14.5v2.5" />
+    </>
+  ),
+  alvo: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.8" />
+    </>
+  ),
   planilha: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />

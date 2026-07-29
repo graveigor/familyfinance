@@ -28,6 +28,8 @@ export interface Usuario {
   nome: string;
   email: string;
   papel: Papel;
+  /** Quando ligado, os lançamentos desta pessoa ficam visíveis para o grupo. */
+  compartilhaGastos: boolean;
   householdId: string;
   criadoEm: string;
 }
@@ -103,6 +105,15 @@ export interface Evolucao {
   /** Média dos meses com gasto, para a linha de referência. */
   mediaCentavos: number;
   maiorCentavos: number;
+}
+
+/** Meta conjunta do grupo (ex.: "Viagem de férias"). */
+export interface Meta {
+  id: string;
+  nome: string;
+  valorAlvoCentavos: number | null;
+  criadoPor: AutorDoGasto;
+  criadoEm: string;
 }
 
 export interface Paginacao {

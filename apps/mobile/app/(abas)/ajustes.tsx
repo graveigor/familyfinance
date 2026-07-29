@@ -125,7 +125,7 @@ export default function Ajustes(): ReactElement {
       <Botao titulo="Sair da conta" variante="secundario" icone="sair" aoTocar={confirmarSaida} />
 
       <Text style={estilos.rodape}>
-        Controle de Gastos · versão 0.1.0{'\n'}
+        Family Finance · versão 1.0.0{'\n'}
         {enderecoDaApi}
       </Text>
 

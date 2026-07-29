@@ -33,7 +33,12 @@ const { Prisma } = prismaPacote;
 const paramsSchema = z.object({ id: zId });
 
 const EXTENSOES = ['.xlsx', '.xls', '.csv'];
-const TAMANHO_MAXIMO = 10 * 1024 * 1024;
+/**
+ * 4 MB. O limite não é nosso: a função serverless recusa requisição acima de
+ * 4,5 MB antes mesmo de o código rodar. Cortando aqui, a pessoa recebe uma
+ * mensagem que explica o que fazer em vez de um erro cru da hospedagem.
+ */
+const TAMANHO_MAXIMO = 4 * 1024 * 1024;
 
 /** O que guardamos no banco entre as etapas de conferência. */
 interface DadosBrutos {
@@ -52,8 +57,11 @@ async function montarContexto(
   const [membros, categorias, existentes] = await Promise.all([
     prisma.user.findMany({ where: { householdId }, select: { id: true, nome: true } }),
     prisma.categoria.findMany({ where: { householdId }, select: { id: true, nome: true } }),
+    // Duplicata é conferida só contra os próprios lançamentos: avisar que
+    // "já existe igual" olhando o gasto de outra pessoa vazaria o dinheiro
+    // dela sem mostrar a tela.
     prisma.gasto.findMany({
-      where: { householdId },
+      where: { householdId, userId: usuarioLogadoId },
       select: { descricao: true, valorCentavos: true, data: true },
     }),
   ]);
@@ -132,7 +140,7 @@ export async function rotasImportacoes(app: FastifyInstance): Promise<void> {
 
     const conteudo = await arquivo.toBuffer();
     if (arquivo.file.truncated) {
-      throw erroValidacao('Esse arquivo passa de 10 MB. Divida a planilha e envie em partes.');
+      throw erroValidacao('Esse arquivo passa de 4 MB. Divida a planilha e envie em partes.');
     }
     if (conteudo.length === 0) throw erroValidacao('O arquivo enviado está vazio.');
 

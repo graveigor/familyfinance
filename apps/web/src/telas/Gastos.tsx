@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dialogo, Confirmar } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
 import { ItemDeGasto } from '../componentes/ItemDeGasto';
+import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { Botao, CaixaDeErro, Carregando, Vazio, traduzirErro, useAviso } from '../componentes/ui';
 import { api } from '../api';
 import {
@@ -55,7 +56,26 @@ const PERIODOS = {
   tudo: { rotulo: 'Tudo', de: undefined, ate: undefined },
 } as const;
 
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'gastos-busca',
+    titulo: 'Procurar um gasto',
+    texto: 'Digite parte do nome do lugar. A busca só olha os lançamentos que você pode ver.',
+  },
+  {
+    alvo: 'gastos-filtro',
+    titulo: 'Filtrar por período e pessoa',
+    texto: 'Aqui você escolhe o mês, a categoria e a pessoa. Os filtros ligados viram etiquetas, e dá para remover uma a uma.',
+  },
+  {
+    alvo: 'gastos-total',
+    titulo: 'O total do que está filtrado',
+    texto: 'Este valor soma tudo que o filtro alcança, não só o que está na tela.',
+  },
+];
+
 export function Gastos(): ReactElement {
+  useTutorialDaPagina('gastos', PASSOS);
   const navegar = useNavigate();
   const aviso = useAviso();
   const categorias = useCategorias();
@@ -154,6 +174,7 @@ export function Gastos(): ReactElement {
         <button
           type="button"
           onClick={() => setGavetaAberta(true)}
+          data-tutorial="gastos-filtro"
           className="flex min-h-toque items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-4 text-base font-semibold text-slate-700 hover:bg-slate-50"
         >
           <Icone nome="filtro" tamanho={20} />
@@ -161,7 +182,7 @@ export function Gastos(): ReactElement {
         </button>
       </header>
 
-      <div className="relative">
+      <div className="relative" data-tutorial="gastos-busca">
         <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
           <Icone nome="lupa" tamanho={22} />
         </span>
@@ -194,7 +215,7 @@ export function Gastos(): ReactElement {
       )}
 
       {consulta.data && (
-        <div className="cartao flex items-baseline justify-between px-4 py-3">
+        <div data-tutorial="gastos-total" className="cartao flex items-baseline justify-between px-4 py-3">
           <span className="text-base text-slate-600">
             {pluralizar(consulta.data.paginacao.totalItens, 'gasto', 'gastos')}
           </span>

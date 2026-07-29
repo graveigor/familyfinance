@@ -28,7 +28,8 @@ export async function criarServidor(): Promise<FastifyInstance> {
 
   // Envio da planilha. O limite real é conferido na rota, com mensagem própria.
   await app.register(multipart, {
-    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    // Abaixo do teto de 4,5 MB da função serverless.
+    limits: { fileSize: 4 * 1024 * 1024, files: 1 },
   });
 
   configurarErros(app);

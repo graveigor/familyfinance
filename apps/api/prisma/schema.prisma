@@ -23,19 +23,27 @@ model Household {
   convites     Convite[]
   importacoes  Importacao[]
   recorrencias Recorrencia[]
+  metas        Meta[]
 }
 
 model User {
-  id           String        @id @default(uuid())
-  nome         String
-  email        String        @unique
-  senhaHash    String
-  papel        Papel         @default(MEMBRO)
+  id        String @id @default(uuid())
+  nome      String
+  email     String @unique
+  senhaHash String
+  papel     Papel  @default(MEMBRO)
+
+  /// Quando ligado, os lançamentos desta pessoa ficam visíveis para o grupo.
+  /// Desligado por padrão: dinheiro é assunto privado até alguém decidir o
+  /// contrário. Quem não compartilha continua vendo só o que é seu.
+  compartilhaGastos Boolean @default(false)
+
   householdId  String
   household    Household     @relation(fields: [householdId], references: [id])
   gastos       Gasto[]
   convites     Convite[]     @relation("ConvitesCriados")
   recorrencias Recorrencia[]
+  metas        Meta[]
   criadoEm     DateTime      @default(now())
 
   @@index([householdId])
@@ -107,6 +115,22 @@ model Importacao {
   @@index([householdId, criadoEm])
 }
 
+/// Meta conjunta do grupo ("Viagem de férias"), exibida no Hub da Família.
+/// É o único dado financeiro visível a todos: os lançamentos de cada pessoa
+/// são privados.
+model Meta {
+  id                String    @id @default(uuid())
+  nome              String
+  valorAlvoCentavos Int?
+  householdId       String
+  household         Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  criadoPorId       String
+  criadoPor         User      @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
+  criadoEm          DateTime  @default(now())
+
+  @@index([householdId])
+}
+
 model Convite {
   id          String    @id @default(uuid())
   codigo      String    @unique
@@ -167,6 +191,19 @@ model Recorrencia {
   gastos          Gasto[]
 
   @@index([householdId, ativa])
+}
+
+/// Ajustes do servidor guardados no banco.
+///
+/// Existe por causa dos segredos que assinam o login: em vez de exigir que
+/// quem publica o app crie e cole chaves no painel da hospedagem — passo fácil
+/// de errar e de vazar —, o servidor gera as suas na primeira vez e guarda
+/// aqui. Quem preferir controlar isso na mão continua podendo, definindo
+/// JWT_SEGREDO e JWT_SEGREDO_REFRESH no ambiente: o ambiente tem prioridade.
+model Configuracao {
+  chave    String   @id
+  valor    String
+  criadoEm DateTime @default(now())
 }
 
 enum Papel {

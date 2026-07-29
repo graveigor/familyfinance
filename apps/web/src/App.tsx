@@ -6,6 +6,7 @@ import { chaves } from './consultas';
 import { Layout } from './componentes/Layout';
 import { Ajustes } from './telas/Ajustes';
 import { Entrar } from './telas/Entrar';
+import { Familia } from './telas/Familia';
 import { Gastos } from './telas/Gastos';
 import { Importar } from './telas/Importar';
 import { Inicio } from './telas/Inicio';
@@ -45,6 +46,7 @@ export function App(): ReactElement {
         <Route path="/gastos/:id/editar" element={<NovoGasto />} />
         <Route path="/importar" element={<Importar />} />
         <Route path="/resumo" element={<Resumo />} />
+        <Route path="/familia" element={<Familia />} />
         <Route path="/ajustes" element={<Ajustes />} />
       </Route>
       {/* Endereço desconhecido volta para o Início em vez de mostrar erro. */}

@@ -1,16 +1,18 @@
 import type { ReactElement } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icone } from './Icone';
+import { BotaoDeAjuda } from './Tutorial';
 
 const ITENS = [
   { para: '/', rotulo: 'Início', icone: 'inicio' },
   { para: '/gastos', rotulo: 'Gastos', icone: 'lista' },
   { para: '/resumo', rotulo: 'Resumo', icone: 'grafico' },
+  { para: '/familia', rotulo: 'Família', icone: 'pessoas' },
   { para: '/ajustes', rotulo: 'Ajustes', icone: 'ajustes' },
 ] as const;
 
 /**
- * Quatro itens, sempre os mesmos, sempre visíveis: barra embaixo no celular e
+ * Cinco itens, sempre os mesmos, sempre visíveis: barra embaixo no celular e
  * coluna à esquerda no computador. O botão "+" fica fixo no canto inferior
  * direito, do jeito que o polegar alcança.
  */
@@ -33,7 +35,7 @@ export function Layout(): ReactElement {
       >
         <div className="mb-6 flex items-center gap-2 px-2 py-3">
           <img src="/icone-192.png" alt="" className="h-9 w-9 rounded-lg" />
-          <span className="text-lg font-bold text-slate-900">Gastos</span>
+          <span className="text-lg font-bold text-slate-900">Family Finance</span>
         </div>
 
         <ul className="space-y-1">
@@ -62,6 +64,7 @@ export function Layout(): ReactElement {
         <button
           type="button"
           onClick={() => navegar('/novo')}
+          data-tutorial="inicio-adicionar"
           className="mt-6 flex min-h-toque w-full items-center justify-center gap-2 rounded-xl
             bg-marca-600 px-4 py-3 text-base font-semibold text-white hover:bg-marca-700"
         >
@@ -76,10 +79,14 @@ export function Layout(): ReactElement {
         </main>
       </div>
 
+      {/* `(?)` sempre no mesmo lugar: reabre o tutorial da tela aberta. */}
+      <BotaoDeAjuda />
+
       {/* Celular: botão flutuante e barra inferior */}
       {mostrarBotaoAdicionar && (
         <button
           type="button"
+          data-tutorial="inicio-adicionar"
           onClick={() => navegar('/novo')}
           className="fixed bottom-24 right-5 z-30 flex h-16 w-16 items-center justify-center
             rounded-full bg-marca-600 text-white shadow-lg transition-transform hover:bg-marca-700
@@ -107,13 +114,13 @@ export function Layout(): ReactElement {
                 className={({ isActive }) =>
                   // Ativo se distingue por cor E por peso do texto — quem não
                   // enxerga a diferença de tom percebe o negrito.
-                  `flex min-h-toque flex-col items-center gap-1 py-2.5 text-sm ${
+                  `flex min-h-toque flex-col items-center gap-1 py-2.5 text-xs ${
                     isActive ? 'font-bold text-marca-700' : 'font-medium text-slate-600'
                   }`
                 }
               >
                 <>
-                  <Icone nome={item.icone} tamanho={26} />
+                  <Icone nome={item.icone} tamanho={24} />
                   {item.rotulo}
                 </>
               </NavLink>

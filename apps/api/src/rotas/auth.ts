@@ -16,16 +16,17 @@ import { serializarUsuario } from '../serializadores.js';
 import { conferirSenha, gerarHashSenha } from '../servicos/senha.js';
 import { gerarAccessToken, gerarRefreshToken, verificarRefreshToken } from '../servicos/tokens.js';
 
-function montarSessao(usuario: {
+async function montarSessao(usuario: {
   id: string;
   householdId: string;
   papel: 'ADMIN' | 'MEMBRO';
-}): Pick<Sessao, 'accessToken' | 'refreshToken'> {
+}): Promise<Pick<Sessao, 'accessToken' | 'refreshToken'>> {
   const dados = { sub: usuario.id, householdId: usuario.householdId, papel: usuario.papel };
-  return {
-    accessToken: gerarAccessToken(dados),
-    refreshToken: gerarRefreshToken(dados),
-  };
+  const [accessToken, refreshToken] = await Promise.all([
+    gerarAccessToken(dados),
+    gerarRefreshToken(dados),
+  ]);
+  return { accessToken, refreshToken };
 }
 
 export async function rotasAuth(app: FastifyInstance): Promise<void> {
@@ -85,7 +86,10 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
       });
     });
 
-    const sessao: Sessao = { ...montarSessao(usuario), usuario: serializarUsuario(usuario) };
+    const sessao: Sessao = {
+      ...(await montarSessao(usuario)),
+      usuario: serializarUsuario(usuario),
+    };
     return reply.status(201).send(sessao);
   });
 
@@ -105,18 +109,24 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
       throw erroNaoAutenticado('E-mail ou senha incorretos.');
     }
 
-    const sessao: Sessao = { ...montarSessao(usuario), usuario: serializarUsuario(usuario) };
+    const sessao: Sessao = {
+      ...(await montarSessao(usuario)),
+      usuario: serializarUsuario(usuario),
+    };
     return sessao;
   });
 
   app.post('/refresh', async (request) => {
     const { refreshToken } = refreshSchema.parse(request.body);
-    const conteudo = verificarRefreshToken(refreshToken);
+    const conteudo = await verificarRefreshToken(refreshToken);
 
     const usuario = await prisma.user.findUnique({ where: { id: conteudo.sub } });
     if (!usuario) throw erroNaoAutenticado();
 
-    const sessao: Sessao = { ...montarSessao(usuario), usuario: serializarUsuario(usuario) };
+    const sessao: Sessao = {
+      ...(await montarSessao(usuario)),
+      usuario: serializarUsuario(usuario),
+    };
     return sessao;
   });
 
@@ -147,8 +157,11 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
     const dados = atualizarPerfilSchema.parse(request.body);
     const usuario = await prisma.user.findUniqueOrThrow({ where: { id: autenticado.id } });
 
-    const atualizacao: { nome?: string; senhaHash?: string } = {};
+    const atualizacao: { nome?: string; senhaHash?: string; compartilhaGastos?: boolean } = {};
     if (dados.nome) atualizacao.nome = dados.nome;
+    if (dados.compartilhaGastos !== undefined) {
+      atualizacao.compartilhaGastos = dados.compartilhaGastos;
+    }
 
     if (dados.novaSenha) {
       const confere = await conferirSenha(dados.senhaAtual ?? '', usuario.senhaHash);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { zEmail, zNome, zSenha } from './comuns.js';
+import { zCodigoConvite } from './household.js';
 
 /**
  * Registro cobre os dois caminhos possíveis:
@@ -10,13 +11,10 @@ export const registrarSchema = z.object({
   nome: zNome,
   email: zEmail,
   senha: zSenha,
+  /** Nome do grupo, para quem está criando o seu. */
   nomeHousehold: zNome.optional(),
-  codigoConvite: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .length(6, 'O código de convite tem 6 caracteres.')
-    .optional(),
+  /** Código `FF-XXXXX` de quem foi convidado. */
+  codigoConvite: zCodigoConvite.optional(),
 });
 
 export const loginSchema = z.object({
@@ -33,6 +31,8 @@ export const atualizarPerfilSchema = z
     nome: zNome.optional(),
     senhaAtual: z.string().min(1, 'Informe a senha atual.').optional(),
     novaSenha: zSenha.optional(),
+    /** Liga/desliga a visibilidade dos próprios lançamentos para o grupo. */
+    compartilhaGastos: z.boolean().optional(),
   })
   .refine((dados) => !dados.novaSenha || Boolean(dados.senhaAtual), {
     message: 'Informe a senha atual para trocar de senha.',

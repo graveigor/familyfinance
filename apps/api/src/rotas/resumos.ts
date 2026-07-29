@@ -15,6 +15,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 import { serializarCategoria } from '../serializadores.js';
+import { combinarFiltros, filtroDeGastosVisiveis } from '../servicos/visibilidade.js';
 
 export async function rotasResumos(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', app.autenticar);
@@ -32,7 +33,10 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
       lt: inicioDoProximoMes(anterior.ano, anterior.mes),
     };
 
-    const where = { householdId: usuario.householdId, data: periodo };
+    // Toda a soma do mês passa pelo filtro de privacidade: quem não
+    // compartilha não entra no total nem no "por pessoa" dos outros.
+    const visivel = filtroDeGastosVisiveis(usuario);
+    const where = combinarFiltros(visivel, { data: periodo });
 
     const [totalGeral, porCategoriaBruto, porPessoaBruto, totalAnterior, categorias, membros] =
       await Promise.all([
@@ -50,7 +54,7 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
           _count: true,
         }),
         prisma.gasto.aggregate({
-          where: { householdId: usuario.householdId, data: periodoAnterior },
+          where: combinarFiltros(visivel, { data: periodoAnterior }),
           _sum: { valorCentavos: true },
         }),
         prisma.categoria.findMany({ where: { householdId: usuario.householdId } }),
@@ -120,11 +124,12 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
     const totais = await prisma.gasto.groupBy({
       by: ['data'],
       where: {
-        householdId: usuario.householdId,
-        data: {
-          gte: inicioDoMes(inicio.ano, inicio.mes),
-          lt: inicioDoProximoMes(anoFinal, mesFinal),
-        },
+        ...combinarFiltros(filtroDeGastosVisiveis(usuario), {
+          data: {
+            gte: inicioDoMes(inicio.ano, inicio.mes),
+            lt: inicioDoProximoMes(anoFinal, mesFinal),
+          },
+        }),
       },
       _sum: { valorCentavos: true },
       _count: true,

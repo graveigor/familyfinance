@@ -19,8 +19,11 @@ const TIPOS_ACEITOS = [
   'application/pdf',
 ] as const;
 
-/** 4 MB: cabe foto de nota fiscal de sobra e não estoura o banco. */
-export const TAMANHO_MAXIMO_COMPROVANTE = 4 * 1024 * 1024;
+/**
+ * 3 MB: cabe foto de nota fiscal de sobra, não estoura o banco e fica abaixo
+ * do limite de 4,5 MB que a função serverless impõe à requisição inteira.
+ */
+export const TAMANHO_MAXIMO_COMPROVANTE = 3 * 1024 * 1024;
 
 export function conferirTipo(tipo: string): string {
   const limpo = tipo.split(';')[0]?.trim().toLowerCase() ?? '';

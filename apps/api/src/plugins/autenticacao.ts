@@ -34,7 +34,7 @@ export function configurarAutenticacao(app: FastifyInstance): void {
       throw erroNaoAutenticado('Entre na sua conta para continuar.');
     }
 
-    const conteudo = verificarAccessToken(cabecalho.slice('Bearer '.length).trim());
+    const conteudo = await verificarAccessToken(cabecalho.slice('Bearer '.length).trim());
 
     // Relemos o usuário para que exclusão de conta ou troca de papel/household
     // valham já na próxima requisição, sem esperar o token expirar.

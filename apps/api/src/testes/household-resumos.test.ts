@@ -30,7 +30,9 @@ describe('household', () => {
   it('gera convite e o convidado entra na mesma família como membro', async () => {
     const admin = await criarConta(app, { email: 'admin@exemplo.com' });
     const codigo = await convidar(admin.autorizacao);
-    expect(codigo).toHaveLength(6);
+    // Formato da marca: FF- e 5 caracteres, sem 0/O e 1/I/L para ditar por
+    // telefone sem confusão.
+    expect(codigo).toMatch(/^FF-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/);
 
     const convidado = await criarConta(app, {
       email: 'joao@exemplo.com',
@@ -67,7 +69,7 @@ describe('household', () => {
     expect(segunda.statusCode).toBe(400);
   });
 
-  it('membro comum não pode gerar convite', async () => {
+  it('qualquer pessoa do grupo pode convidar', async () => {
     const admin = await criarConta(app, { email: 'admin@exemplo.com' });
     const codigo = await convidar(admin.autorizacao);
     const membro = await criarConta(app, {
@@ -76,13 +78,30 @@ describe('household', () => {
       codigoConvite: codigo,
     });
 
+    // Convidar não expõe o dinheiro de ninguém — cada um só vê o que é seu ou
+    // o de quem escolheu compartilhar. Então não precisa ser administrador.
     const tentativa = await app.inject({
       method: 'POST',
       url: '/api/v1/household/convites',
       headers: membro.autorizacao,
       payload: {},
     });
-    expect(tentativa.statusCode).toBe(403);
+    expect(tentativa.statusCode).toBe(201);
+    expect(tentativa.json<{ codigo: string }>().codigo).toMatch(/^FF-/);
+  });
+
+  it('aceita o código colado de qualquer jeito', async () => {
+    const admin = await criarConta(app, { email: 'admin@exemplo.com' });
+    const codigo = await convidar(admin.autorizacao);
+    const nucleo = codigo.slice(3);
+
+    // Minúsculas, sem o prefixo e com espaço: tudo que vem de um WhatsApp.
+    const entrada = await criarConta(app, {
+      email: 'joao@exemplo.com',
+      nome: 'João Souza',
+      codigoConvite: ` ff-${nucleo.toLowerCase()} `,
+    });
+    expect(entrada.sessao.usuario.householdId).toBe(admin.sessao.usuario.householdId);
   });
 
   it('não deixa a família ficar sem administrador', async () => {
@@ -136,24 +155,40 @@ describe('GET /resumos/mensal', () => {
     });
 
     const resumo = resposta.json<ResumoMensal>();
-    expect(resumo.totalCentavos).toBe(18050);
-    expect(resumo.quantidade).toBe(3);
+    // O membro não ligou o compartilhamento, então os 30,50 dele não entram
+    // no resumo de quem está olhando: aparecem só os 150,00 próprios.
+    expect(resumo.totalCentavos).toBe(15000);
+    expect(resumo.quantidade).toBe(2);
 
-    expect(resumo.porCategoria).toHaveLength(2);
+    expect(resumo.porCategoria).toHaveLength(1);
     expect(resumo.porCategoria[0]?.categoria?.nome).toBe('Mercado');
     expect(resumo.porCategoria[0]?.totalCentavos).toBe(15000);
-    expect(resumo.porCategoria[1]?.categoria).toBeNull();
 
+    expect(resumo.porPessoa).toHaveLength(1);
     expect(resumo.porPessoa[0]?.usuario.nome).toBe('Maria Silva');
     expect(resumo.porPessoa[0]?.totalCentavos).toBe(15000);
-    expect(resumo.porPessoa[1]?.totalCentavos).toBe(3050);
 
     expect(resumo.mesAnterior).toMatchObject({ ano: 2024, mes: 2, totalCentavos: 12000 });
-    expect(resumo.mesAnterior.diferencaCentavos).toBe(6050);
-    // O Intl usa espaço não separável depois de "R$"; normalizamos para comparar.
-    expect(fraseComparacaoMensal(resumo).replace(/ /g, ' ')).toBe(
-      'R$ 60,50 a mais que em fevereiro.',
-    );
+    expect(resumo.mesAnterior.diferencaCentavos).toBe(3000);
+
+    // Com o compartilhamento ligado, o mesmo resumo passa a somar os dois.
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/auth/eu',
+      headers: membro.autorizacao,
+      payload: { compartilhaGastos: true },
+    });
+    const juntos = (
+      await app.inject({
+        method: 'GET',
+        url: '/api/v1/resumos/mensal?ano=2024&mes=3',
+        headers: admin.autorizacao,
+      })
+    ).json<ResumoMensal>();
+
+    expect(juntos.totalCentavos).toBe(18050);
+    expect(juntos.porPessoa).toHaveLength(2);
+    expect(juntos.porCategoria).toHaveLength(2);
   });
 
   it('devolve zeros quando o mês não tem gasto', async () => {

@@ -3,10 +3,15 @@
  * corpo a partir de 16, valores em 18, alvo de toque de 48.
  */
 export const cores = {
-  marca: '#16A34A',
-  marcaEscura: '#15803D',
-  marcaClara: '#F0FDF4',
-  marcaBorda: '#BBF7D0',
+  marca: '#0F3A5F',
+  marcaEscura: '#0A2A46',
+  marcaClara: '#EFF6FC',
+  marcaBorda: '#B4D2EC',
+
+  /** Verde menta: dinheiro, crescimento, confirmação. */
+  menta: '#2DD4A7',
+  mentaEscura: '#0E8F6D',
+  mentaClara: '#ECFDF7',
 
   fundo: '#F8FAFC',
   cartao: '#FFFFFF',

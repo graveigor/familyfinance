@@ -18,10 +18,16 @@ const ambienteSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3333),
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().min(1, 'Defina DATABASE_URL'),
-  JWT_SEGREDO: z.string().min(16, 'JWT_SEGREDO precisa de pelo menos 16 caracteres'),
+  /**
+   * Opcionais de propósito: sem eles o servidor gera os próprios segredos e
+   * guarda no banco (ver `servicos/segredos.ts`), para publicar o app não
+   * depender de colar chave em painel. Definidos, mandam eles.
+   */
+  JWT_SEGREDO: z.string().min(16, 'JWT_SEGREDO precisa de pelo menos 16 caracteres').optional(),
   JWT_SEGREDO_REFRESH: z
     .string()
-    .min(16, 'JWT_SEGREDO_REFRESH precisa de pelo menos 16 caracteres'),
+    .min(16, 'JWT_SEGREDO_REFRESH precisa de pelo menos 16 caracteres')
+    .optional(),
   /** Vida do access token (curta) e do refresh token (longa). */
   JWT_EXPIRA_EM: z.string().default('15m'),
   JWT_REFRESH_EXPIRA_EM: z.string().default('30d'),

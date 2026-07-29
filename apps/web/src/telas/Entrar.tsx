@@ -48,8 +48,8 @@ export function Entrar(): ReactElement {
       <div className="mx-auto w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <img src="/icone-192.png" alt="" className="h-16 w-16 rounded-2xl shadow-sm" />
-          <h1 className="text-2xl font-bold text-slate-900">Controle de Gastos</h1>
-          <p className="text-base text-slate-600">Os gastos da família, organizados.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Family Finance</h1>
+          <p className="text-base text-slate-600">Os gastos da família, com privacidade para cada um.</p>
         </div>
 
         <form onSubmit={(e) => void enviar(e)} className="cartao space-y-5 p-6">
@@ -90,13 +90,13 @@ export function Entrar(): ReactElement {
 
           {modo === 'criar' && (
             <Campo
-              rotulo="Código do convite (opcional)"
+              rotulo="Código do grupo (opcional)"
               value={codigoConvite}
               onChange={(e) => setCodigoConvite(e.target.value.toUpperCase())}
-              maxLength={6}
+              maxLength={8}
               autoCapitalize="characters"
               className="uppercase tracking-widest"
-              dica="Recebeu um código de alguém da família? Cole aqui. Se não, deixe em branco."
+              dica="Recebeu um código como FF-9A3K2? Cole aqui. Se não, criamos um grupo só seu."
               erro={erro.campos.codigoConvite}
             />
           )}

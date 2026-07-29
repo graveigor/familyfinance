@@ -5,6 +5,7 @@ import type {
   Gasto,
   Household,
   ListaDeGastos,
+  Meta,
   Papel,
   Evolucao,
   Recorrencia,
@@ -17,6 +18,7 @@ import type {
   AtualizarCategoriaEntrada,
   CriarCategoriaEntrada,
 } from './schemas/categoria.js';
+import type { CriarGrupoEntrada, CriarMetaEntrada } from './schemas/household.js';
 import type {
   AtualizarGastoEntrada,
   CriarGastoEntrada,
@@ -150,6 +152,11 @@ export interface Cliente {
     trocarPapel(id: string, papel: Papel): Promise<Usuario>;
     criarConvite(validadeDias?: number): Promise<Convite>;
     entrar(codigo: string): Promise<Usuario>;
+    /** Sai do grupo atual e cria um novo, levando os próprios lançamentos. */
+    criarGrupo(dados: CriarGrupoEntrada): Promise<Usuario>;
+    metas(): Promise<Meta[]>;
+    criarMeta(dados: CriarMetaEntrada): Promise<Meta>;
+    excluirMeta(id: string): Promise<void>;
   };
   resumos: {
     mensal(ano: number, mes: number): Promise<ResumoMensal>;
@@ -374,6 +381,13 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
       criarConvite: (validadeDias = 7) =>
         requisitar('POST', '/api/v1/household/convites', { corpo: { validadeDias } }),
       entrar: (codigo) => requisitar('POST', '/api/v1/household/entrar', { corpo: { codigo } }),
+      criarGrupo: (dados) => requisitar('POST', '/api/v1/household/nova', { corpo: dados }),
+      async metas() {
+        const { itens } = await requisitar<{ itens: Meta[] }>('GET', '/api/v1/household/metas');
+        return itens;
+      },
+      criarMeta: (dados) => requisitar('POST', '/api/v1/household/metas', { corpo: dados }),
+      excluirMeta: (id) => requisitar('DELETE', `/api/v1/household/metas/${id}`),
     },
 
     resumos: {

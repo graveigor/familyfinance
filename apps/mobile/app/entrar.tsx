@@ -59,8 +59,8 @@ export default function Entrar(): ReactElement {
       >
         <View style={estilos.cabecalho}>
           <Image source={require('../assets/icon.png')} style={estilos.logo} />
-          <Text style={estilos.titulo}>Controle de Gastos</Text>
-          <Text style={estilos.subtitulo}>Os gastos da família, organizados.</Text>
+          <Text style={estilos.titulo}>Family Finance</Text>
+          <Text style={estilos.subtitulo}>Os gastos da família, com privacidade para cada um.</Text>
         </View>
 
         <Cartao estilo={estilos.formulario}>
@@ -98,12 +98,12 @@ export default function Entrar(): ReactElement {
 
           {modo === 'criar' && (
             <Campo
-              rotulo="Código do convite (opcional)"
+              rotulo="Código do grupo (opcional)"
               value={codigoConvite}
               onChangeText={(texto) => setCodigoConvite(texto.toUpperCase())}
               autoCapitalize="characters"
-              maxLength={6}
-              dica="Recebeu um código de alguém da família? Digite aqui."
+              maxLength={8}
+              dica="Recebeu um código como FF-9A3K2? Digite aqui."
               erro={erro.campos.codigoConvite}
             />
           )}

@@ -1,4 +1,4 @@
-import { CATEGORIAS_PADRAO, ROTULO_PAPEL, type Categoria, type Usuario } from '@gastos/core';
+import { CATEGORIAS_PADRAO, type Categoria } from '@gastos/core';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,32 +8,23 @@ import { PainelContasFixas } from '../componentes/PainelContasFixas';
 import { Confirmar, Dialogo } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
-import { chaves, useCategorias, useCriarCategoria, useExcluirCategoria, useMembros } from '../consultas';
+import { chaves, useCategorias, useCriarCategoria, useExcluirCategoria } from '../consultas';
 import { useSessao } from '../sessao';
 
 export function Ajustes(): ReactElement {
   const { usuario, sair } = useSessao();
   const navegar = useNavigate();
-  const membros = useMembros();
   const categorias = useCategorias();
   const aviso = useAviso();
 
   const household = useQuery({ queryKey: chaves.household, queryFn: () => api.household.obter() });
 
   const [painel, setPainel] = useState<
-    'perfil' | 'familia' | 'categorias' | 'contas-fixas' | 'instalar' | 'exportar' | null
+    'perfil' | 'categorias' | 'contas-fixas' | 'instalar' | 'exportar' | null
   >(null);
 
   const secoes = [
     { chave: 'perfil', icone: 'pessoa', titulo: 'Meu perfil', descricao: usuario?.email ?? '' },
-    {
-      chave: 'familia',
-      icone: 'pessoas',
-      titulo: 'Minha família',
-      descricao: membros.data
-        ? `${membros.data.length} ${membros.data.length === 1 ? 'pessoa' : 'pessoas'}`
-        : '...',
-    },
     {
       chave: 'categorias',
       icone: 'etiqueta',
@@ -103,14 +94,10 @@ export function Ajustes(): ReactElement {
         Sair da conta
       </Botao>
 
-      <p className="pb-4 text-center text-sm text-slate-500">Controle de Gastos · versão 0.1.0</p>
+      <p className="pb-4 text-center text-sm text-slate-500">Family Finance · versão 1.0.0</p>
 
       <Dialogo aberto={painel === 'perfil'} aoFechar={() => setPainel(null)} titulo="Meu perfil">
         <PainelPerfil aoConcluir={() => setPainel(null)} />
-      </Dialogo>
-
-      <Dialogo aberto={painel === 'familia'} aoFechar={() => setPainel(null)} titulo="Minha família">
-        <PainelFamilia membros={membros.data ?? []} />
       </Dialogo>
 
       <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo="Categorias">
@@ -196,82 +183,6 @@ function PainelPerfil({ aoConcluir }: { aoConcluir: () => void }): ReactElement 
       <Botao larguraTotal carregando={salvando} onClick={() => void salvar()}>
         Salvar
       </Botao>
-    </div>
-  );
-}
-
-function PainelFamilia({ membros }: { membros: Usuario[] }): ReactElement {
-  const { usuario } = useSessao();
-  const aviso = useAviso();
-  const [convite, setConvite] = useState<string | null>(null);
-  const [gerando, setGerando] = useState(false);
-  const ehAdmin = usuario?.papel === 'ADMIN';
-
-  async function gerarConvite(): Promise<void> {
-    setGerando(true);
-    try {
-      const novo = await api.household.criarConvite(7);
-      setConvite(novo.codigo);
-    } catch (falha) {
-      aviso.mostrar(traduzirErro(falha).mensagem);
-    } finally {
-      setGerando(false);
-    }
-  }
-
-  return (
-    <div className="space-y-5">
-      <ul className="divide-y divide-slate-100">
-        {membros.map((membro) => (
-          <li key={membro.id} className="flex items-center gap-3 py-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-marca-100 text-base font-bold text-marca-800">
-              {membro.nome.charAt(0).toUpperCase()}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-base font-medium text-slate-900">
-                {membro.nome}
-                {membro.id === usuario?.id && ' (você)'}
-              </span>
-              <span className="block truncate text-sm text-slate-600">
-                {ROTULO_PAPEL[membro.papel]} · {membro.email}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      {ehAdmin ? (
-        <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-          <p className="text-base text-slate-700">
-            Para incluir alguém, gere um código e mande para a pessoa. Ela cria a conta usando o
-            código e já entra na sua família.
-          </p>
-
-          {convite ? (
-            <div className="rounded-xl border-2 border-marca-200 bg-white p-4 text-center">
-              <p className="text-sm text-slate-600">Código do convite (vale por 7 dias)</p>
-              <p className="my-2 text-3xl font-bold tracking-[0.3em] text-marca-800">{convite}</p>
-              <Botao
-                variante="secundario"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(convite);
-                  aviso.mostrar('Código copiado.');
-                }}
-              >
-                Copiar código
-              </Botao>
-            </div>
-          ) : (
-            <Botao larguraTotal carregando={gerando} onClick={() => void gerarConvite()}>
-              Gerar código de convite
-            </Botao>
-          )}
-        </div>
-      ) : (
-        <p className="rounded-xl bg-slate-50 p-4 text-base text-slate-700">
-          Para incluir alguém na família, peça a quem administra.
-        </p>
-      )}
     </div>
   );
 }
