@@ -1,6 +1,8 @@
 import {
   FORMAS_PAGAMENTO,
+  MAXIMO_DE_PARCELAS,
   ROTULO_FORMA_PAGAMENTO,
+  calcularParcelas,
   centavosDoTextoMascarado,
   formatarBRL,
   formatarData,
@@ -40,11 +42,10 @@ function somarMesesISO(dataISO: string, meses: number): string {
   return formatarDataISO(alvo);
 }
 
-/** Divide o total em parcelas inteiras; a primeira leva a sobra dos centavos. */
-function dividirEmParcelas(totalCentavos: number, parcelas: number): number[] {
-  const base = Math.floor(totalCentavos / parcelas);
-  const sobra = totalCentavos - base * parcelas;
-  return Array.from({ length: parcelas }, (_, i) => (i === 0 ? base + sobra : base));
+/** `"2,5"` ou `"2.5"` -> `2.5`. Devolve 0 quando não há número. */
+function taxaDigitada(texto: string): number {
+  const numero = Number(texto.replace(',', '.'));
+  return Number.isFinite(numero) && numero > 0 ? numero : 0;
 }
 
 /**
@@ -78,6 +79,8 @@ export function NovoGasto(): ReactElement {
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('CARTAO');
   const [observacao, setObservacao] = useState('');
   const [parcelas, setParcelas] = useState(1);
+  const [temJuros, setTemJuros] = useState(false);
+  const [jurosDigitado, setJurosDigitado] = useState('');
   const [mostrarMais, setMostrarMais] = useState(false);
   const [erro, setErro] = useState<{ mensagem: string; campos: Record<string, string> }>({
     mensagem: '',
@@ -118,6 +121,14 @@ export function NovoGasto(): ReactElement {
     return convertida ? formatarData(convertida) : data;
   }, [data]);
 
+  const jurosMensal = temJuros ? taxaDigitada(jurosDigitado) : 0;
+  // Com juros o valor digitado é o preço à vista, e o parcelamento custa mais
+  // que ele — é o que vai cair na fatura.
+  const plano = useMemo(
+    () => calcularParcelas(centavos, parcelas, jurosMensal),
+    [centavos, parcelas, jurosMensal],
+  );
+
   const salvando = criar.isPending || atualizar.isPending;
 
   async function enviar(evento: FormEvent): Promise<void> {
@@ -148,16 +159,41 @@ export function NovoGasto(): ReactElement {
       } else if (parcelas > 1) {
         // Um lançamento por mês, com o número da parcela no nome, para o total
         // de cada mês já refletir só a parcela daquele mês.
-        const valores = dividirEmParcelas(centavos, parcelas);
+        const nota =
+          jurosMensal > 0
+            ? `Compra de ${formatarBRL(centavos)} em ${parcelas}x com juros de ${jurosDigitado.replace('.', ',')}% ao mês (total ${formatarBRL(plano.totalCentavos)}).`
+            : '';
+        // Uma chamada por parcela, em ordem. Num parcelamento longo isso são
+        // dezenas de idas ao servidor: se cair no meio, a pessoa precisa saber
+        // quantas já entraram para não lançar tudo de novo em duplicidade.
         for (let i = 0; i < parcelas; i += 1) {
-          await criar.mutateAsync({
-            ...dados,
-            descricao: `${dados.descricao} (${i + 1}/${parcelas})`,
-            valorCentavos: valores[i]!,
-            data: somarMesesISO(data, i),
-          });
+          try {
+            await criar.mutateAsync({
+              ...dados,
+              descricao: `${dados.descricao} (${i + 1}/${parcelas})`,
+              valorCentavos: plano.valores[i]!,
+              data: somarMesesISO(data, i),
+              // A nota explica por que a parcela não é o preço dividido — sem
+              // ela o valor na fatura parece errado meses depois.
+              observacao: [dados.observacao, nota].filter(Boolean).join(' ') || null,
+            });
+          } catch (falha) {
+            const detalhe = traduzirErro(falha);
+            setErro({
+              campos: detalhe.campos,
+              mensagem:
+                i === 0
+                  ? detalhe.mensagem
+                  : `${detalhe.mensagem} As ${i} primeiras parcelas já foram salvas — lance só as que faltam, da ${i + 1}ª em diante.`,
+            });
+            return;
+          }
         }
-        aviso.mostrar(`Compra de ${formatarBRL(centavos)} salva em ${parcelas} parcelas.`);
+        aviso.mostrar(
+          jurosMensal > 0
+            ? `Salvo em ${parcelas}x de ${formatarBRL(plano.valores[0]!)} — total ${formatarBRL(plano.totalCentavos)}.`
+            : `Compra de ${formatarBRL(centavos)} salva em ${parcelas} parcelas.`,
+        );
       } else {
         await criar.mutateAsync(dados);
         aviso.mostrar(`Gasto de ${formatarBRL(centavos)} salvo.`);
@@ -332,27 +368,95 @@ export function NovoGasto(): ReactElement {
       {/* 4b. Parcelamento — só ao lançar; editar mexe em uma parcela por vez. */}
       {!editando && (
         <section className="cartao p-5">
-          <label htmlFor="parcelas" className="rotulo">
-            Foi parcelado?
-          </label>
-          <select
-            id="parcelas"
-            value={parcelas}
-            onChange={(e) => setParcelas(Number(e.target.value))}
-            className="campo"
-          >
-            <option value={1}>Não, à vista</option>
-            {Array.from({ length: 23 }, (_, i) => i + 2).map((n) => (
-              <option key={n} value={n}>
-                Sim, em {n}x
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="parcelas" className="rotulo">
+                Foi parcelado?
+              </label>
+              <select
+                id="parcelas"
+                value={parcelas}
+                onChange={(e) => {
+                  const novo = Number(e.target.value);
+                  setParcelas(novo);
+                  // À vista não tem juros de parcelamento: limpa para o resumo
+                  // não continuar mostrando uma conta que não vale mais.
+                  if (novo === 1) setTemJuros(false);
+                }}
+                className="campo px-2"
+              >
+                <option value={1}>Não, à vista</option>
+                {Array.from({ length: MAXIMO_DE_PARCELAS - 1 }, (_, i) => i + 2).map((n) => (
+                  <option key={n} value={n}>
+                    Sim, em {n}x
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="tem-juros" className="rotulo">
+                Teve juros?
+              </label>
+              <select
+                id="tem-juros"
+                value={temJuros ? 'sim' : 'nao'}
+                disabled={parcelas === 1}
+                onChange={(e) => setTemJuros(e.target.value === 'sim')}
+                className="campo px-2 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="nao">Não, sem juros</option>
+                <option value="sim">Sim, teve juros</option>
+              </select>
+            </div>
+          </div>
+
+          {temJuros && parcelas > 1 && (
+            <div className="mt-3">
+              <label htmlFor="juros" className="rotulo">
+                Juros ao mês
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="juros"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={jurosDigitado}
+                  onChange={(e) => setJurosDigitado(e.target.value.replace(/[^\d.,]/g, ''))}
+                  placeholder="2,5"
+                  className="campo"
+                />
+                <span className="text-xl font-semibold text-slate-600">%</span>
+              </div>
+              <p className="mt-1.5 text-sm text-slate-600">
+                A taxa mensal que a loja ou o cartão informou. O valor lá em cima é o preço à
+                vista.
+              </p>
+            </div>
+          )}
+
           {parcelas > 1 && centavos > 0 && (
-            <p className="mt-2 text-sm text-slate-600">
-              O valor informado é o total da compra: serão {parcelas} lançamentos de{' '}
-              {formatarBRL(Math.floor(centavos / parcelas))}, um por mês a partir da data escolhida.
-            </p>
+            <div className="mt-3 rounded-xl bg-slate-50 p-4">
+              <p className="text-base font-semibold text-slate-900">
+                {parcelas}x de {formatarBRL(plano.valores[0] ?? 0)}
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                {jurosMensal > 0 ? (
+                  <>
+                    Total de {formatarBRL(plano.totalCentavos)}, sendo{' '}
+                    {formatarBRL(plano.jurosCentavos)} de juros. Cada parcela entra num mês, a
+                    partir da data escolhida.
+                  </>
+                ) : temJuros ? (
+                  'Digite a taxa acima para eu calcular as parcelas.'
+                ) : (
+                  <>
+                    O valor informado é o total da compra. Cada parcela entra num mês, a partir da
+                    data escolhida.
+                  </>
+                )}
+              </p>
+            </div>
           )}
         </section>
       )}

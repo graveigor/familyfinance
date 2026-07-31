@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calcularParcelas,
   centavosDoTextoMascarado,
   formatarBRL,
   formatarBRLCurto,
@@ -96,5 +97,65 @@ describe('percentual', () => {
   it('calcula sem dividir por zero', () => {
     expect(percentual(2500, 10000)).toBe(25);
     expect(percentual(1, 0)).toBe(0);
+  });
+});
+
+describe('calcularParcelas', () => {
+  it('sem juros, a soma das parcelas bate com a compra', () => {
+    const { valores, totalCentavos, jurosCentavos } = calcularParcelas(120000, 3);
+    expect(valores).toEqual([40000, 40000, 40000]);
+    expect(totalCentavos).toBe(120000);
+    expect(jurosCentavos).toBe(0);
+  });
+
+  it('sem juros, a sobra dos centavos vai na primeira parcela', () => {
+    const { valores } = calcularParcelas(10000, 3);
+    expect(valores).toEqual([3334, 3333, 3333]);
+    expect(somarCentavos(valores)).toBe(10000);
+  });
+
+  it('com juros, usa a tabela Price e devolve parcelas iguais', () => {
+    // R$ 1.200 em 12x a 2% a.m. = 12x de R$ 113,47. Conferido amortizando mês a
+    // mês: a esse valor o saldo zera no fim (sobram 2 centavos); um centavo a
+    // mais na parcela pagaria 11 centavos além da dívida.
+    const { valores, totalCentavos, jurosCentavos } = calcularParcelas(120000, 12, 2);
+    expect(valores).toHaveLength(12);
+    expect(new Set(valores).size).toBe(1);
+    expect(valores[0]).toBe(11347);
+    expect(totalCentavos).toBe(11347 * 12);
+    expect(jurosCentavos).toBe(11347 * 12 - 120000);
+  });
+
+  it('a parcela realmente quita a dívida na taxa informada', () => {
+    // Independe da fórmula: amortiza mês a mês e o saldo tem de zerar.
+    const { valores } = calcularParcelas(250000, 10, 3);
+    let saldo = 250000;
+    for (const parcela of valores) saldo = saldo * 1.03 - parcela;
+    expect(Math.abs(saldo)).toBeLessThan(valores[0]! / 100);
+  });
+
+  it('o total é sempre a soma do que vai cair na fatura', () => {
+    const { valores, totalCentavos } = calcularParcelas(99999, 7, 1.99);
+    expect(somarCentavos(valores)).toBe(totalCentavos);
+  });
+
+  it('juros zero, vazio ou negativo caem no caso sem juros', () => {
+    for (const taxa of [0, -1, Number.NaN]) {
+      expect(calcularParcelas(60000, 2, taxa).jurosCentavos).toBe(0);
+    }
+  });
+
+  it('uma parcela só devolve a compra inteira, mesmo com juros informado', () => {
+    expect(calcularParcelas(50000, 1, 5)).toEqual({
+      valores: [50000],
+      totalCentavos: 50000,
+      jurosCentavos: 0,
+    });
+  });
+
+  it('aguenta o parcelamento mais longo aceito', () => {
+    const { valores, jurosCentavos } = calcularParcelas(500000, 64, 1.5);
+    expect(valores).toHaveLength(64);
+    expect(jurosCentavos).toBeGreaterThan(0);
   });
 });

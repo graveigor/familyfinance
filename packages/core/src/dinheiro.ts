@@ -157,6 +157,55 @@ export function somarCentavos(valores: readonly number[]): number {
   return valores.reduce((total, valor) => total + valor, 0);
 }
 
+/** Teto de parcelas aceito no app — cobre os planos mais longos de loja. */
+export const MAXIMO_DE_PARCELAS = 64;
+
+export interface Parcelamento {
+  /** Valor de cada parcela, em centavos, na ordem em que serão lançadas. */
+  valores: number[];
+  /** Quanto a compra custa no fim, somando as parcelas. */
+  totalCentavos: number;
+  /** Quanto disso é juros. Zero numa compra sem juros. */
+  jurosCentavos: number;
+}
+
+/**
+ * Divide uma compra em parcelas.
+ *
+ * Sem juros, o total é repartido exatamente e a sobra dos centavos vai na
+ * primeira parcela — assim a soma bate com o valor da compra até o último
+ * centavo.
+ *
+ * Com juros, `jurosMensal` é a taxa ao mês em porcentagem (2 = 2% a.m.), que é
+ * como a loja e o cartão anunciam. A parcela sai pela tabela Price:
+ *
+ *     parcela = valor x i / (1 - (1 + i)^-n)
+ *
+ * Todas as parcelas ficam iguais e arredondadas ao centavo, que é exatamente o
+ * que aparece na fatura — por isso o total devolvido é `parcela x n`, e não o
+ * valor teórico com casas fracionárias.
+ */
+export function calcularParcelas(
+  valorCentavos: number,
+  parcelas: number,
+  jurosMensal = 0,
+): Parcelamento {
+  const n = Math.max(1, Math.trunc(parcelas));
+
+  if (!(jurosMensal > 0) || n === 1) {
+    const base = Math.floor(valorCentavos / n);
+    const sobra = valorCentavos - base * n;
+    const valores = Array.from({ length: n }, (_, i) => (i === 0 ? base + sobra : base));
+    return { valores, totalCentavos: valorCentavos, jurosCentavos: 0 };
+  }
+
+  const i = jurosMensal / 100;
+  const parcela = Math.round((valorCentavos * i) / (1 - Math.pow(1 + i, -n)));
+  const valores = Array.from({ length: n }, () => parcela);
+  const totalCentavos = parcela * n;
+  return { valores, totalCentavos, jurosCentavos: totalCentavos - valorCentavos };
+}
+
 /**
  * Percentual inteiro de `parte` sobre `total`, para as barras do Resumo.
  * Devolve 0 quando o total é zero, evitando divisão por zero na interface.
