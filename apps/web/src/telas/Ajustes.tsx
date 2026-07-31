@@ -8,6 +8,7 @@ import { PainelCartoes } from '../componentes/PainelCartoes';
 import { PainelContasFixas } from '../componentes/PainelContasFixas';
 import { Confirmar, Dialogo } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
+import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
 import {
   chaves,
@@ -18,7 +19,41 @@ import {
 } from '../consultas';
 import { useSessao } from '../sessao';
 
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'ajustes-categorias',
+    titulo: 'Categorias',
+    texto:
+      'Crie e apague categorias do jeito da sua casa. Apagar uma categoria nunca apaga gasto — os lançamentos só ficam sem etiqueta.',
+  },
+  {
+    alvo: 'ajustes-cartoes',
+    titulo: 'Seus cartões',
+    texto:
+      'Cadastre os cartões pelo apelido que você usa — "Itaú", "Bradesco" — e marque se é crédito ou débito. Depois dá para lançar o gasto no cartão certo e filtrar por ele.',
+  },
+  {
+    alvo: 'ajustes-contas-fixas',
+    titulo: 'Contas que se repetem',
+    texto:
+      'Aluguel, internet, mensalidade: cadastre uma vez e o lançamento entra sozinho todo mês, na data escolhida.',
+  },
+  {
+    alvo: 'ajustes-importar',
+    titulo: 'Trazer de uma planilha',
+    texto:
+      'Já tem os gastos no Excel? Envie o arquivo e o app importa, deixando você conferir antes de confirmar.',
+  },
+  {
+    alvo: 'ajustes-exportar',
+    titulo: 'Levar seus dados embora',
+    texto:
+      'Baixe tudo em Excel quando quiser. Seus dados são seus — nada aqui prende você ao aplicativo.',
+  },
+];
+
 export function Ajustes(): ReactElement {
+  useTutorialDaPagina('ajustes', PASSOS);
   const { usuario, sair } = useSessao();
   const navegar = useNavigate();
   const categorias = useCategorias();
@@ -77,7 +112,7 @@ export function Ajustes(): ReactElement {
 
       <ul className="cartao divide-y divide-slate-100 overflow-hidden">
         {secoes.map((secao) => (
-          <li key={secao.chave}>
+          <li key={secao.chave} data-tutorial={`ajustes-${secao.chave}`}>
             <button
               type="button"
               onClick={() =>

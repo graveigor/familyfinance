@@ -79,8 +79,8 @@ export function Layout(): ReactElement {
         </main>
       </div>
 
-      {/* `(?)` sempre no mesmo lugar: reabre o tutorial da tela aberta. */}
-      <BotaoDeAjuda />
+      {/* `(?)` na mesma coluna do "+": acima dele quando o "+" está na tela. */}
+      <BotaoDeAjuda acimaDoBotaoAdicionar={mostrarBotaoAdicionar} />
 
       {/* Celular: botão flutuante e barra inferior */}
       {mostrarBotaoAdicionar && (

@@ -11,10 +11,44 @@ import {
 import { useState, type ReactElement } from 'react';
 import { GraficoDeEvolucao } from '../componentes/GraficoDeEvolucao';
 import { Icone } from '../componentes/Icone';
+import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { CaixaDeErro, Carregando, Vazio, traduzirErro } from '../componentes/ui';
 import { useEvolucao, useResumoMensal } from '../consultas';
 
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'resumo-mes',
+    titulo: 'Escolha o mês',
+    texto:
+      'As setas andam para trás e para frente no calendário. Tudo nesta tela fala do mês que estiver aqui.',
+  },
+  {
+    alvo: 'resumo-total',
+    titulo: 'Quanto foi no mês',
+    texto:
+      'O total e a comparação com o mês passado. Só entra o que é seu e o de quem escolheu compartilhar com o grupo.',
+  },
+  {
+    alvo: 'resumo-categorias',
+    titulo: 'Para onde foi o dinheiro',
+    texto:
+      'A rosca e a lista mostram o peso de cada categoria. É onde costuma aparecer a surpresa do mês.',
+  },
+  {
+    alvo: 'resumo-pessoas',
+    titulo: 'Quem gastou quanto',
+    texto: 'A divisão por pessoa, para quem divide as contas da casa.',
+  },
+  {
+    alvo: 'resumo-evolucao',
+    titulo: 'Os últimos seis meses',
+    texto:
+      'Responde "estou gastando mais que antes?" sem precisar abrir mês por mês.',
+  },
+];
+
 export function Resumo(): ReactElement {
+  useTutorialDaPagina('resumo', PASSOS);
   const agora = hoje();
   const [ano, setAno] = useState(agora.getUTCFullYear());
   const [mes, setMes] = useState(agora.getUTCMonth() + 1);
@@ -39,7 +73,7 @@ export function Resumo(): ReactElement {
     <div className="space-y-5">
       <h1 className="text-xl font-bold text-slate-900">Resumo</h1>
 
-      <div className="cartao flex items-center justify-between px-2 py-2">
+      <div className="cartao flex items-center justify-between px-2 py-2" data-tutorial="resumo-mes">
         <button
           type="button"
           onClick={() => mudarMes(-1)}
@@ -88,7 +122,7 @@ function SecaoDeEvolucao(): ReactElement {
   const evolucao = useEvolucao(6);
 
   return (
-    <section className="cartao p-5" aria-labelledby="titulo-evolucao">
+    <section className="cartao p-5" aria-labelledby="titulo-evolucao" data-tutorial="resumo-evolucao">
       <h2 id="titulo-evolucao" className="mb-4 text-base font-semibold text-slate-800">
         Últimos 6 meses
       </h2>
@@ -108,7 +142,7 @@ function SecaoDeEvolucao(): ReactElement {
 function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
   return (
     <>
-      <section className="cartao px-6 py-6 text-center">
+      <section className="cartao px-6 py-6 text-center" data-tutorial="resumo-total">
         <p className="text-base text-slate-600">Total do mês</p>
         <p className="mt-1 text-4xl font-bold tabular-nums text-slate-900">
           {formatarBRL(resumo.totalCentavos)}
@@ -121,7 +155,7 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
         </p>
       </section>
 
-      <section className="cartao p-5" aria-labelledby="titulo-categorias">
+      <section className="cartao p-5" aria-labelledby="titulo-categorias" data-tutorial="resumo-categorias">
         <h2 id="titulo-categorias" className="mb-4 text-base font-semibold text-slate-800">
           Por categoria
         </h2>
@@ -155,7 +189,7 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
         </div>
       </section>
 
-      <section className="cartao p-5" aria-labelledby="titulo-pessoas">
+      <section className="cartao p-5" aria-labelledby="titulo-pessoas" data-tutorial="resumo-pessoas">
         <h2 id="titulo-pessoas" className="mb-4 text-base font-semibold text-slate-800">
           Por pessoa
         </h2>

@@ -69,10 +69,12 @@ export function ProvedorDeTutorial({ children }: { children: ReactNode }): React
     setPagina(novaPagina);
     setPassos(novosPassos);
     // Espera a tela pintar antes de medir os elementos.
-    setIndice(jaViu(novaPagina) ? null : 0);
+    setIndice(jaViu(novaPagina) ? null : primeiroPassoVisivel(novosPassos, 0));
   }, []);
 
-  const reabrir = useCallback(() => setIndice(0), []);
+  // Se nenhum passo tem alvo na tela, ainda assim abre o primeiro: o botão de
+  // ajuda precisa responder a um toque, nem que seja com o texto centralizado.
+  const reabrir = useCallback(() => setIndice(primeiroPassoVisivel(passos, 0) ?? 0), [passos]);
 
   const fechar = useCallback(() => {
     if (pagina) marcarComoVisto(pagina);
@@ -91,7 +93,13 @@ export function ProvedorDeTutorial({ children }: { children: ReactNode }): React
         <Passo
           passos={passos}
           indice={indice}
-          aoAvancar={() => (indice + 1 < passos.length ? setIndice(indice + 1) : fechar())}
+          aoAvancar={() => {
+            // Pula o que não está na tela: numa página sem gastos, por exemplo,
+            // o passo do total não tem o que destacar.
+            const proximo = primeiroPassoVisivel(passos, indice + 1);
+            if (proximo === null) fechar();
+            else setIndice(proximo);
+          }}
           aoFechar={fechar}
         />
       )}
@@ -115,6 +123,17 @@ interface Retangulo {
  * tamanho de tela — o "Adicionar gasto" da barra lateral e o "+" flutuante do
  * celular. O escondido pelo CSS mede zero e ficaria no canto da tela.
  */
+/**
+ * Índice do primeiro passo, a partir de `inicio`, cujo alvo existe na tela.
+ * `null` quando não há nenhum — página vazia, seção que ainda não carregou.
+ */
+function primeiroPassoVisivel(passos: PassoDeTutorial[], inicio: number): number | null {
+  for (let i = inicio; i < passos.length; i += 1) {
+    if (acharAlvo(passos[i]!.alvo)) return i;
+  }
+  return null;
+}
+
 function acharAlvo(marca: string): HTMLElement | null {
   const candidatos = document.querySelectorAll<HTMLElement>(`[data-tutorial="${marca}"]`);
   for (const elemento of candidatos) {
@@ -314,13 +333,27 @@ export function useTutorial(): ContextoTutorial {
 /**
  * Botão `(?)` fixo, que reabre o tutorial da página aberta.
  *
- * No celular fica embaixo à esquerda, na mesma altura do "+" que fica à
- * direita: longe do topo, onde cobria o "Filtrar", e ao alcance do polegar.
- * No computador volta para o topo direito, que ali não disputa espaço.
+ * No celular fica na coluna do "+", empilhado logo acima dele quando o "+"
+ * existe — os dois atalhos no mesmo canto, ao alcance do polegar. Onde não há
+ * "+", ocupa o lugar dele. No computador volta para o topo direito.
+ *
+ * As posições vão em classe, e não em `style`, para o `md:` conseguir
+ * sobrescrever: estilo inline venceria a media query.
  */
-export function BotaoDeAjuda(): ReactElement | null {
+export function BotaoDeAjuda({
+  acimaDoBotaoAdicionar = false,
+}: {
+  acimaDoBotaoAdicionar?: boolean;
+}): ReactElement | null {
   const { reabrir, temTutorial } = useTutorial();
   if (!temTutorial) return null;
+
+  // O "+" tem 64px e começa a 6rem do fim; 11.5rem deixa o (?) logo acima dele.
+  // O recuo à direita é maior porque o (?) é menor: assim os dois ficam com o
+  // mesmo centro na vertical.
+  const posicao = acimaDoBotaoAdicionar
+    ? 'bottom-[calc(11.5rem_+_env(safe-area-inset-bottom))] right-[1.875rem]'
+    : 'bottom-[calc(6rem_+_env(safe-area-inset-bottom))] right-[1.875rem]';
 
   return (
     <button
@@ -328,11 +361,9 @@ export function BotaoDeAjuda(): ReactElement | null {
       onClick={reabrir}
       aria-label="Ajuda desta tela"
       title="Ajuda desta tela"
-      // A altura vai na classe, e não em `style`, para o `md:` conseguir
-      // sobrescrever: estilo inline venceria a media query.
-      className="fixed bottom-[calc(6rem_+_env(safe-area-inset-bottom))] left-5 z-40 flex h-11 w-11
-        items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold
-        text-marca-700 shadow-sm hover:bg-marca-50 md:bottom-auto md:left-auto md:right-6 md:top-6"
+      className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full border
+        border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm hover:bg-marca-50
+        md:bottom-auto md:right-6 md:top-6 ${posicao}`}
     >
       ?
     </button>

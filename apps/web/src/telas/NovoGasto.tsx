@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
 import { EscolherCartao } from '../componentes/EscolherCartao';
 import { Icone } from '../componentes/Icone';
+import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
 import {
   useAtualizarGasto,
@@ -48,11 +49,45 @@ function taxaDigitada(texto: string): number {
   return Number.isFinite(numero) && numero > 0 ? numero : 0;
 }
 
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'gasto-valor',
+    titulo: 'Quanto foi',
+    texto:
+      'Digite só os números: o app põe a vírgula sozinho. É o único campo que sempre precisa ser preenchido, junto com o lugar.',
+  },
+  {
+    alvo: 'gasto-onde',
+    titulo: 'Onde foi o gasto',
+    texto:
+      'O nome do lugar. Conforme você digita, aparecem sugestões do que já lançou antes — toque para reaproveitar.',
+  },
+  {
+    alvo: 'gasto-categoria',
+    titulo: 'Categoria, se quiser',
+    texto:
+      'Serve para o Resumo separar os gastos por tipo. Pode deixar em branco e escolher depois.',
+  },
+  {
+    alvo: 'gasto-cartao',
+    titulo: 'Em qual cartão caiu',
+    texto:
+      'Escolha o cartão para saber depois quanto foi em cada um. Se ainda não cadastrou nenhum, dá para criar aqui mesmo.',
+  },
+  {
+    alvo: 'gasto-parcelas',
+    titulo: 'Compra parcelada',
+    texto:
+      'Diga em quantas vezes foi e, se teve juros, a taxa ao mês. O app cria um lançamento por mês com o valor certo, então a conta de cada mês fica correta.',
+  },
+];
+
 /**
  * Formulário curto, em uma tela só, na ordem em que a pessoa pensa:
  * quanto, onde, do quê, quando, quem. Só "quanto" e "onde" são obrigatórios.
  */
 export function NovoGasto(): ReactElement {
+  useTutorialDaPagina('novo-gasto', PASSOS);
   const { id } = useParams<{ id: string }>();
   const editando = Boolean(id);
   const navegar = useNavigate();
@@ -225,7 +260,7 @@ export function NovoGasto(): ReactElement {
       <CaixaDeErro mensagem={erro.mensagem || null} />
 
       {/* 1. Valor */}
-      <section className="cartao p-5">
+      <section className="cartao p-5" data-tutorial="gasto-valor">
         <label htmlFor="valor" className="rotulo">
           Quanto foi?
         </label>
@@ -255,7 +290,7 @@ export function NovoGasto(): ReactElement {
       </section>
 
       {/* 2. Onde foi */}
-      <section className="cartao relative p-5">
+      <section className="cartao relative p-5" data-tutorial="gasto-onde">
         <Campo
           rotulo="Onde foi?"
           value={descricao}
@@ -293,7 +328,7 @@ export function NovoGasto(): ReactElement {
       </section>
 
       {/* 3. Categoria */}
-      <section className="cartao p-5">
+      <section className="cartao p-5" data-tutorial="gasto-categoria">
         <p className="rotulo">Categoria (opcional)</p>
         {categorias.isPending ? (
           <Carregando texto="Carregando categorias..." />
@@ -367,7 +402,7 @@ export function NovoGasto(): ReactElement {
 
       {/* 4b. Parcelamento — só ao lançar; editar mexe em uma parcela por vez. */}
       {!editando && (
-        <section className="cartao p-5">
+        <section className="cartao p-5" data-tutorial="gasto-parcelas">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="parcelas" className="rotulo">
@@ -550,20 +585,43 @@ export function NovoGasto(): ReactElement {
   );
 }
 
-/** O cartão só ganha um cartão-seção quando existe cartão para escolher. */
+/**
+ * Em qual cartão caiu o gasto. A seção aparece mesmo sem nenhum cartão
+ * cadastrado: escondê-la fazia o recurso não existir para quem nunca abriu os
+ * Ajustes — daí o atalho para cadastrar o primeiro.
+ */
 function SecaoCartao({
   valor,
   aoMudar,
 }: {
   valor: string;
   aoMudar: (id: string) => void;
-}): ReactElement | null {
+}): ReactElement {
   const cartoes = useCartoes();
-  if ((cartoes.data?.length ?? 0) === 0) return null;
+  const navegar = useNavigate();
+  const vazio = (cartoes.data?.length ?? 0) === 0;
 
   return (
-    <section className="cartao p-5">
-      <EscolherCartao id="cartao-do-gasto" valor={valor} aoMudar={aoMudar} />
+    <section className="cartao p-5" data-tutorial="gasto-cartao">
+      {vazio ? (
+        <>
+          <p className="rotulo">Cartão</p>
+          <p className="text-base text-slate-600">
+            Cadastre seus cartões para saber quanto foi em cada um — "Itaú", "Bradesco".
+          </p>
+          <Botao
+            variante="secundario"
+            larguraTotal
+            icone="cartao"
+            className="mt-3"
+            onClick={() => navegar('/ajustes')}
+          >
+            Cadastrar um cartão
+          </Botao>
+        </>
+      ) : (
+        <EscolherCartao id="cartao-do-gasto" valor={valor} aoMudar={aoMudar} />
+      )}
     </section>
   );
 }

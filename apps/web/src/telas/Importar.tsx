@@ -18,8 +18,36 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Dialogo } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
+import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { Botao, CaixaDeErro, Campo, traduzirErro, useAviso } from '../componentes/ui';
 import { chaves, useCategorias, useMembros } from '../consultas';
+
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'importar-etapas',
+    titulo: 'Três passos',
+    texto:
+      'Enviar o arquivo, dizer o que é cada coluna e conferir antes de gravar. Nada entra nos seus gastos até o último passo.',
+  },
+  {
+    alvo: 'importar-arquivo',
+    titulo: 'A planilha',
+    texto:
+      'Vale Excel (.xlsx) ou .csv. Pode arrastar o arquivo para cá ou tocar para procurar no celular.',
+  },
+  {
+    alvo: 'importar-colunas',
+    titulo: 'O que é cada coluna',
+    texto:
+      'O app tenta adivinhar sozinho olhando os títulos. Onde ele errar, corrija aqui — só data, valor e descrição são obrigatórios.',
+  },
+  {
+    alvo: 'importar-conferencia',
+    titulo: 'Confira antes de gravar',
+    texto:
+      'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.',
+  },
+];
 
 type Etapa = 1 | 2 | 3;
 
@@ -37,6 +65,7 @@ const CORES_STATUS: Record<StatusLinha, { fundo: string; texto: string; rotulo: 
   };
 
 export function Importar(): ReactElement {
+  useTutorialDaPagina('importar', PASSOS);
   const navegar = useNavigate();
   const aviso = useAviso();
   const queryClient = useQueryClient();
@@ -146,22 +175,31 @@ export function Importar(): ReactElement {
         <h1 className="text-xl font-bold text-slate-900">Importar planilha</h1>
       </header>
 
-      <BarraDeEtapas etapa={etapa} />
+      <div data-tutorial="importar-etapas">
+        <BarraDeEtapas etapa={etapa} />
+      </div>
 
       <CaixaDeErro mensagem={erro} />
 
-      {etapa === 1 && <EtapaArquivo ocupado={ocupado} aoEscolher={(a) => void enviarArquivo(a)} />}
+      {etapa === 1 && (
+        <div data-tutorial="importar-arquivo">
+          <EtapaArquivo ocupado={ocupado} aoEscolher={(a) => void enviarArquivo(a)} />
+        </div>
+      )}
 
       {etapa === 2 && previa && (
+        <div data-tutorial="importar-colunas">
         <EtapaColunas
           previa={previa}
           ocupado={ocupado}
           aoRemapear={(m, mes) => void remapear(m, mes)}
           aoAvancar={() => setEtapa(3)}
         />
+        </div>
       )}
 
       {etapa === 3 && previa && (
+        <div data-tutorial="importar-conferencia">
         <EtapaConferencia
           linhas={linhas}
           previa={previa}
@@ -182,6 +220,7 @@ export function Importar(): ReactElement {
           aoEditar={setEmEdicao}
           aoVoltar={() => setEtapa(2)}
         />
+        </div>
       )}
 
       {etapa === 3 && (
