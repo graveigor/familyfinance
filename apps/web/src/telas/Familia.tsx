@@ -58,9 +58,43 @@ export function Familia(): ReactElement {
   const [alternando, setAlternando] = useState(false);
   const [painel, setPainel] = useState<'novo-grupo' | 'entrar-grupo' | 'nova-meta' | null>(null);
   const [metaAExcluir, setMetaAExcluir] = useState<Meta | null>(null);
+  const [membroARemover, setMembroARemover] = useState<Usuario | null>(null);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const [saindo, setSaindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const compartilhando = usuario?.compartilhaGastos ?? false;
+  const souModerador = usuario?.papel === 'ADMIN';
+  const grupoTemMaisGente = (membros.data?.length ?? 0) > 1;
+
+  async function removerMembro(): Promise<void> {
+    if (!membroARemover) return;
+    try {
+      await api.household.removerMembro(membroARemover.id);
+      await queryClient.invalidateQueries();
+      aviso.mostrar(`${membroARemover.nome} saiu do grupo. Os lançamentos foram junto.`);
+    } catch (falha) {
+      setErro(traduzirErro(falha).mensagem);
+    } finally {
+      setMembroARemover(null);
+    }
+  }
+
+  async function sairDoGrupo(): Promise<void> {
+    setSaindo(true);
+    setErro(null);
+    try {
+      const atualizado = await api.household.sair();
+      atualizarUsuario(atualizado);
+      await queryClient.invalidateQueries();
+      aviso.mostrar('Você saiu do grupo. Seus lançamentos vieram com você.');
+    } catch (falha) {
+      setErro(traduzirErro(falha).mensagem);
+    } finally {
+      setSaindo(false);
+      setConfirmandoSaida(false);
+    }
+  }
 
   async function alternarCompartilhamento(): Promise<void> {
     setAlternando(true);
@@ -186,6 +220,12 @@ export function Familia(): ReactElement {
           <Botao variante="secundario" onClick={() => setPainel('novo-grupo')}>
             Criar novo grupo
           </Botao>
+          {/* Sair não depende de quem modera — e não faz sentido sozinho. */}
+          {grupoTemMaisGente && (
+            <Botao variante="secundario" icone="sair" onClick={() => setConfirmandoSaida(true)}>
+              Sair do grupo
+            </Botao>
+          )}
         </div>
       </section>
 
@@ -207,6 +247,7 @@ export function Familia(): ReactElement {
                     {membro.id === usuario?.id && ' (você)'}
                   </span>
                   <span className="block truncate text-sm text-slate-600">
+                    {membro.papel === 'ADMIN' ? 'Modera o grupo · ' : ''}
                     {membro.compartilhaGastos
                       ? 'Compartilha os gastos com o grupo'
                       : 'Gastos privados'}
@@ -217,6 +258,16 @@ export function Familia(): ReactElement {
                     <Icone nome="cadeado" tamanho={20} />
                     <span className="sr-only">Gastos privados</span>
                   </span>
+                )}
+                {souModerador && membro.id !== usuario?.id && (
+                  <button
+                    type="button"
+                    onClick={() => setMembroARemover(membro)}
+                    aria-label={`Remover ${membro.nome} do grupo`}
+                    className="flex h-toque w-toque shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <Icone nome="sair" tamanho={20} />
+                  </button>
                 )}
               </li>
             ))}
@@ -288,6 +339,25 @@ export function Familia(): ReactElement {
         aberto={painel === 'nova-meta'}
         aoFechar={() => setPainel(null)}
         aoConcluir={() => setPainel(null)}
+      />
+
+      <Confirmar
+        aberto={membroARemover !== null}
+        titulo={`Tirar ${membroARemover?.nome ?? ''} do grupo?`}
+        descricao={`${membroARemover?.nome ?? 'A pessoa'} passa a ter um grupo só dela e leva os próprios lançamentos junto. Nada é apagado, e o que é seu continua com você.`}
+        rotuloConfirmar="Tirar do grupo"
+        aoCancelar={() => setMembroARemover(null)}
+        aoConfirmar={() => void removerMembro()}
+      />
+
+      <Confirmar
+        aberto={confirmandoSaida}
+        titulo="Sair deste grupo?"
+        descricao="Você passa a ter um grupo só seu, levando os seus lançamentos. O que é das outras pessoas fica com elas. Para voltar, é só usar um código do grupo."
+        rotuloConfirmar="Sair do grupo"
+        carregando={saindo}
+        aoCancelar={() => setConfirmandoSaida(false)}
+        aoConfirmar={() => void sairDoGrupo()}
       />
 
       <Confirmar

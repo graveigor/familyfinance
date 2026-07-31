@@ -56,7 +56,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
           });
         }
 
-        return tx.user.create({
+        const novo = await tx.user.create({
           data: {
             nome: dados.nome,
             email: dados.email,
@@ -65,6 +65,9 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
             householdId: convite.householdId,
           },
         });
+        // Quem convidou passa a moderar o grupo: foi quem trouxe gente para ele.
+        await tx.user.update({ where: { id: convite.criadoPorId }, data: { papel: 'ADMIN' } });
+        return novo;
       }
 
       const household = await tx.household.create({

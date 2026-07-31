@@ -314,8 +314,9 @@ export function useTutorial(): ContextoTutorial {
 /**
  * Botão `(?)` fixo, que reabre o tutorial da página aberta.
  *
- * No celular ele fica mais para o centro: no canto direito cobria o "Filtrar"
- * da página de gastos.
+ * No celular fica embaixo à esquerda, na mesma altura do "+" que fica à
+ * direita: longe do topo, onde cobria o "Filtrar", e ao alcance do polegar.
+ * No computador volta para o topo direito, que ali não disputa espaço.
  */
 export function BotaoDeAjuda(): ReactElement | null {
   const { reabrir, temTutorial } = useTutorial();
@@ -327,10 +328,11 @@ export function BotaoDeAjuda(): ReactElement | null {
       onClick={reabrir}
       aria-label="Ajuda desta tela"
       title="Ajuda desta tela"
-      className="fixed right-36 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-full
-        border border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm
-        hover:bg-marca-50 md:right-6 md:top-6"
-      style={{ top: 'calc(1rem + env(safe-area-inset-top))' }}
+      // A altura vai na classe, e não em `style`, para o `md:` conseguir
+      // sobrescrever: estilo inline venceria a media query.
+      className="fixed bottom-[calc(6rem_+_env(safe-area-inset-bottom))] left-5 z-40 flex h-11 w-11
+        items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-bold
+        text-marca-700 shadow-sm hover:bg-marca-50 md:bottom-auto md:left-auto md:right-6 md:top-6"
     >
       ?
     </button>

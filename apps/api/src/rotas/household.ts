@@ -155,6 +155,37 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
   );
 
   /**
+   * Tirar alguém do grupo. Quem sai recai num grupo só seu, levando os próprios
+   * lançamentos: remover alguém nunca apaga o dinheiro dessa pessoa.
+   */
+  app.delete('/membros/:id', { preHandler: [app.exigirAdmin] }, async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+    const { id } = paramsSchema.parse(request.params);
+
+    if (id === usuario.id) {
+      throw erroValidacao('Para sair do grupo, use "Sair do grupo" — assim ninguém fica sem dono.');
+    }
+
+    const membro = await prisma.user.findFirst({
+      where: { id, householdId: usuario.householdId },
+      select: { id: true, nome: true },
+    });
+    if (!membro) throw erroNaoEncontrado('Essa pessoa não está no seu grupo.');
+
+    await prisma.$transaction(async (tx) => {
+      const novo = await tx.household.create({
+        data: { nome: `Família de ${membro.nome.split(' ')[0] ?? membro.nome}` },
+      });
+      await tx.categoria.createMany({
+        data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: novo.id })),
+      });
+      await moverParaGrupo(tx, membro.id, usuario.householdId, novo.id, 'ADMIN');
+    });
+
+    return reply.status(200).send({ removido: membro.nome });
+  });
+
+  /**
    * Qualquer pessoa do grupo pode convidar — os lançamentos são privados por
    * pessoa, então convidar alguém não expõe o dinheiro de ninguém.
    */
@@ -221,28 +252,76 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
 
     // O código vale para várias pessoas até expirar: a família inteira pode
     // usar o mesmo código recebido no grupo do WhatsApp.
-    const convite = await prisma.convite.findUnique({ where: { codigo } });
+    const convite = await prisma.convite.findUnique({
+      where: { codigo },
+      include: {
+        household: { select: { nome: true } },
+        criadoPor: { select: { id: true, nome: true } },
+      },
+    });
     if (!convite || convite.expiraEm < new Date()) {
       throw erroValidacao('Esse código não é mais válido. Peça um novo para quem te convidou.', {
         codigo: 'Código inválido ou expirado.',
       });
     }
     if (convite.householdId === usuario.householdId) {
-      const grupo = await prisma.household.findUnique({
-        where: { id: convite.householdId },
-        select: { nome: true },
-      });
+      // Dizer QUEM gerou o código resolve a confusão mais comum: dois códigos
+      // do mesmo grupo, ou um código que a própria pessoa gerou antes. Sem o
+      // nome, a mensagem parece que o app está errado.
+      const quem =
+        convite.criadoPorId === usuario.id ? 'você mesmo' : convite.criadoPor.nome;
       throw erroConflito(
-        `Esse código é do grupo "${grupo?.nome ?? 'seu grupo'}", que já é o seu grupo atual.`,
+        `Esse código foi gerado por ${quem}, aqui no grupo "${convite.household.nome}" — que já é o seu. Para entrar em outra família, peça o código a alguém de lá.`,
       );
     }
 
     const atualizado = await prisma.$transaction(async (tx) => {
       await moverParaGrupo(tx, usuario.id, usuario.householdId, convite.householdId, 'MEMBRO');
+      // Quem convidou passa a moderar o grupo: foi quem trouxe gente para ele.
+      await tx.user.update({ where: { id: convite.criadoPorId }, data: { papel: 'ADMIN' } });
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
     return serializarUsuario(atualizado);
+  });
+
+  /**
+   * Sair do grupo por conta própria, sem depender de quem administra. A pessoa
+   * recai num grupo só dela, levando os próprios lançamentos — nada é apagado.
+   */
+  app.post('/sair', async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+
+    const outros = await prisma.user.findMany({
+      where: { householdId: usuario.householdId, id: { not: usuario.id } },
+      orderBy: { criadoEm: 'asc' },
+      select: { id: true, papel: true },
+    });
+    if (outros.length === 0) {
+      throw erroConflito('Você já é a única pessoa do grupo — não há de quem se separar.');
+    }
+
+    const eu = await prisma.user.findUniqueOrThrow({
+      where: { id: usuario.id },
+      select: { nome: true },
+    });
+
+    const atualizado = await prisma.$transaction(async (tx) => {
+      // O grupo não pode ficar sem ninguém para administrar.
+      if (usuario.papel === 'ADMIN' && !outros.some((o) => o.papel === 'ADMIN')) {
+        await tx.user.update({ where: { id: outros[0]!.id }, data: { papel: 'ADMIN' } });
+      }
+      const novo = await tx.household.create({
+        data: { nome: `Família de ${eu.nome.split(' ')[0] ?? eu.nome}` },
+      });
+      await tx.categoria.createMany({
+        data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: novo.id })),
+      });
+      await moverParaGrupo(tx, usuario.id, usuario.householdId, novo.id, 'ADMIN');
+      return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
+    });
+
+    return reply.status(200).send(serializarUsuario(atualizado));
   });
 
   /** Criar um grupo novo. Quem cria administra o grupo que criou. */

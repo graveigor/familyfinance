@@ -159,6 +159,10 @@ export interface Cliente {
     renomear(nome: string): Promise<Household>;
     membros(): Promise<Usuario[]>;
     trocarPapel(id: string, papel: Papel): Promise<Usuario>;
+    /** Tira alguém do grupo (só quem modera). A pessoa vai para um grupo só dela. */
+    removerMembro(id: string): Promise<{ removido: string }>;
+    /** Sai do grupo por conta própria, levando os próprios lançamentos. */
+    sair(): Promise<Usuario>;
     criarConvite(validadeDias?: number): Promise<Convite>;
     entrar(codigo: string): Promise<Usuario>;
     /** Sai do grupo atual e cria um novo, levando os próprios lançamentos. */
@@ -397,6 +401,8 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
       },
       trocarPapel: (id, papel) =>
         requisitar('PATCH', `/api/v1/household/membros/${id}`, { corpo: { papel } }),
+      removerMembro: (id) => requisitar('DELETE', `/api/v1/household/membros/${id}`),
+      sair: () => requisitar('POST', '/api/v1/household/sair'),
       criarConvite: (validadeDias = 7) =>
         requisitar('POST', '/api/v1/household/convites', { corpo: { validadeDias } }),
       entrar: (codigo) => requisitar('POST', '/api/v1/household/entrar', { corpo: { codigo } }),
