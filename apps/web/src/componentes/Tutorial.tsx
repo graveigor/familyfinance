@@ -104,6 +104,24 @@ interface Retangulo {
   left: number;
   width: number;
   height: number;
+  /** Cantos copiados do elemento: o furo acompanha um botão redondo. */
+  raio: string;
+}
+
+/**
+ * O primeiro alvo *visível* com aquele `data-tutorial`.
+ *
+ * Existe porque o mesmo passo aponta para dois elementos que se revezam por
+ * tamanho de tela — o "Adicionar gasto" da barra lateral e o "+" flutuante do
+ * celular. O escondido pelo CSS mede zero e ficaria no canto da tela.
+ */
+function acharAlvo(marca: string): HTMLElement | null {
+  const candidatos = document.querySelectorAll<HTMLElement>(`[data-tutorial="${marca}"]`);
+  for (const elemento of candidatos) {
+    const caixa = elemento.getBoundingClientRect();
+    if (caixa.width > 0 && caixa.height > 0) return elemento;
+  }
+  return null;
 }
 
 function Passo({
@@ -124,7 +142,7 @@ function Passo({
   // errado por um quadro.
   useLayoutEffect(() => {
     if (!passo) return;
-    const elemento = document.querySelector<HTMLElement>(`[data-tutorial="${passo.alvo}"]`);
+    const elemento = acharAlvo(passo.alvo);
     if (!elemento) {
       setArea(null);
       return;
@@ -136,13 +154,20 @@ function Passo({
     elemento.scrollIntoView({ block: 'center', behavior: 'auto' });
 
     const medir = (): void => {
-      const caixa = elemento.getBoundingClientRect();
+      // Reencontra o alvo a cada medição: girar o celular ou redimensionar a
+      // janela pode trocar qual dos elementos do passo está visível.
+      const atual = acharAlvo(passo.alvo) ?? elemento;
+      const caixa = atual.getBoundingClientRect();
       const folga = 8;
+      const cantos = getComputedStyle(atual).borderRadius;
       setArea({
         top: caixa.top - folga,
         left: caixa.left - folga,
         width: caixa.width + folga * 2,
         height: caixa.height + folga * 2,
+        // `calc` mantém o círculo redondo e o retângulo com o canto certo,
+        // já contando a folga em volta.
+        raio: cantos === '0px' ? '0.75rem' : `calc(${cantos} + ${folga}px)`,
       });
     };
 
@@ -182,12 +207,13 @@ function Passo({
         // O escurecimento é a sombra deste retângulo: o "furo" é o próprio
         // elemento, que continua nítido e no lugar.
         <div
-          className="pointer-events-none absolute rounded-xl ring-4 ring-menta-500 transition-all duration-200"
+          className="pointer-events-none absolute ring-4 ring-menta-500 transition-all duration-200"
           style={{
             top: area.top,
             left: area.left,
             width: area.width,
             height: area.height,
+            borderRadius: area.raio,
             boxShadow: '0 0 0 9999px rgba(10, 42, 70, 0.75)',
           }}
         />
@@ -285,7 +311,12 @@ export function useTutorial(): ContextoTutorial {
   return contexto;
 }
 
-/** Botão `(?)` fixo, que reabre o tutorial da página aberta. */
+/**
+ * Botão `(?)` fixo, que reabre o tutorial da página aberta.
+ *
+ * No celular ele fica mais para o centro: no canto direito cobria o "Filtrar"
+ * da página de gastos.
+ */
 export function BotaoDeAjuda(): ReactElement | null {
   const { reabrir, temTutorial } = useTutorial();
   if (!temTutorial) return null;
@@ -296,7 +327,7 @@ export function BotaoDeAjuda(): ReactElement | null {
       onClick={reabrir}
       aria-label="Ajuda desta tela"
       title="Ajuda desta tela"
-      className="fixed right-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-full
+      className="fixed right-36 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-full
         border border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm
         hover:bg-marca-50 md:right-6 md:top-6"
       style={{ top: 'calc(1rem + env(safe-area-inset-top))' }}

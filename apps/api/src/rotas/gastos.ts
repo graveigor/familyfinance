@@ -1,5 +1,6 @@
 import {
   ROTULO_FORMA_PAGAMENTO,
+  ROTULO_TIPO_CARTAO,
   atualizarGastoSchema,
   criarGastoSchema,
   erroNaoEncontrado,
@@ -49,6 +50,16 @@ async function conferirCategoria(householdId: string, categoriaId: string): Prom
   }
 }
 
+async function conferirCartao(householdId: string, cartaoId: string): Promise<void> {
+  const cartao = await prisma.cartao.findFirst({
+    where: { id: cartaoId, householdId },
+    select: { id: true },
+  });
+  if (!cartao) {
+    throw erroValidacao('Esse cartão não existe.', { cartaoId: 'Cartão inválido.' });
+  }
+}
+
 async function conferirMembro(householdId: string, userId: string): Promise<void> {
   const membro = await prisma.user.findFirst({
     where: { id: userId, householdId },
@@ -83,6 +94,9 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     if (filtros.userId) daTela.userId = filtros.userId;
     if (filtros.categoriaId) {
       daTela.categoriaId = filtros.categoriaId === 'sem-categoria' ? null : filtros.categoriaId;
+    }
+    if (filtros.cartaoId) {
+      daTela.cartaoId = filtros.cartaoId === 'sem-cartao' ? null : filtros.cartaoId;
     }
     if (filtros.busca) {
       daTela.OR = [
@@ -156,6 +170,9 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
         Valor: gasto.valorCentavos / 100,
         Pessoa: gasto.user.nome,
         Categoria: gasto.categoria?.nome ?? '',
+        Cartão: gasto.cartao
+          ? `${gasto.cartao.nome} (${ROTULO_TIPO_CARTAO[gasto.cartao.tipo]})`
+          : '',
         'Forma de pagamento': ROTULO_FORMA_PAGAMENTO[gasto.formaPagamento],
         Observação: gasto.observacao ?? '',
       })),
@@ -219,6 +236,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
       await conferirMembro(usuario.householdId, dados.userId);
     }
     if (dados.categoriaId) await conferirCategoria(usuario.householdId, dados.categoriaId);
+    if (dados.cartaoId) await conferirCartao(usuario.householdId, dados.cartaoId);
 
     const gasto = await prisma.gasto.create({
       data: {
@@ -228,6 +246,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
         formaPagamento: dados.formaPagamento,
         observacao: dados.observacao ?? null,
         categoriaId: dados.categoriaId ?? null,
+        cartaoId: dados.cartaoId ?? null,
         userId,
         householdId: usuario.householdId,
       },
@@ -250,6 +269,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     conferirPermissaoDeEdicao(usuario, existente.userId);
 
     if (dados.categoriaId) await conferirCategoria(usuario.householdId, dados.categoriaId);
+    if (dados.cartaoId) await conferirCartao(usuario.householdId, dados.cartaoId);
     if (dados.userId) await conferirMembro(usuario.householdId, dados.userId);
 
     const atualizado = await prisma.gasto.update({
@@ -261,6 +281,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
         ...(dados.formaPagamento !== undefined ? { formaPagamento: dados.formaPagamento } : {}),
         ...(dados.observacao !== undefined ? { observacao: dados.observacao } : {}),
         ...(dados.categoriaId !== undefined ? { categoriaId: dados.categoriaId } : {}),
+        ...(dados.cartaoId !== undefined ? { cartaoId: dados.cartaoId } : {}),
         ...(dados.userId !== undefined ? { userId: dados.userId } : {}),
       },
       include: INCLUDE_GASTO,

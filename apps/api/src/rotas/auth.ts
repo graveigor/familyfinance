@@ -46,16 +46,17 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
     const usuario = await prisma.$transaction(async (tx) => {
       if (dados.codigoConvite) {
+        // O código serve para várias pessoas até expirar — não é de uso único.
         const convite = await tx.convite.findUnique({
           where: { codigo: dados.codigoConvite },
         });
-        if (!convite || convite.usadoEm || convite.expiraEm < new Date()) {
+        if (!convite || convite.expiraEm < new Date()) {
           throw erroValidacao('Esse convite não é mais válido. Peça um novo para quem te convidou.', {
             codigoConvite: 'Convite inválido ou expirado.',
           });
         }
 
-        const novo = await tx.user.create({
+        return tx.user.create({
           data: {
             nome: dados.nome,
             email: dados.email,
@@ -64,8 +65,6 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
             householdId: convite.householdId,
           },
         });
-        await tx.convite.update({ where: { id: convite.id }, data: { usadoEm: new Date() } });
-        return novo;
       }
 
       const household = await tx.household.create({

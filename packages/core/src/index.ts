@@ -8,6 +8,7 @@ export * from './textos.js';
 export * from './tipos.js';
 
 export * from './schemas/auth.js';
+export * from './schemas/cartao.js';
 export * from './schemas/categoria.js';
 export * from './schemas/comuns.js';
 export * from './schemas/gasto.js';

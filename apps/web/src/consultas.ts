@@ -1,6 +1,9 @@
 import type {
+  AtualizarCartaoEntrada,
   AtualizarGastoEntrada,
+  Cartao,
   Categoria,
+  CriarCartaoEntrada,
   CriarCategoriaEntrada,
   CriarGastoEntrada,
   CriarRecorrenciaEntrada,
@@ -26,6 +29,7 @@ export const chaves = {
   listaDeGastos: (filtros: Partial<ListarGastosEntrada>) => ['gastos', 'lista', filtros] as const,
   sugestoes: (termo: string) => ['gastos', 'sugestoes', termo] as const,
   categorias: ['categorias'] as const,
+  cartoes: ['cartoes'] as const,
   membros: ['household', 'membros'] as const,
   household: ['household'] as const,
   resumo: (ano: number, mes: number) => ['resumos', ano, mes] as const,
@@ -58,6 +62,51 @@ export function useCategorias(): UseQueryResult<Categoria[], Error> {
     queryKey: chaves.categorias,
     queryFn: () => api.categorias.listar(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCartoes(): UseQueryResult<Cartao[], Error> {
+  return useQuery({
+    queryKey: chaves.cartoes,
+    queryFn: () => api.cartoes.listar(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCriarCartao(): UseMutationResult<unknown, Error, CriarCartaoEntrada> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dados: CriarCartaoEntrada) => api.cartoes.criar(dados),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.cartoes }),
+  });
+}
+
+export function useAtualizarCartao(): UseMutationResult<
+  unknown,
+  Error,
+  { id: string; dados: AtualizarCartaoEntrada }
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dados }: { id: string; dados: AtualizarCartaoEntrada }) =>
+      api.cartoes.atualizar(id, dados),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: chaves.cartoes });
+      await invalidarGastos(queryClient);
+    },
+  });
+}
+
+export function useExcluirCartao(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.cartoes.excluir(id),
+    onSuccess: async () => {
+      // Os gastos que usavam o cartão ficaram sem ele.
+      await queryClient.invalidateQueries({ queryKey: chaves.cartoes });
+      await queryClient.invalidateQueries({ queryKey: chaves.recorrencias });
+      await invalidarGastos(queryClient);
+    },
   });
 }
 

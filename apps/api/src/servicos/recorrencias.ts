@@ -94,6 +94,7 @@ export async function gerarPendentes(
           formaPagamento: recorrencia.formaPagamento,
           observacao: recorrencia.observacao,
           categoriaId: recorrencia.categoriaId,
+          cartaoId: recorrencia.cartaoId,
           userId: recorrencia.userId,
           householdId: recorrencia.householdId,
           recorrenciaId: recorrencia.id,

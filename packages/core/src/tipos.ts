@@ -9,6 +9,14 @@ export type FormaPagamento = (typeof FORMAS_PAGAMENTO)[number];
 export const STATUS_IMPORTACAO = ['PENDENTE', 'CONFIRMADA', 'CANCELADA'] as const;
 export type StatusImportacao = (typeof STATUS_IMPORTACAO)[number];
 
+export const TIPOS_CARTAO = ['CREDITO', 'DEBITO'] as const;
+export type TipoCartao = (typeof TIPOS_CARTAO)[number];
+
+export const ROTULO_TIPO_CARTAO: Record<TipoCartao, string> = {
+  CREDITO: 'Crédito',
+  DEBITO: 'Débito',
+};
+
 /** Rótulo exibido ao usuário para cada forma de pagamento. */
 export const ROTULO_FORMA_PAGAMENTO: Record<FormaPagamento, string> = {
   CARTAO: 'Cartão',
@@ -47,6 +55,17 @@ export interface Categoria {
   cor: string;
 }
 
+/**
+ * Meio de pagamento com nome próprio ("Itaú", "Bradesco"). O apelido é livre:
+ * o que importa é a família reconhecer o cartão como chama no dia a dia.
+ */
+export interface Cartao {
+  id: string;
+  nome: string;
+  tipo: TipoCartao;
+  cor: string;
+}
+
 /** Dados mínimos de quem gastou, embutidos no gasto para evitar outra chamada. */
 export interface AutorDoGasto {
   id: string;
@@ -62,6 +81,7 @@ export interface Gasto {
   formaPagamento: FormaPagamento;
   observacao: string | null;
   categoria: Categoria | null;
+  cartao: Cartao | null;
   usuario: AutorDoGasto;
   origemImportacaoId: string | null;
   /** Existe um comprovante anexado a este gasto. */
@@ -80,6 +100,7 @@ export interface Recorrencia {
   formaPagamento: FormaPagamento;
   observacao: string | null;
   categoria: Categoria | null;
+  cartao: Cartao | null;
   usuario: AutorDoGasto;
   ativa: boolean;
   /** `aaaa-mm-dd` */

@@ -219,18 +219,25 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const { codigo } = entrarComConviteSchema.parse(request.body);
 
+    // O código vale para várias pessoas até expirar: a família inteira pode
+    // usar o mesmo código recebido no grupo do WhatsApp.
     const convite = await prisma.convite.findUnique({ where: { codigo } });
-    if (!convite || convite.usadoEm || convite.expiraEm < new Date()) {
+    if (!convite || convite.expiraEm < new Date()) {
       throw erroValidacao('Esse código não é mais válido. Peça um novo para quem te convidou.', {
         codigo: 'Código inválido ou expirado.',
       });
     }
     if (convite.householdId === usuario.householdId) {
-      throw erroConflito('Você já faz parte desse grupo.');
+      const grupo = await prisma.household.findUnique({
+        where: { id: convite.householdId },
+        select: { nome: true },
+      });
+      throw erroConflito(
+        `Esse código é do grupo "${grupo?.nome ?? 'seu grupo'}", que já é o seu grupo atual.`,
+      );
     }
 
     const atualizado = await prisma.$transaction(async (tx) => {
-      await tx.convite.update({ where: { id: convite.id }, data: { usadoEm: new Date() } });
       await moverParaGrupo(tx, usuario.id, usuario.householdId, convite.householdId, 'MEMBRO');
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });

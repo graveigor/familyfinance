@@ -1,5 +1,6 @@
 import { ErroApp, ehCorpoErro, type CodigoErro } from './erros.js';
 import type {
+  Cartao,
   Categoria,
   Convite,
   Gasto,
@@ -14,6 +15,7 @@ import type {
   Usuario,
 } from './tipos.js';
 import type { AtualizarPerfilEntrada, LoginEntrada, RegistrarEntrada } from './schemas/auth.js';
+import type { AtualizarCartaoEntrada, CriarCartaoEntrada } from './schemas/cartao.js';
 import type {
   AtualizarCategoriaEntrada,
   CriarCategoriaEntrada,
@@ -144,6 +146,13 @@ export interface Cliente {
     criar(dados: CriarCategoriaEntrada): Promise<Categoria>;
     atualizar(id: string, dados: AtualizarCategoriaEntrada): Promise<Categoria>;
     excluir(id: string): Promise<{ gastosSemCategoria: number }>;
+  };
+  cartoes: {
+    listar(): Promise<Cartao[]>;
+    criar(dados: CriarCartaoEntrada): Promise<Cartao>;
+    atualizar(id: string, dados: AtualizarCartaoEntrada): Promise<Cartao>;
+    /** Apagar o cartão não apaga gasto: os lançamentos ficam sem cartão. */
+    excluir(id: string): Promise<{ gastosSemCartao: number }>;
   };
   household: {
     obter(): Promise<Household>;
@@ -364,6 +373,16 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
       criar: (dados) => requisitar('POST', '/api/v1/categorias', { corpo: dados }),
       atualizar: (id, dados) => requisitar('PATCH', `/api/v1/categorias/${id}`, { corpo: dados }),
       excluir: (id) => requisitar('DELETE', `/api/v1/categorias/${id}`),
+    },
+
+    cartoes: {
+      async listar() {
+        const { itens } = await requisitar<{ itens: Cartao[] }>('GET', '/api/v1/cartoes');
+        return itens;
+      },
+      criar: (dados) => requisitar('POST', '/api/v1/cartoes', { corpo: dados }),
+      atualizar: (id, dados) => requisitar('PATCH', `/api/v1/cartoes/${id}`, { corpo: dados }),
+      excluir: (id) => requisitar('DELETE', `/api/v1/cartoes/${id}`),
     },
 
     household: {

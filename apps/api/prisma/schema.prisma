@@ -20,6 +20,7 @@ model Household {
   membros      User[]
   gastos       Gasto[]
   categorias   Categoria[]
+  cartoes      Cartao[]
   convites     Convite[]
   importacoes  Importacao[]
   recorrencias Recorrencia[]
@@ -63,6 +64,28 @@ model Categoria {
   @@unique([householdId, nome])
 }
 
+/// Meio de pagamento com nome próprio: "Itaú", "Bradesco", "Vale-refeição".
+///
+/// Existe separado de `FormaPagamento` porque a pergunta que a família faz é
+/// "quanto foi no cartão do Itaú?", e não "quanto foi no crédito". O apelido é
+/// livre justamente por isso — quem cadastra escolhe como chama no dia a dia.
+model Cartao {
+  id           String        @id @default(uuid())
+  nome         String
+  tipo         TipoCartao    @default(CREDITO)
+  cor          String        @default("#334155")
+  householdId  String
+  household    Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  gastos       Gasto[]
+  recorrencias Recorrencia[]
+  criadoEm     DateTime      @default(now())
+
+  // Mesmo apelido no mesmo tipo só confunde; "Itaú" crédito e "Itaú" débito
+  // continuam podendo coexistir.
+  @@unique([householdId, nome, tipo])
+  @@index([householdId])
+}
+
 model Gasto {
   id                 String         @id @default(uuid())
   descricao          String
@@ -72,6 +95,8 @@ model Gasto {
   observacao         String?
   categoriaId        String?
   categoria          Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  cartaoId           String?
+  cartao             Cartao?        @relation(fields: [cartaoId], references: [id], onDelete: SetNull)
   userId             String
   user               User           @relation(fields: [userId], references: [id])
   householdId        String
@@ -94,6 +119,7 @@ model Gasto {
   @@index([householdId, data])
   @@index([householdId, userId])
   @@index([categoriaId])
+  @@index([cartaoId])
 }
 
 model Importacao {
@@ -176,6 +202,8 @@ model Recorrencia {
   observacao      String?
   categoriaId     String?
   categoria       Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  cartaoId        String?
+  cartao          Cartao?        @relation(fields: [cartaoId], references: [id], onDelete: SetNull)
   userId          String
   user            User           @relation(fields: [userId], references: [id])
   householdId     String
@@ -217,6 +245,11 @@ enum FormaPagamento {
   PIX
   BOLETO
   OUTRO
+}
+
+enum TipoCartao {
+  CREDITO
+  DEBITO
 }
 
 enum StatusImportacao {

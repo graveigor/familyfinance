@@ -26,6 +26,8 @@ export const criarGastoSchema = z.object({
   formaPagamento: zFormaPagamento.default('CARTAO'),
   observacao: zTextoOpcional(500),
   categoriaId: zId.nullable().optional(),
+  /** Em qual cartão caiu. Omitido = nenhum cartão em especial. */
+  cartaoId: zId.nullable().optional(),
   /** Quem gastou. Omitido = o próprio usuário logado. */
   userId: zId.optional(),
 });
@@ -39,6 +41,7 @@ export const atualizarGastoSchema = z
     formaPagamento: zFormaPagamento.optional(),
     observacao: zTextoOpcional(500),
     categoriaId: zId.nullable().optional(),
+    cartaoId: zId.nullable().optional(),
     userId: zId.optional(),
   })
   .refine((dados) => Object.keys(dados).length > 0, {
@@ -50,6 +53,7 @@ export const listarGastosSchema = z.object({
   ate: zDataISO.optional(),
   userId: zId.optional(),
   categoriaId: z.union([zId, z.literal('sem-categoria')]).optional(),
+  cartaoId: z.union([zId, z.literal('sem-cartao')]).optional(),
   busca: z.string().trim().max(120).optional(),
   pagina: zPagina,
   porPagina: zPorPagina,

@@ -15,16 +15,37 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactElement
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api';
+import { EscolherCartao } from '../componentes/EscolherCartao';
 import { Icone } from '../componentes/Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
 import {
   useAtualizarGasto,
+  useCartoes,
   useCategorias,
   useCriarGasto,
   useMembros,
   useSugestoes,
 } from '../consultas';
 import { useSessao } from '../sessao';
+
+/**
+ * Soma meses a uma data ISO segurando o dia no fim do mês quando preciso:
+ * compra dia 31 de janeiro gera parcela em 28/29 de fevereiro, não 2 de março.
+ */
+function somarMesesISO(dataISO: string, meses: number): string {
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+  const alvo = new Date(Date.UTC(ano!, (mes! - 1) + meses, 1));
+  const ultimoDia = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(dia!, ultimoDia));
+  return formatarDataISO(alvo);
+}
+
+/** Divide o total em parcelas inteiras; a primeira leva a sobra dos centavos. */
+function dividirEmParcelas(totalCentavos: number, parcelas: number): number[] {
+  const base = Math.floor(totalCentavos / parcelas);
+  const sobra = totalCentavos - base * parcelas;
+  return Array.from({ length: parcelas }, (_, i) => (i === 0 ? base + sobra : base));
+}
 
 /**
  * Formulário curto, em uma tela só, na ordem em que a pessoa pensa:
@@ -52,9 +73,11 @@ export function NovoGasto(): ReactElement {
   const [descricao, setDescricao] = useState('');
   const [categoriaId, setCategoriaId] = useState<string | null>(null);
   const [data, setData] = useState(() => formatarDataISO(hoje()));
+  const [cartaoId, setCartaoId] = useState('');
   const [userId, setUserId] = useState<string>('');
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('CARTAO');
   const [observacao, setObservacao] = useState('');
+  const [parcelas, setParcelas] = useState(1);
   const [mostrarMais, setMostrarMais] = useState(false);
   const [erro, setErro] = useState<{ mensagem: string; campos: Record<string, string> }>({
     mensagem: '',
@@ -77,6 +100,7 @@ export function NovoGasto(): ReactElement {
     setDigitosValor(String(Math.abs(gasto.valorCentavos)));
     setDescricao(gasto.descricao);
     setCategoriaId(gasto.categoria?.id ?? null);
+    setCartaoId(gasto.cartao?.id ?? '');
     setData(gasto.data);
     setUserId(gasto.usuario.id);
     setFormaPagamento(gasto.formaPagamento);
@@ -113,6 +137,7 @@ export function NovoGasto(): ReactElement {
       formaPagamento,
       observacao: observacao.trim() || null,
       categoriaId,
+      cartaoId: cartaoId || null,
       ...(userId ? { userId } : {}),
     };
 
@@ -120,6 +145,19 @@ export function NovoGasto(): ReactElement {
       if (editando && id) {
         await atualizar.mutateAsync({ id, dados });
         aviso.mostrar('Gasto atualizado.');
+      } else if (parcelas > 1) {
+        // Um lançamento por mês, com o número da parcela no nome, para o total
+        // de cada mês já refletir só a parcela daquele mês.
+        const valores = dividirEmParcelas(centavos, parcelas);
+        for (let i = 0; i < parcelas; i += 1) {
+          await criar.mutateAsync({
+            ...dados,
+            descricao: `${dados.descricao} (${i + 1}/${parcelas})`,
+            valorCentavos: valores[i]!,
+            data: somarMesesISO(data, i),
+          });
+        }
+        aviso.mostrar(`Compra de ${formatarBRL(centavos)} salva em ${parcelas} parcelas.`);
       } else {
         await criar.mutateAsync(dados);
         aviso.mostrar(`Gasto de ${formatarBRL(centavos)} salvo.`);
@@ -288,6 +326,37 @@ export function NovoGasto(): ReactElement {
         <p className="mt-2 text-sm text-slate-600">Data escolhida: {dataComoTexto}</p>
       </section>
 
+      {/* 4a. Cartão — some sozinho quando a família não cadastrou nenhum. */}
+      <SecaoCartao valor={cartaoId} aoMudar={setCartaoId} />
+
+      {/* 4b. Parcelamento — só ao lançar; editar mexe em uma parcela por vez. */}
+      {!editando && (
+        <section className="cartao p-5">
+          <label htmlFor="parcelas" className="rotulo">
+            Foi parcelado?
+          </label>
+          <select
+            id="parcelas"
+            value={parcelas}
+            onChange={(e) => setParcelas(Number(e.target.value))}
+            className="campo"
+          >
+            <option value={1}>Não, à vista</option>
+            {Array.from({ length: 23 }, (_, i) => i + 2).map((n) => (
+              <option key={n} value={n}>
+                Sim, em {n}x
+              </option>
+            ))}
+          </select>
+          {parcelas > 1 && centavos > 0 && (
+            <p className="mt-2 text-sm text-slate-600">
+              O valor informado é o total da compra: serão {parcelas} lançamentos de{' '}
+              {formatarBRL(Math.floor(centavos / parcelas))}, um por mês a partir da data escolhida.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* 5. Quem gastou — só aparece quando a família tem mais de uma pessoa */}
       {(membros.data?.length ?? 0) > 1 && (
         <section className="cartao p-5">
@@ -374,6 +443,24 @@ export function NovoGasto(): ReactElement {
         </div>
       </div>
     </form>
+  );
+}
+
+/** O cartão só ganha um cartão-seção quando existe cartão para escolher. */
+function SecaoCartao({
+  valor,
+  aoMudar,
+}: {
+  valor: string;
+  aoMudar: (id: string) => void;
+}): ReactElement | null {
+  const cartoes = useCartoes();
+  if ((cartoes.data?.length ?? 0) === 0) return null;
+
+  return (
+    <section className="cartao p-5">
+      <EscolherCartao id="cartao-do-gasto" valor={valor} aoMudar={aoMudar} />
+    </section>
   );
 }
 

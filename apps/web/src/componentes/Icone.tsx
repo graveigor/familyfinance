@@ -183,6 +183,26 @@ const DESENHOS: Record<string, JSX.Element> = {
       <path d="M3 9h18M9 9v11M15 9v11" />
     </>
   ),
+  cartao: (
+    <>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+      <path d="M2.5 10h19" />
+      <path d="M6 14.5h3.5" />
+    </>
+  ),
+  olho: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  'olho-fechado': (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M4 20L20 4" />
+    </>
+  ),
 };
 
 export type NomeDeIcone = keyof typeof DESENHOS;

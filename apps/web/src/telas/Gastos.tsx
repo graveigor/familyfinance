@@ -19,7 +19,9 @@ import { ItemDeGasto } from '../componentes/ItemDeGasto';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { Botao, CaixaDeErro, Carregando, Vazio, traduzirErro, useAviso } from '../componentes/ui';
 import { api } from '../api';
+import { EscolherCartao, nomeCompleto } from '../componentes/EscolherCartao';
 import {
+  useCartoes,
   useCategorias,
   useEnviarComprovante,
   useExcluirGasto,
@@ -34,6 +36,7 @@ interface Filtros {
   ate?: string;
   userId?: string;
   categoriaId?: string;
+  cartaoId?: string;
   periodo: 'mes' | 'mes-passado' | 'tudo' | 'personalizado';
 }
 
@@ -79,6 +82,7 @@ export function Gastos(): ReactElement {
   const navegar = useNavigate();
   const aviso = useAviso();
   const categorias = useCategorias();
+  const cartoes = useCartoes();
   const membros = useMembros();
   const excluir = useExcluirGasto();
 
@@ -109,6 +113,7 @@ export function Gastos(): ReactElement {
     ...(filtros.ate ? { ate: filtros.ate } : {}),
     ...(filtros.userId ? { userId: filtros.userId } : {}),
     ...(filtros.categoriaId ? { categoriaId: filtros.categoriaId } : {}),
+    ...(filtros.cartaoId ? { cartaoId: filtros.cartaoId } : {}),
     pagina,
     porPagina: 50,
   });
@@ -151,6 +156,17 @@ export function Gastos(): ReactElement {
     etiquetas.push({
       texto: nome,
       remover: () => setFiltros((a) => ({ ...a, categoriaId: undefined })),
+    });
+  }
+
+  if (filtros.cartaoId) {
+    const nome =
+      filtros.cartaoId === 'sem-cartao'
+        ? 'Sem cartão'
+        : (cartoes.data?.find((c) => c.id === filtros.cartaoId)?.nome ?? 'Cartão');
+    etiquetas.push({
+      texto: nome,
+      remover: () => setFiltros((a) => ({ ...a, cartaoId: undefined })),
     });
   }
 
@@ -315,6 +331,7 @@ export function Gastos(): ReactElement {
                 valor={parseData(emFoco.data) ? rotuloDoDia(parseData(emFoco.data)!) : emFoco.data}
               />
               <Linha rotulo="Categoria" valor={emFoco.categoria?.nome ?? 'Sem categoria'} />
+              {emFoco.cartao && <Linha rotulo="Cartão" valor={nomeCompleto(emFoco.cartao)} />}
               {emFoco.observacao && <Linha rotulo="Observação" valor={emFoco.observacao} />}
               {emFoco.recorrenciaId && (
                 <Linha rotulo="Origem" valor="Lançado por uma conta fixa" />
@@ -557,8 +574,10 @@ function GavetaDeFiltros({
             ))}
           </div>
 
+          {/* `min-w-0` + padding menor: o input de data tem largura mínima
+              própria e sem isso os dois empilhavam no celular. */}
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="text-sm font-medium text-slate-600">
+            <label className="min-w-0 text-sm font-medium text-slate-600">
               De
               <input
                 type="date"
@@ -566,10 +585,10 @@ function GavetaDeFiltros({
                 onChange={(e) =>
                   setRascunho({ ...rascunho, de: e.target.value || undefined, periodo: 'personalizado' })
                 }
-                className="campo mt-1"
+                className="campo mt-1 min-w-0 px-2 text-sm"
               />
             </label>
-            <label className="text-sm font-medium text-slate-600">
+            <label className="min-w-0 text-sm font-medium text-slate-600">
               Até
               <input
                 type="date"
@@ -577,7 +596,7 @@ function GavetaDeFiltros({
                 onChange={(e) =>
                   setRascunho({ ...rascunho, ate: e.target.value || undefined, periodo: 'personalizado' })
                 }
-                className="campo mt-1"
+                className="campo mt-1 min-w-0 px-2 text-sm"
               />
             </label>
           </div>
@@ -623,6 +642,14 @@ function GavetaDeFiltros({
             ))}
           </select>
         </div>
+
+        <EscolherCartao
+          id="filtro-cartao"
+          rotulo="Cartão"
+          incluirSemCartao
+          valor={rascunho.cartaoId ?? ''}
+          aoMudar={(cartaoId) => setRascunho({ ...rascunho, cartaoId: cartaoId || undefined })}
+        />
       </div>
     </Dialogo>
   );

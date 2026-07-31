@@ -51,7 +51,7 @@ describe('household', () => {
     expect(membros.json<{ itens: Usuario[] }>().itens).toHaveLength(2);
   });
 
-  it('não aceita o mesmo convite duas vezes', async () => {
+  it('aceita o mesmo convite para mais de uma pessoa até expirar', async () => {
     const admin = await criarConta(app, { email: 'admin@exemplo.com' });
     const codigo = await convidar(admin.autorizacao);
     await criarConta(app, { email: 'joao@exemplo.com', nome: 'João Souza', codigoConvite: codigo });
@@ -66,7 +66,14 @@ describe('household', () => {
         codigoConvite: codigo,
       },
     });
-    expect(segunda.statusCode).toBe(400);
+    expect(segunda.statusCode).toBe(201);
+
+    const membros = await app.inject({
+      method: 'GET',
+      url: '/api/v1/household/membros',
+      headers: admin.autorizacao,
+    });
+    expect(membros.json<{ itens: Usuario[] }>().itens).toHaveLength(3);
   });
 
   it('qualquer pessoa do grupo pode convidar', async () => {

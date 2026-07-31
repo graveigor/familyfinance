@@ -20,6 +20,7 @@ export const criarRecorrenciaSchema = z.object({
   formaPagamento: zFormaPagamento.default('OUTRO'),
   observacao: zTextoOpcional(500),
   categoriaId: zId.nullable().optional(),
+  cartaoId: zId.nullable().optional(),
   userId: zId.optional(),
   /** Primeiro mês em que vale. Padrão: o mês atual. */
   inicioEm: zDataISO.optional(),
@@ -34,6 +35,7 @@ export const atualizarRecorrenciaSchema = z
     formaPagamento: zFormaPagamento.optional(),
     observacao: zTextoOpcional(500),
     categoriaId: zId.nullable().optional(),
+    cartaoId: zId.nullable().optional(),
     userId: zId.optional(),
     fimEm: zDataISO.nullable().optional(),
     ativa: z.boolean().optional(),

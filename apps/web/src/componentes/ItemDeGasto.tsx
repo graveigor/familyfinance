@@ -30,9 +30,25 @@ export function ItemDeGasto({
         <span className="block truncate text-base font-medium text-slate-900">
           {gasto.descricao}
         </span>
-        <span className="block truncate text-sm text-slate-600">
-          {gasto.usuario.nome}
-          {gasto.categoria ? ` · ${gasto.categoria.nome}` : ' · Sem categoria'}
+        {/* Quebra em vez de cortar: no celular o nome do cartão sumia no
+            "..." e era justamente o que a pessoa queria conferir. */}
+        <span className="flex flex-wrap items-center gap-x-1.5 text-sm text-slate-600">
+          <span>{gasto.usuario.nome}</span>
+          <span aria-hidden="true">·</span>
+          <span>{gasto.categoria?.nome ?? 'Sem categoria'}</span>
+          {gasto.cartao && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1">
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: gasto.cartao.cor }}
+                />
+                {gasto.cartao.nome}
+              </span>
+            </>
+          )}
         </span>
       </span>
 

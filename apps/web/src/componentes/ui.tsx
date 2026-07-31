@@ -71,22 +71,38 @@ interface CampoProps extends InputHTMLAttributes<HTMLInputElement> {
   dica?: string;
 }
 
-export function Campo({ rotulo, erro, dica, id, className = '', ...resto }: CampoProps): ReactElement {
+export function Campo({ rotulo, erro, dica, id, className = '', type, ...resto }: CampoProps): ReactElement {
   const gerado = useRef(`campo-${Math.random().toString(36).slice(2, 9)}`);
   const idFinal = id ?? gerado.current;
+  const ehSenha = type === 'password';
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
 
   return (
     <div>
       <label htmlFor={idFinal} className="rotulo">
         {rotulo}
       </label>
-      <input
-        id={idFinal}
-        className={`campo ${erro ? 'campo-com-erro' : ''} ${className}`}
-        aria-invalid={erro ? true : undefined}
-        aria-describedby={erro ? `${idFinal}-erro` : dica ? `${idFinal}-dica` : undefined}
-        {...resto}
-      />
+      <div className={ehSenha ? 'relative' : undefined}>
+        <input
+          id={idFinal}
+          type={ehSenha && senhaVisivel ? 'text' : type}
+          className={`campo ${erro ? 'campo-com-erro' : ''} ${ehSenha ? 'pr-12' : ''} ${className}`}
+          aria-invalid={erro ? true : undefined}
+          aria-describedby={erro ? `${idFinal}-erro` : dica ? `${idFinal}-dica` : undefined}
+          {...resto}
+        />
+        {ehSenha && (
+          <button
+            type="button"
+            onClick={() => setSenhaVisivel(!senhaVisivel)}
+            aria-label={senhaVisivel ? 'Esconder senha' : 'Mostrar senha'}
+            aria-pressed={senhaVisivel}
+            className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-slate-700"
+          >
+            <Icone nome={senhaVisivel ? 'olho-fechado' : 'olho'} tamanho={22} />
+          </button>
+        )}
+      </div>
       {dica && !erro && (
         <p id={`${idFinal}-dica`} className="mt-1.5 text-sm text-slate-600">
           {dica}

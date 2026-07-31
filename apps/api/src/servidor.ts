@@ -5,6 +5,7 @@ import { ambiente, ehTeste } from './ambiente.js';
 import { configurarAutenticacao } from './plugins/autenticacao.js';
 import { configurarErros } from './plugins/erros.js';
 import { rotasAuth } from './rotas/auth.js';
+import { rotasCartoes } from './rotas/cartoes.js';
 import { rotasCategorias } from './rotas/categorias.js';
 import { rotasGastos } from './rotas/gastos.js';
 import { rotasHousehold } from './rotas/household.js';
@@ -40,6 +41,7 @@ export async function criarServidor(): Promise<FastifyInstance> {
   await app.register(rotasAuth, { prefix: `${BASE}/auth` });
   await app.register(rotasGastos, { prefix: `${BASE}/gastos` });
   await app.register(rotasCategorias, { prefix: `${BASE}/categorias` });
+  await app.register(rotasCartoes, { prefix: `${BASE}/cartoes` });
   await app.register(rotasHousehold, { prefix: `${BASE}/household` });
   await app.register(rotasImportacoes, { prefix: `${BASE}/importacoes` });
   await app.register(rotasRecorrencias, { prefix: `${BASE}/recorrencias` });

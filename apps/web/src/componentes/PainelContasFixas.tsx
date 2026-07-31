@@ -8,6 +8,7 @@ import {
 } from '@gastos/core';
 import { useState, type ReactElement } from 'react';
 import { Confirmar } from './Dialogo';
+import { EscolherCartao } from './EscolherCartao';
 import { Icone } from './Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from './ui';
 import {
@@ -34,6 +35,7 @@ export function PainelContasFixas(): ReactElement {
   const [descricao, setDescricao] = useState('');
   const [diaDoMes, setDiaDoMes] = useState('10');
   const [categoriaId, setCategoriaId] = useState('');
+  const [cartaoId, setCartaoId] = useState('');
   const [erro, setErro] = useState<{ mensagem: string; campos: Record<string, string> }>({
     mensagem: '',
     campos: {},
@@ -51,6 +53,7 @@ export function PainelContasFixas(): ReactElement {
         diaDoMes: Number(diaDoMes),
         formaPagamento: 'OUTRO',
         ...(categoriaId ? { categoriaId } : {}),
+        ...(cartaoId ? { cartaoId } : {}),
       });
       setDigitos('');
       setDescricao('');
@@ -115,6 +118,7 @@ export function PainelContasFixas(): ReactElement {
                   </span>
                   <span className="block truncate text-sm text-slate-600">
                     {formatarBRL(recorrencia.valorCentavos)} · todo dia {recorrencia.diaDoMes}
+                    {recorrencia.cartao ? ` · ${recorrencia.cartao.nome}` : ''}
                     {recorrencia.ativa && proximo
                       ? ` · próximo em ${formatarData(proximo)}`
                       : ' · pausada'}
@@ -205,6 +209,8 @@ export function PainelContasFixas(): ReactElement {
             ))}
           </select>
         </div>
+
+        <EscolherCartao id="cartao-fixa" valor={cartaoId} aoMudar={setCartaoId} />
 
         <Botao
           larguraTotal

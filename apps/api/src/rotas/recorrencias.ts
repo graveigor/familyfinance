@@ -14,7 +14,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
-import { serializarCategoria } from '../serializadores.js';
+import { serializarCartao, serializarCategoria } from '../serializadores.js';
 import { gerarPendentes, proximoLancamento } from '../servicos/recorrencias.js';
 import { filtroDeRecorrenciasVisiveis } from '../servicos/visibilidade.js';
 
@@ -26,6 +26,7 @@ type RecorrenciaComRelacoes = Awaited<
 
 const INCLUDE = {
   categoria: true,
+  cartao: true,
   user: { select: { id: true, nome: true } },
 } as const;
 
@@ -38,6 +39,7 @@ function serializar(recorrencia: RecorrenciaComRelacoes): Recorrencia & { proxim
     formaPagamento: recorrencia.formaPagamento,
     observacao: recorrencia.observacao,
     categoria: recorrencia.categoria ? serializarCategoria(recorrencia.categoria) : null,
+    cartao: recorrencia.cartao ? serializarCartao(recorrencia.cartao) : null,
     usuario: { id: recorrencia.user.id, nome: recorrencia.user.nome },
     ativa: recorrencia.ativa,
     inicioEm: formatarDataISO(recorrencia.inicioEm),
@@ -102,6 +104,15 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
         throw erroValidacao('Essa categoria não existe.', { categoriaId: 'Categoria inválida.' });
       }
     }
+    if (dados.cartaoId) {
+      const cartao = await prisma.cartao.findFirst({
+        where: { id: dados.cartaoId, householdId: usuario.householdId },
+        select: { id: true },
+      });
+      if (!cartao) {
+        throw erroValidacao('Esse cartão não existe.', { cartaoId: 'Cartão inválido.' });
+      }
+    }
 
     // Sem data de início informada, vale a partir do mês atual.
     const referencia = hoje();
@@ -117,6 +128,7 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
         formaPagamento: dados.formaPagamento,
         observacao: dados.observacao ?? null,
         categoriaId: dados.categoriaId ?? null,
+        cartaoId: dados.cartaoId ?? null,
         userId,
         householdId: usuario.householdId,
         inicioEm: inicio,
@@ -156,6 +168,7 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
         ...(dados.formaPagamento !== undefined ? { formaPagamento: dados.formaPagamento } : {}),
         ...(dados.observacao !== undefined ? { observacao: dados.observacao } : {}),
         ...(dados.categoriaId !== undefined ? { categoriaId: dados.categoriaId } : {}),
+        ...(dados.cartaoId !== undefined ? { cartaoId: dados.cartaoId } : {}),
         ...(dados.userId !== undefined ? { userId: dados.userId } : {}),
         ...(dados.ativa !== undefined ? { ativa: dados.ativa } : {}),
         ...(dados.fimEm !== undefined

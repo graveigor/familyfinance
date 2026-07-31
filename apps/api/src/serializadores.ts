@@ -1,5 +1,12 @@
-import { formatarDataISO, type Categoria, type Gasto, type Usuario } from '@gastos/core';
+import {
+  formatarDataISO,
+  type Cartao,
+  type Categoria,
+  type Gasto,
+  type Usuario,
+} from '@gastos/core';
 import type {
+  Cartao as CartaoDb,
   Categoria as CategoriaDb,
   Gasto as GastoDb,
   User as UserDb,
@@ -20,6 +27,15 @@ export function serializarCategoria(categoria: CategoriaDb): Categoria {
   };
 }
 
+export function serializarCartao(cartao: CartaoDb): Cartao {
+  return {
+    id: cartao.id,
+    nome: cartao.nome,
+    tipo: cartao.tipo,
+    cor: cartao.cor,
+  };
+}
+
 export function serializarUsuario(usuario: UserDb): Usuario {
   return {
     id: usuario.id,
@@ -34,6 +50,7 @@ export function serializarUsuario(usuario: UserDb): Usuario {
 
 export type GastoComRelacoes = GastoDb & {
   categoria: CategoriaDb | null;
+  cartao: CartaoDb | null;
   user: Pick<UserDb, 'id' | 'nome'>;
   // Só o id: os bytes da imagem nunca entram numa listagem.
   comprovante: { id: string } | null;
@@ -48,6 +65,7 @@ export function serializarGasto(gasto: GastoComRelacoes): Gasto {
     formaPagamento: gasto.formaPagamento,
     observacao: gasto.observacao,
     categoria: gasto.categoria ? serializarCategoria(gasto.categoria) : null,
+    cartao: gasto.cartao ? serializarCartao(gasto.cartao) : null,
     usuario: { id: gasto.user.id, nome: gasto.user.nome },
     origemImportacaoId: gasto.origemImportacaoId,
     temComprovante: gasto.comprovante !== null,
@@ -60,6 +78,7 @@ export function serializarGasto(gasto: GastoComRelacoes): Gasto {
 /** Relações que toda resposta de gasto precisa carregar. */
 export const INCLUDE_GASTO = {
   categoria: true,
+  cartao: true,
   user: { select: { id: true, nome: true } },
   // `select` em vez de `true`: sem isso o Prisma traria os bytes do
   // comprovante em cada gasto listado.

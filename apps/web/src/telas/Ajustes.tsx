@@ -4,23 +4,31 @@ import { useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { CartaoInstalar } from '../componentes/InstalarApp';
+import { PainelCartoes } from '../componentes/PainelCartoes';
 import { PainelContasFixas } from '../componentes/PainelContasFixas';
 import { Confirmar, Dialogo } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
-import { chaves, useCategorias, useCriarCategoria, useExcluirCategoria } from '../consultas';
+import {
+  chaves,
+  useCartoes,
+  useCategorias,
+  useCriarCategoria,
+  useExcluirCategoria,
+} from '../consultas';
 import { useSessao } from '../sessao';
 
 export function Ajustes(): ReactElement {
   const { usuario, sair } = useSessao();
   const navegar = useNavigate();
   const categorias = useCategorias();
+  const cartoes = useCartoes();
   const aviso = useAviso();
 
   const household = useQuery({ queryKey: chaves.household, queryFn: () => api.household.obter() });
 
   const [painel, setPainel] = useState<
-    'perfil' | 'categorias' | 'contas-fixas' | 'instalar' | 'exportar' | null
+    'perfil' | 'categorias' | 'cartoes' | 'contas-fixas' | 'instalar' | 'exportar' | null
   >(null);
 
   const secoes = [
@@ -30,6 +38,14 @@ export function Ajustes(): ReactElement {
       icone: 'etiqueta',
       titulo: 'Categorias',
       descricao: categorias.data ? `${categorias.data.length} categorias` : '...',
+    },
+    {
+      chave: 'cartoes',
+      icone: 'cartao',
+      titulo: 'Cartões',
+      descricao: cartoes.data?.length
+        ? cartoes.data.map((c) => c.nome).join(', ')
+        : 'Separe os gastos por cartão',
     },
     {
       chave: 'contas-fixas',
@@ -102,6 +118,10 @@ export function Ajustes(): ReactElement {
 
       <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo="Categorias">
         <PainelCategorias categorias={categorias.data ?? []} />
+      </Dialogo>
+
+      <Dialogo aberto={painel === 'cartoes'} aoFechar={() => setPainel(null)} titulo="Cartões">
+        <PainelCartoes />
       </Dialogo>
 
       <Dialogo aberto={painel === 'contas-fixas'} aoFechar={() => setPainel(null)} titulo="Contas fixas">
