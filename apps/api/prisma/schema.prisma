@@ -14,10 +14,17 @@ datasource db {
 }
 
 model Household {
-  id           String        @id @default(uuid())
-  nome         String
-  criadoEm     DateTime      @default(now())
-  membros      User[]
+  id       String   @id @default(uuid())
+  nome     String
+  criadoEm DateTime @default(now())
+
+  /// Quem criou o grupo. Nulo nos grupos anteriores ao campo.
+  criadoPorId String?
+  criadoPor   User?   @relation("GruposCriados", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  /// Quem participa. `membros` são os que estão com este grupo ATIVO agora.
+  participacoes Participacao[]
+  membros       User[]
   gastos       Gasto[]
   categorias   Categoria[]
   cartoes      Cartao[]
@@ -39,14 +46,35 @@ model User {
   /// contrário. Quem não compartilha continua vendo só o que é seu.
   compartilhaGastos Boolean @default(false)
 
-  householdId  String
-  household    Household     @relation(fields: [householdId], references: [id])
-  gastos       Gasto[]
-  convites     Convite[]     @relation("ConvitesCriados")
-  recorrencias Recorrencia[]
-  metas        Meta[]
-  criadoEm     DateTime      @default(now())
+  /// Grupo ATIVO: onde os lançamentos entram e o que as telas mostram.
+  /// A lista completa de grupos da pessoa está em `Participacao`.
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
 
+  /// Papel no grupo ativo. Cópia do que vale em `Participacao`, mantida em dia
+  /// por `ativarGrupo` — evita uma consulta a mais em toda requisição.
+  participacoes  Participacao[]
+  gruposCriados  Household[]   @relation("GruposCriados")
+  gastos         Gasto[]
+  convites       Convite[]     @relation("ConvitesCriados")
+  recorrencias   Recorrencia[]
+  metas          Meta[]
+  criadoEm       DateTime      @default(now())
+
+  @@index([householdId])
+}
+
+/// De quais grupos a pessoa participa. O grupo ativo é `User.householdId`.
+model Participacao {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  papel       Papel     @default(MEMBRO)
+  criadoEm    DateTime  @default(now())
+
+  @@unique([userId, householdId])
   @@index([householdId])
 }
 

@@ -63,10 +63,18 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
             senhaHash,
             papel: 'MEMBRO',
             householdId: convite.householdId,
+            participacoes: { create: { householdId: convite.householdId, papel: 'MEMBRO' } },
           },
         });
         // Quem convidou passa a moderar o grupo: foi quem trouxe gente para ele.
-        await tx.user.update({ where: { id: convite.criadoPorId }, data: { papel: 'ADMIN' } });
+        await tx.participacao.updateMany({
+          where: { userId: convite.criadoPorId, householdId: convite.householdId },
+          data: { papel: 'ADMIN' },
+        });
+        await tx.user.updateMany({
+          where: { id: convite.criadoPorId, householdId: convite.householdId },
+          data: { papel: 'ADMIN' },
+        });
         return novo;
       }
 
@@ -77,15 +85,18 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
         },
       });
 
-      return tx.user.create({
+      const dono = await tx.user.create({
         data: {
           nome: dados.nome,
           email: dados.email,
           senhaHash,
           papel: 'ADMIN',
           householdId: household.id,
+          participacoes: { create: { householdId: household.id, papel: 'ADMIN' } },
         },
       });
+      await tx.household.update({ where: { id: household.id }, data: { criadoPorId: dono.id } });
+      return dono;
     });
 
     const sessao: Sessao = {

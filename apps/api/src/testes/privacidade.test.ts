@@ -190,8 +190,9 @@ describe('privacidade dos lançamentos', () => {
 });
 
 describe('grupos', () => {
-  it('cria um grupo novo levando os próprios lançamentos', async () => {
+  it('cria um grupo a mais, e cada lançamento fica no grupo onde nasceu', async () => {
     const { ana, bruno } = await grupoComDuasPessoas();
+    const grupoOriginal = bruno.sessao.usuario.householdId;
 
     const resposta = await app.inject({
       method: 'POST',
@@ -202,16 +203,25 @@ describe('grupos', () => {
     expect(resposta.statusCode).toBe(201);
 
     const novo = resposta.json<Usuario>();
-    expect(novo.householdId).not.toBe(ana.sessao.usuario.householdId);
+    expect(novo.householdId).not.toBe(grupoOriginal);
     expect(novo.papel).toBe('ADMIN');
 
-    // O gasto do Bruno foi junto; o da Ana ficou onde estava.
-    const doBruno = await listar(bruno.autorizacao);
-    expect(doBruno.itens).toHaveLength(1);
-    expect(doBruno.itens[0]?.descricao).toBe('Farmácia do Bruno');
+    // O grupo novo começa vazio: o gasto do Bruno ficou no grupo onde ele o
+    // lançou, e não viaja mais junto com a pessoa.
+    expect((await listar(bruno.autorizacao)).itens).toHaveLength(0);
 
     const daAna = await listar(ana.autorizacao);
     expect(daAna.itens[0]?.descricao).toBe('Mercado da Ana');
+
+    // Voltando ao grupo antigo, o gasto está lá.
+    const voltou = await app.inject({
+      method: 'POST',
+      url: `/api/v1/household/grupos/${grupoOriginal}/ativar`,
+      headers: bruno.autorizacao,
+    });
+    expect(voltou.statusCode).toBe(200);
+    const deVolta = await listar(bruno.autorizacao);
+    expect(deVolta.itens.map((g) => g.descricao)).toEqual(['Farmácia do Bruno']);
 
     // O grupo novo nasce com as categorias padrão.
     const categorias = await prisma.categoria.count({ where: { householdId: novo.householdId } });

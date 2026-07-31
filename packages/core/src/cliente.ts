@@ -4,6 +4,7 @@ import type {
   Categoria,
   Convite,
   Gasto,
+  GrupoDaPessoa,
   Household,
   ListaDeGastos,
   Meta,
@@ -165,8 +166,14 @@ export interface Cliente {
     sair(): Promise<Usuario>;
     criarConvite(validadeDias?: number): Promise<Convite>;
     entrar(codigo: string): Promise<Usuario>;
-    /** Sai do grupo atual e cria um novo, levando os próprios lançamentos. */
+    /** Cria mais um grupo e passa a usá-lo, sem deixar os que já existem. */
     criarGrupo(dados: CriarGrupoEntrada): Promise<Usuario>;
+    /** Todos os grupos da pessoa, com códigos dos que ela administra. */
+    grupos(): Promise<GrupoDaPessoa[]>;
+    /** Troca o grupo em uso. */
+    ativarGrupo(id: string): Promise<Usuario>;
+    /** Apaga o grupo e tudo que foi lançado nele. Devolve o grupo que ficou ativo. */
+    excluirGrupo(id: string): Promise<Usuario>;
     metas(): Promise<Meta[]>;
     criarMeta(dados: CriarMetaEntrada): Promise<Meta>;
     excluirMeta(id: string): Promise<void>;
@@ -407,6 +414,15 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
         requisitar('POST', '/api/v1/household/convites', { corpo: { validadeDias } }),
       entrar: (codigo) => requisitar('POST', '/api/v1/household/entrar', { corpo: { codigo } }),
       criarGrupo: (dados) => requisitar('POST', '/api/v1/household/nova', { corpo: dados }),
+      async grupos() {
+        const { itens } = await requisitar<{ itens: GrupoDaPessoa[] }>(
+          'GET',
+          '/api/v1/household/grupos',
+        );
+        return itens;
+      },
+      ativarGrupo: (id) => requisitar('POST', `/api/v1/household/grupos/${id}/ativar`),
+      excluirGrupo: (id) => requisitar('DELETE', `/api/v1/household/grupos/${id}`),
       async metas() {
         const { itens } = await requisitar<{ itens: Meta[] }>('GET', '/api/v1/household/metas');
         return itens;

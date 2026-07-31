@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { CartaoInstalar } from '../componentes/InstalarApp';
 import { PainelCartoes } from '../componentes/PainelCartoes';
+import { PainelGrupos } from '../componentes/PainelGrupos';
 import { PainelContasFixas } from '../componentes/PainelContasFixas';
 import { Confirmar, Dialogo } from '../componentes/Dialogo';
 import { Icone } from '../componentes/Icone';
@@ -20,6 +21,12 @@ import {
 import { useSessao } from '../sessao';
 
 const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'ajustes-grupos',
+    titulo: 'Seus grupos',
+    texto:
+      'Você pode participar de vários grupos, cada um com os próprios gastos. Aqui você cria, troca o que está em uso, compartilha o código e apaga os que não usa mais.',
+  },
   {
     alvo: 'ajustes-categorias',
     titulo: 'Categorias',
@@ -58,16 +65,32 @@ export function Ajustes(): ReactElement {
   const navegar = useNavigate();
   const categorias = useCategorias();
   const cartoes = useCartoes();
+  const grupos = useQuery({ queryKey: ['grupos'], queryFn: () => api.household.grupos() });
   const aviso = useAviso();
 
   const household = useQuery({ queryKey: chaves.household, queryFn: () => api.household.obter() });
 
   const [painel, setPainel] = useState<
-    'perfil' | 'categorias' | 'cartoes' | 'contas-fixas' | 'instalar' | 'exportar' | null
+    | 'perfil'
+    | 'grupos'
+    | 'categorias'
+    | 'cartoes'
+    | 'contas-fixas'
+    | 'instalar'
+    | 'exportar'
+    | null
   >(null);
 
   const secoes = [
     { chave: 'perfil', icone: 'pessoa', titulo: 'Meu perfil', descricao: usuario?.email ?? '' },
+    {
+      chave: 'grupos',
+      icone: 'pessoas',
+      titulo: 'Meus grupos',
+      descricao: grupos.data?.length
+        ? `${grupos.data.length} grupos · em uso: ${grupos.data.find((g) => g.ativo)?.nome ?? '—'}`
+        : 'Criar, trocar e compartilhar códigos',
+    },
     {
       chave: 'categorias',
       icone: 'etiqueta',
@@ -149,6 +172,10 @@ export function Ajustes(): ReactElement {
 
       <Dialogo aberto={painel === 'perfil'} aoFechar={() => setPainel(null)} titulo="Meu perfil">
         <PainelPerfil aoConcluir={() => setPainel(null)} />
+      </Dialogo>
+
+      <Dialogo aberto={painel === 'grupos'} aoFechar={() => setPainel(null)} titulo="Meus grupos">
+        <PainelGrupos />
       </Dialogo>
 
       <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo="Categorias">

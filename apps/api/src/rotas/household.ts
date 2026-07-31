@@ -8,6 +8,7 @@ import {
   entrarComConviteSchema,
   erroConflito,
   erroNaoEncontrado,
+  erroSemPermissao,
   erroValidacao,
   zId,
   type Convite,
@@ -37,45 +38,96 @@ function gerarCodigo(): string {
   return `FF-${nucleo}`;
 }
 
+type Transacao = Parameters<Parameters<typeof prisma.$transaction>[0]>[0] extends infer T
+  ? T
+  : never;
+
 /**
- * Move a pessoa para outro grupo levando o que é dela — gastos, recorrências e
- * importações. Os lançamentos são privados por pessoa, então mudar de grupo
- * nunca "some" com o histórico de ninguém: ele viaja junto.
+ * Deixa `householdId` como o grupo ativo da pessoa.
  *
- * Se o grupo antigo ficar vazio, é apagado com o que sobrou nele.
+ * `User.householdId` e `User.papel` são cópias do que vale na participação:
+ * guardá-las evita uma consulta a mais em toda requisição autenticada. Toda
+ * troca de grupo passa por aqui, para as duas cópias nunca divergirem.
  */
-async function moverParaGrupo(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0] extends infer T ? T : never,
-  usuarioId: string,
-  grupoAntigoId: string,
-  grupoNovoId: string,
-  papel: 'ADMIN' | 'MEMBRO',
-): Promise<void> {
+async function ativarGrupo(tx: Transacao, usuarioId: string, householdId: string): Promise<void> {
+  const participacao = await tx.participacao.findUnique({
+    where: { userId_householdId: { userId: usuarioId, householdId } },
+    select: { papel: true },
+  });
+  if (!participacao) throw erroSemPermissao('Você não participa desse grupo.');
+
   await tx.user.update({
     where: { id: usuarioId },
-    data: { householdId: grupoNovoId, papel },
+    data: { householdId, papel: participacao.papel },
   });
-  await tx.gasto.updateMany({
-    where: { userId: usuarioId },
-    data: { householdId: grupoNovoId },
+}
+
+/** Entra num grupo (ou reaproveita a participação) e passa a usá-lo. */
+async function entrarEAtivar(
+  tx: Transacao,
+  usuarioId: string,
+  householdId: string,
+  papel: 'ADMIN' | 'MEMBRO',
+): Promise<void> {
+  await tx.participacao.upsert({
+    where: { userId_householdId: { userId: usuarioId, householdId } },
+    create: { userId: usuarioId, householdId, papel },
+    // Já participava: manter o papel que a pessoa tem, sem rebaixar ninguém.
+    update: {},
   });
-  await tx.recorrencia.updateMany({
-    where: { userId: usuarioId },
-    data: { householdId: grupoNovoId },
+  await ativarGrupo(tx, usuarioId, householdId);
+}
+
+/** Cria um grupo com as categorias padrão, já com a pessoa dentro e ativo. */
+async function criarGrupoParaPessoa(
+  tx: Transacao,
+  usuarioId: string,
+  nome: string,
+): Promise<{ id: string }> {
+  const grupo = await tx.household.create({ data: { nome, criadoPorId: usuarioId } });
+  await tx.categoria.createMany({
+    data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: grupo.id })),
+  });
+  await entrarEAtivar(tx, usuarioId, grupo.id, 'ADMIN');
+  return { id: grupo.id };
+}
+
+/**
+ * Tira a pessoa de um grupo e a deixa em outro que ela participe. Sem nenhum
+ * outro, cria um grupo pessoal — ninguém fica sem grupo ativo.
+ *
+ * Os lançamentos feitos no grupo ficam nele: é o que permite voltar depois com
+ * um código e reencontrar tudo no lugar.
+ */
+async function desligarDoGrupo(
+  tx: Transacao,
+  usuario: { id: string; nome: string },
+  householdId: string,
+): Promise<void> {
+  await tx.participacao.delete({
+    where: { userId_householdId: { userId: usuario.id, householdId } },
   });
 
-  const restantes = await tx.user.count({ where: { householdId: grupoAntigoId } });
-  if (restantes === 0) {
-    await tx.gasto.updateMany({
-      where: { householdId: grupoAntigoId },
-      data: { categoriaId: null },
-    });
-    await tx.categoria.deleteMany({ where: { householdId: grupoAntigoId } });
-    await tx.convite.deleteMany({ where: { householdId: grupoAntigoId } });
-    await tx.meta.deleteMany({ where: { householdId: grupoAntigoId } });
-    await tx.importacao.deleteMany({ where: { householdId: grupoAntigoId } });
-    await tx.household.delete({ where: { id: grupoAntigoId } });
+  const atual = await tx.user.findUniqueOrThrow({
+    where: { id: usuario.id },
+    select: { householdId: true },
+  });
+  if (atual.householdId !== householdId) return;
+
+  const outra = await tx.participacao.findFirst({
+    where: { userId: usuario.id },
+    orderBy: { criadoEm: 'asc' },
+    select: { householdId: true },
+  });
+  if (outra) {
+    await ativarGrupo(tx, usuario.id, outra.householdId);
+    return;
   }
+  await criarGrupoParaPessoa(
+    tx,
+    usuario.id,
+    `Família de ${usuario.nome.split(' ')[0] ?? usuario.nome}`,
+  );
 }
 
 const INCLUDE_META = { criadoPor: { select: { id: true, nome: true } } } as const;
@@ -117,13 +169,20 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     return { id: household.id, nome: household.nome, criadoEm: household.criadoEm.toISOString() };
   });
 
+  /**
+   * Quem participa do grupo ativo — e não quem está com ele aberto agora.
+   * Com vários grupos, uma pessoa pode participar daqui e estar usando outro.
+   */
   app.get('/membros', async (request: FastifyRequest) => {
     const usuario = usuarioDaRequisicao(request);
-    const membros = await prisma.user.findMany({
+    const participacoes = await prisma.participacao.findMany({
       where: { householdId: usuario.householdId },
-      orderBy: { nome: 'asc' },
+      include: { user: true },
+      orderBy: { user: { nome: 'asc' } },
     });
-    return { itens: membros.map(serializarUsuario) };
+    return {
+      itens: participacoes.map((p) => ({ ...serializarUsuario(p.user), papel: p.papel })),
+    };
   });
 
   app.patch(
@@ -134,14 +193,15 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       const { id } = paramsSchema.parse(request.params);
       const { papel } = atualizarMembroSchema.parse(request.body);
 
-      const membro = await prisma.user.findFirst({
-        where: { id, householdId: usuario.householdId },
+      const participacao = await prisma.participacao.findUnique({
+        where: { userId_householdId: { userId: id, householdId: usuario.householdId } },
+        include: { user: true },
       });
-      if (!membro) throw erroNaoEncontrado('Essa pessoa não está no seu grupo.');
+      if (!participacao) throw erroNaoEncontrado('Essa pessoa não está no seu grupo.');
 
       // Sem isso o grupo poderia ficar sem ninguém para administrar.
-      if (membro.papel === 'ADMIN' && papel === 'MEMBRO') {
-        const totalAdmins = await prisma.user.count({
+      if (participacao.papel === 'ADMIN' && papel === 'MEMBRO') {
+        const totalAdmins = await prisma.participacao.count({
           where: { householdId: usuario.householdId, papel: 'ADMIN' },
         });
         if (totalAdmins <= 1) {
@@ -149,14 +209,25 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
         }
       }
 
-      const atualizado = await prisma.user.update({ where: { id }, data: { papel } });
-      return serializarUsuario(atualizado);
+      const atualizado = await prisma.$transaction(async (tx) => {
+        await tx.participacao.update({
+          where: { userId_householdId: { userId: id, householdId: usuario.householdId } },
+          data: { papel },
+        });
+        // A cópia em `User.papel` só vale para o grupo ativo da pessoa.
+        if (participacao.user.householdId === usuario.householdId) {
+          return tx.user.update({ where: { id }, data: { papel } });
+        }
+        return participacao.user;
+      });
+
+      return { ...serializarUsuario(atualizado), papel };
     },
   );
 
   /**
-   * Tirar alguém do grupo. Quem sai recai num grupo só seu, levando os próprios
-   * lançamentos: remover alguém nunca apaga o dinheiro dessa pessoa.
+   * Tirar alguém do grupo. Os lançamentos que a pessoa fez aqui continuam no
+   * grupo — remover ninguém apaga dinheiro, e se ela voltar acha tudo no lugar.
    */
   app.delete('/membros/:id', { preHandler: [app.exigirAdmin] }, async (request, reply) => {
     const usuario = usuarioDaRequisicao(request);
@@ -166,23 +237,17 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       throw erroValidacao('Para sair do grupo, use "Sair do grupo" — assim ninguém fica sem dono.');
     }
 
-    const membro = await prisma.user.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { id: true, nome: true },
+    const participacao = await prisma.participacao.findUnique({
+      where: { userId_householdId: { userId: id, householdId: usuario.householdId } },
+      include: { user: { select: { id: true, nome: true } } },
     });
-    if (!membro) throw erroNaoEncontrado('Essa pessoa não está no seu grupo.');
+    if (!participacao) throw erroNaoEncontrado('Essa pessoa não está no seu grupo.');
 
-    await prisma.$transaction(async (tx) => {
-      const novo = await tx.household.create({
-        data: { nome: `Família de ${membro.nome.split(' ')[0] ?? membro.nome}` },
-      });
-      await tx.categoria.createMany({
-        data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: novo.id })),
-      });
-      await moverParaGrupo(tx, membro.id, usuario.householdId, novo.id, 'ADMIN');
-    });
+    await prisma.$transaction((tx) =>
+      desligarDoGrupo(tx, participacao.user, usuario.householdId),
+    );
 
-    return reply.status(200).send({ removido: membro.nome });
+    return reply.status(200).send({ removido: participacao.user.nome });
   });
 
   /**
@@ -264,21 +329,19 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
         codigo: 'Código inválido ou expirado.',
       });
     }
-    if (convite.householdId === usuario.householdId) {
-      // Dizer QUEM gerou o código resolve a confusão mais comum: dois códigos
-      // do mesmo grupo, ou um código que a própria pessoa gerou antes. Sem o
-      // nome, a mensagem parece que o app está errado.
-      const quem =
-        convite.criadoPorId === usuario.id ? 'você mesmo' : convite.criadoPor.nome;
-      throw erroConflito(
-        `Esse código foi gerado por ${quem}, aqui no grupo "${convite.household.nome}" — que já é o seu. Para entrar em outra família, peça o código a alguém de lá.`,
-      );
-    }
-
     const atualizado = await prisma.$transaction(async (tx) => {
-      await moverParaGrupo(tx, usuario.id, usuario.householdId, convite.householdId, 'MEMBRO');
+      // Entrar não move nada: a pessoa passa a participar de mais um grupo e
+      // começa a usá-lo. Os lançamentos de cada grupo ficam onde foram feitos.
+      await entrarEAtivar(tx, usuario.id, convite.householdId, 'MEMBRO');
       // Quem convidou passa a moderar o grupo: foi quem trouxe gente para ele.
-      await tx.user.update({ where: { id: convite.criadoPorId }, data: { papel: 'ADMIN' } });
+      await tx.participacao.updateMany({
+        where: { userId: convite.criadoPorId, householdId: convite.householdId },
+        data: { papel: 'ADMIN' },
+      });
+      await tx.user.updateMany({
+        where: { id: convite.criadoPorId, householdId: convite.householdId },
+        data: { papel: 'ADMIN' },
+      });
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
@@ -286,75 +349,178 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
   });
 
   /**
-   * Sair do grupo por conta própria, sem depender de quem administra. A pessoa
-   * recai num grupo só dela, levando os próprios lançamentos — nada é apagado.
+   * Sair do grupo ativo. Os lançamentos feitos nele ficam nele: voltando com um
+   * código, a pessoa reencontra tudo no lugar.
    */
   app.post('/sair', async (request, reply) => {
     const usuario = usuarioDaRequisicao(request);
 
-    const outros = await prisma.user.findMany({
-      where: { householdId: usuario.householdId, id: { not: usuario.id } },
+    const outros = await prisma.participacao.findMany({
+      where: { householdId: usuario.householdId, userId: { not: usuario.id } },
       orderBy: { criadoEm: 'asc' },
-      select: { id: true, papel: true },
+      select: { userId: true, papel: true },
     });
     if (outros.length === 0) {
-      throw erroConflito('Você já é a única pessoa do grupo — não há de quem se separar.');
+      throw erroConflito(
+        'Você é a única pessoa deste grupo. Para se livrar dele, use "Meus grupos" e apague-o.',
+      );
     }
 
     const eu = await prisma.user.findUniqueOrThrow({
       where: { id: usuario.id },
-      select: { nome: true },
+      select: { id: true, nome: true },
     });
 
     const atualizado = await prisma.$transaction(async (tx) => {
       // O grupo não pode ficar sem ninguém para administrar.
       if (usuario.papel === 'ADMIN' && !outros.some((o) => o.papel === 'ADMIN')) {
-        await tx.user.update({ where: { id: outros[0]!.id }, data: { papel: 'ADMIN' } });
+        const herdeiro = outros[0]!.userId;
+        await tx.participacao.update({
+          where: { userId_householdId: { userId: herdeiro, householdId: usuario.householdId } },
+          data: { papel: 'ADMIN' },
+        });
+        await tx.user.updateMany({
+          where: { id: herdeiro, householdId: usuario.householdId },
+          data: { papel: 'ADMIN' },
+        });
       }
-      const novo = await tx.household.create({
-        data: { nome: `Família de ${eu.nome.split(' ')[0] ?? eu.nome}` },
-      });
-      await tx.categoria.createMany({
-        data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: novo.id })),
-      });
-      await moverParaGrupo(tx, usuario.id, usuario.householdId, novo.id, 'ADMIN');
+      await desligarDoGrupo(tx, eu, usuario.householdId);
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
     return reply.status(200).send(serializarUsuario(atualizado));
   });
 
-  /** Criar um grupo novo. Quem cria administra o grupo que criou. */
+  /**
+   * Criar mais um grupo. Antes isto trocava a pessoa de grupo; agora ela passa
+   * a participar de mais um e começa a usá-lo, sem deixar o anterior.
+   */
   app.post('/nova', async (request, reply) => {
     const usuario = usuarioDaRequisicao(request);
     const { nome } = criarGrupoSchema.parse(request.body);
 
-    const sozinho =
-      (await prisma.user.count({
-        where: { householdId: usuario.householdId, id: { not: usuario.id } },
-      })) === 0;
-
-    // Sozinho no grupo atual, "criar um grupo novo" é só recomeçar com outro
-    // nome — sem mover nada e sem perder as categorias.
-    if (sozinho) {
-      await prisma.household.update({ where: { id: usuario.householdId }, data: { nome } });
-      const atualizado = await prisma.user.update({
-        where: { id: usuario.id },
-        data: { papel: 'ADMIN' },
-      });
-      return reply.status(201).send(serializarUsuario(atualizado));
-    }
-
     const atualizado = await prisma.$transaction(async (tx) => {
-      const novo = await tx.household.create({ data: { nome } });
-      await tx.categoria.createMany({
-        data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: novo.id })),
-      });
-      await moverParaGrupo(tx, usuario.id, usuario.householdId, novo.id, 'ADMIN');
+      await criarGrupoParaPessoa(tx, usuario.id, nome);
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
     return reply.status(201).send(serializarUsuario(atualizado));
+  });
+
+  /**
+   * Todos os grupos da pessoa, para a tela "Meus grupos". Traz os códigos
+   * ativos só dos grupos que ela administra — código é convite, não é público.
+   */
+  app.get('/grupos', async (request: FastifyRequest) => {
+    const usuario = usuarioDaRequisicao(request);
+
+    const participacoes = await prisma.participacao.findMany({
+      where: { userId: usuario.id },
+      include: {
+        household: {
+          include: {
+            _count: { select: { participacoes: true, gastos: true } },
+            convites: {
+              where: { expiraEm: { gt: new Date() } },
+              orderBy: { criadoEm: 'desc' },
+              select: { codigo: true, expiraEm: true },
+            },
+          },
+        },
+      },
+      orderBy: { criadoEm: 'asc' },
+    });
+
+    return {
+      itens: participacoes.map((p) => ({
+        id: p.household.id,
+        nome: p.household.nome,
+        papel: p.papel,
+        ativo: p.householdId === usuario.householdId,
+        souDono: p.household.criadoPorId === usuario.id,
+        totalMembros: p.household._count.participacoes,
+        totalGastos: p.household._count.gastos,
+        codigos:
+          p.papel === 'ADMIN'
+            ? p.household.convites.map((c) => ({
+                codigo: c.codigo,
+                expiraEm: c.expiraEm.toISOString(),
+              }))
+            : [],
+        criadoEm: p.household.criadoEm.toISOString(),
+      })),
+    };
+  });
+
+  /** Troca o grupo que está em uso. */
+  app.post('/grupos/:id/ativar', async (request: FastifyRequest) => {
+    const usuario = usuarioDaRequisicao(request);
+    const { id } = paramsSchema.parse(request.params);
+
+    const atualizado = await prisma.$transaction(async (tx) => {
+      await ativarGrupo(tx, usuario.id, id);
+      return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
+    });
+
+    return serializarUsuario(atualizado);
+  });
+
+  /**
+   * Apagar um grupo inteiro, com os lançamentos dentro dele.
+   *
+   * Só quem administra, e só quando não há mais ninguém no grupo: apagar levaria
+   * junto o dinheiro que as outras pessoas lançaram ali. Para esvaziar antes,
+   * use "tirar do grupo" em cada pessoa.
+   */
+  app.delete('/grupos/:id', async (request, reply) => {
+    const usuario = usuarioDaRequisicao(request);
+    const { id } = paramsSchema.parse(request.params);
+
+    const participacao = await prisma.participacao.findUnique({
+      where: { userId_householdId: { userId: usuario.id, householdId: id } },
+    });
+    if (!participacao) throw erroNaoEncontrado('Você não participa desse grupo.');
+    if (participacao.papel !== 'ADMIN') {
+      throw erroSemPermissao('Só quem administra o grupo pode apagá-lo.');
+    }
+
+    const outros = await prisma.participacao.count({
+      where: { householdId: id, userId: { not: usuario.id } },
+    });
+    if (outros > 0) {
+      throw erroConflito(
+        `Ainda há ${outros === 1 ? 'mais uma pessoa' : `mais ${outros} pessoas`} neste grupo. Tire ${outros === 1 ? 'ela' : 'todas'} do grupo antes de apagá-lo — o que elas lançaram aqui seria apagado junto.`,
+      );
+    }
+
+    const totalGrupos = await prisma.participacao.count({ where: { userId: usuario.id } });
+    if (totalGrupos <= 1) {
+      throw erroConflito('Este é o seu único grupo. Crie outro antes de apagar este.');
+    }
+
+    const eu = await prisma.user.findUniqueOrThrow({
+      where: { id: usuario.id },
+      select: { id: true, nome: true },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      // Sai do grupo primeiro: assim a pessoa nunca fica com um grupo ativo
+      // que deixou de existir.
+      await desligarDoGrupo(tx, eu, id);
+
+      await tx.comprovante.deleteMany({ where: { gasto: { householdId: id } } });
+      await tx.gasto.deleteMany({ where: { householdId: id } });
+      await tx.recorrencia.deleteMany({ where: { householdId: id } });
+      await tx.meta.deleteMany({ where: { householdId: id } });
+      await tx.importacao.deleteMany({ where: { householdId: id } });
+      await tx.convite.deleteMany({ where: { householdId: id } });
+      await tx.cartao.deleteMany({ where: { householdId: id } });
+      await tx.categoria.deleteMany({ where: { householdId: id } });
+      await tx.household.delete({ where: { id } });
+    });
+
+    const atual = await prisma.user.findUniqueOrThrow({ where: { id: usuario.id } });
+    return reply.status(200).send(serializarUsuario(atual));
   });
 
   // --- Metas conjuntas ------------------------------------------------------

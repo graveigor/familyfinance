@@ -48,6 +48,22 @@ export interface Household {
   criadoEm: string;
 }
 
+/** Um grupo na tela "Meus grupos", já com o que ela precisa mostrar. */
+export interface GrupoDaPessoa {
+  id: string;
+  nome: string;
+  /** Papel da pessoa NESTE grupo. */
+  papel: Papel;
+  /** É o grupo em uso agora. */
+  ativo: boolean;
+  souDono: boolean;
+  totalMembros: number;
+  totalGastos: number;
+  /** Códigos válidos. Vem vazio nos grupos que a pessoa não administra. */
+  codigos: Array<{ codigo: string; expiraEm: string }>;
+  criadoEm: string;
+}
+
 export interface Categoria {
   id: string;
   nome: string;

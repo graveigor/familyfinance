@@ -72,7 +72,7 @@ export function Familia(): ReactElement {
     try {
       await api.household.removerMembro(membroARemover.id);
       await queryClient.invalidateQueries();
-      aviso.mostrar(`${membroARemover.nome} saiu do grupo. Os lançamentos foram junto.`);
+      aviso.mostrar(`${membroARemover.nome} saiu do grupo.`);
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     } finally {
@@ -87,7 +87,7 @@ export function Familia(): ReactElement {
       const atualizado = await api.household.sair();
       atualizarUsuario(atualizado);
       await queryClient.invalidateQueries();
-      aviso.mostrar('Você saiu do grupo. Seus lançamentos vieram com você.');
+      aviso.mostrar('Você saiu do grupo.');
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     } finally {
@@ -344,7 +344,7 @@ export function Familia(): ReactElement {
       <Confirmar
         aberto={membroARemover !== null}
         titulo={`Tirar ${membroARemover?.nome ?? ''} do grupo?`}
-        descricao={`${membroARemover?.nome ?? 'A pessoa'} passa a ter um grupo só dela e leva os próprios lançamentos junto. Nada é apagado, e o que é seu continua com você.`}
+        descricao={`${membroARemover?.nome ?? 'A pessoa'} deixa de ver este grupo e passa a usar um grupo só dela. O que ela lançou aqui continua aqui — nada é apagado.`}
         rotuloConfirmar="Tirar do grupo"
         aoCancelar={() => setMembroARemover(null)}
         aoConfirmar={() => void removerMembro()}
@@ -353,7 +353,7 @@ export function Familia(): ReactElement {
       <Confirmar
         aberto={confirmandoSaida}
         titulo="Sair deste grupo?"
-        descricao="Você passa a ter um grupo só seu, levando os seus lançamentos. O que é das outras pessoas fica com elas. Para voltar, é só usar um código do grupo."
+        descricao="Você deixa de ver este grupo. O que você lançou nele fica lá — voltando com um código, está tudo no lugar. O que é das outras pessoas não é afetado."
         rotuloConfirmar="Sair do grupo"
         carregando={saindo}
         aoCancelar={() => setConfirmandoSaida(false)}
@@ -439,8 +439,8 @@ function PainelNovoGrupo({
       <div className="space-y-4">
         <CaixaDeErro mensagem={erro} />
         <p className="text-base text-slate-700">
-          Você sai do grupo atual e começa um novo, como administrador. Seus lançamentos vão junto —
-          o que é dos outros fica com eles.
+          Você passa a participar de mais um grupo, como administrador, e começa a usá-lo. Os
+          grupos que você já tem continuam lá, cada um com os seus lançamentos.
         </p>
         <Campo
           rotulo="Nome do grupo"
@@ -499,8 +499,8 @@ function PainelEntrarNoGrupo({
       <div className="space-y-4">
         <CaixaDeErro mensagem={erro} />
         <p className="text-base text-slate-700">
-          Digite o código que você recebeu. Seus lançamentos vão com você, e continuam privados
-          até você decidir compartilhar.
+          Digite o código que você recebeu. Você entra neste grupo sem sair dos outros, e o que
+          lançar aqui continua privado até você decidir compartilhar.
         </p>
         <Campo
           rotulo="Código do grupo"

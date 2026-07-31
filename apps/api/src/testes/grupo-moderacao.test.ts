@@ -110,24 +110,34 @@ describe('quem convida modera', () => {
     expect(lista.find((m) => m.email === 'ana@exemplo.com')?.papel).toBe('ADMIN');
   });
 
-  it('o código do próprio grupo diz quem o gerou, em vez de só recusar', async () => {
+  it('código de um grupo do qual já se participa apenas leva de volta a ele', async () => {
     const { dona, filha } = await grupoDeTres();
     const codigo = await convidar(dona);
+    const grupoDaFamilia = (await membros(filha))[0]!.householdId;
 
+    // A filha vai para um grupo só dela...
+    const outro = await app.inject({
+      method: 'POST',
+      url: '/api/v1/household/nova',
+      headers: filha,
+      payload: { nome: 'Casa da Ana' },
+    });
+    expect(outro.json<Usuario>().householdId).not.toBe(grupoDaFamilia);
+
+    // ...e o código da família a traz de volta, sem erro nenhum.
     const resposta = await app.inject({
       method: 'POST',
       url: '/api/v1/household/entrar',
       headers: filha,
       payload: { codigo },
     });
-
-    expect(resposta.statusCode).toBe(409);
-    expect(resposta.json<{ erro: { mensagem: string } }>().erro.mensagem).toContain('Ivonete');
+    expect(resposta.statusCode).toBe(200);
+    expect(resposta.json<Usuario>().householdId).toBe(grupoDaFamilia);
   });
 });
 
 describe('remover do grupo', () => {
-  it('moderador tira alguém, e a pessoa leva os próprios lançamentos', async () => {
+  it('moderador tira alguém, que recai num grupo só seu', async () => {
     const { dona, filha, filhaId } = await grupoDeTres();
     await lancarGasto(filha, 'Farmácia da Ana');
 
@@ -141,10 +151,12 @@ describe('remover do grupo', () => {
     // Saiu da lista do grupo antigo...
     expect((await membros(dona)).map((m) => m.email)).not.toContain('ana@exemplo.com');
 
-    // ...e continua com o gasto dela, agora num grupo só seu.
+    // ...e cai num grupo só dela, vazio: o lançamento ficou no grupo onde foi
+    // feito, e não é apagado nem levado embora.
     const dela = await app.inject({ method: 'GET', url: '/api/v1/gastos', headers: filha });
-    expect(dela.json<ListaDeGastos>().itens.map((g) => g.descricao)).toEqual(['Farmácia da Ana']);
+    expect(dela.json<ListaDeGastos>().itens).toHaveLength(0);
     expect((await membros(filha)).map((m) => m.email)).toEqual(['ana@exemplo.com']);
+    expect(await prisma.gasto.count({ where: { descricao: 'Farmácia da Ana' } })).toBe(1);
   });
 
   it('membro comum não pode remover ninguém', async () => {
@@ -181,7 +193,7 @@ describe('remover do grupo', () => {
 });
 
 describe('sair do grupo', () => {
-  it('membro sai sozinho e leva os lançamentos dele', async () => {
+  it('membro sai sozinho; o que ele lançou continua no grupo', async () => {
     const { dona, filha } = await grupoDeTres();
     await lancarGasto(filha, 'Farmácia da Ana');
 
@@ -192,8 +204,10 @@ describe('sair do grupo', () => {
     expect(agora.papel).toBe('ADMIN');
     expect((await membros(dona)).map((m) => m.email)).not.toContain('ana@exemplo.com');
 
+    // No grupo novo ela começa do zero; o lançamento não some do banco.
     const dela = await app.inject({ method: 'GET', url: '/api/v1/gastos', headers: filha });
-    expect(dela.json<ListaDeGastos>().itens.map((g) => g.descricao)).toEqual(['Farmácia da Ana']);
+    expect(dela.json<ListaDeGastos>().itens).toHaveLength(0);
+    expect(await prisma.gasto.count({ where: { descricao: 'Farmácia da Ana' } })).toBe(1);
   });
 
   it('quando a única moderadora sai, alguém do grupo assume', async () => {
@@ -213,7 +227,7 @@ describe('sair do grupo', () => {
     expect(pelaVisaoDoNeto.filter((m) => m.papel === 'ADMIN').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('sozinho no grupo não há de quem sair', async () => {
+  it('sozinho no grupo, sair é recusado — o caminho é apagar o grupo', async () => {
     const { autorizacao } = await criarConta(app);
     const resposta = await app.inject({
       method: 'POST',
