@@ -4,10 +4,16 @@
  * de string (nunca `parseFloat`), para não herdar erro de ponto flutuante.
  */
 
-const FORMATADOR_BRL = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-});
+import type { Idioma } from './datas.js';
+
+/**
+ * A moeda continua sendo o real: o dinheiro é o mesmo, muda só como o número
+ * é escrito. `R$ 1.234,56` em português, `R$ 1,234.56` em inglês.
+ */
+const FORMATADORES_BRL: Record<Idioma, Intl.NumberFormat> = {
+  pt: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }),
+  en: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'BRL' }),
+};
 
 const FORMATADOR_NUMERO = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
@@ -15,8 +21,8 @@ const FORMATADOR_NUMERO = new Intl.NumberFormat('pt-BR', {
 });
 
 /** `123456` -> `"R$ 1.234,56"`. Negativos saem como `"-R$ 1.234,56"`. */
-export function formatarBRL(centavos: number): string {
-  return FORMATADOR_BRL.format(centavos / 100);
+export function formatarBRL(centavos: number, idioma: Idioma = 'pt'): string {
+  return FORMATADORES_BRL[idioma].format(centavos / 100);
 }
 
 /** `123456` -> `"1.234,56"` (sem símbolo, para campos de formulário). */
@@ -28,17 +34,17 @@ export function formatarNumero(centavos: number): string {
  * Versão curta para textos de comparação: `"R$ 320"` quando não há centavos,
  * `"R$ 320,50"` quando há. Usada em frases como "R$ 320 a mais que em junho".
  */
-export function formatarBRLCurto(centavos: number): string {
+export function formatarBRLCurto(centavos: number, idioma: Idioma = 'pt'): string {
   const absoluto = Math.abs(centavos);
   if (absoluto % 100 === 0) {
-    return new Intl.NumberFormat('pt-BR', {
+    return new Intl.NumberFormat(idioma === 'en' ? 'en-US' : 'pt-BR', {
       style: 'currency',
       currency: 'BRL',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(centavos / 100);
   }
-  return formatarBRL(centavos);
+  return formatarBRL(centavos, idioma);
 }
 
 /**
@@ -140,10 +146,10 @@ export function parseValorParaCentavos(entrada: string | number): number | null 
  * Aplica máscara de moeda enquanto o usuário digita: só os dígitos importam e
  * os dois últimos são os centavos (`"1234"` -> `"R$ 12,34"`).
  */
-export function mascararMoeda(digitado: string): string {
+export function mascararMoeda(digitado: string, idioma: Idioma = 'pt'): string {
   const digitos = digitado.replace(/\D/g, '').slice(0, 15);
   if (digitos === '') return '';
-  return formatarBRL(Number(digitos));
+  return formatarBRL(Number(digitos), idioma);
 }
 
 /** Centavos correspondentes ao que já foi digitado no campo com máscara. */

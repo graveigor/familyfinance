@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
+import { ProvedorDeIdioma } from './i18n';
 import { ProvedorDeTutorial } from './componentes/Tutorial';
 import { ProvedorDeAviso } from './componentes/ui';
 import { ProvedorDeSessao } from './sessao';
@@ -28,17 +29,20 @@ if (!raiz) throw new Error('Elemento #raiz não encontrado no index.html');
 
 createRoot(raiz).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ProvedorDeSessao>
-        <ProvedorDeAviso>
-          <BrowserRouter>
-            <ProvedorDeTutorial>
-              <App />
-            </ProvedorDeTutorial>
-          </BrowserRouter>
-        </ProvedorDeAviso>
-      </ProvedorDeSessao>
-    </QueryClientProvider>
+    {/* O idioma envolve tudo: avisos e tutorial também são traduzidos. */}
+    <ProvedorDeIdioma>
+      <QueryClientProvider client={queryClient}>
+        <ProvedorDeSessao>
+          <ProvedorDeAviso>
+            <BrowserRouter>
+              <ProvedorDeTutorial>
+                <App />
+              </ProvedorDeTutorial>
+            </BrowserRouter>
+          </ProvedorDeAviso>
+        </ProvedorDeSessao>
+      </QueryClientProvider>
+    </ProvedorDeIdioma>
   </StrictMode>,
 );
 

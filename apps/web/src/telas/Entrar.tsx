@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactElement } from 'react';
 import { Botao, CaixaDeErro, Campo, traduzirErro } from '../componentes/ui';
+import { SeletorDeIdioma, useT } from '../i18n';
 import { useSessao } from '../sessao';
 
 /**
@@ -7,6 +8,7 @@ import { useSessao } from '../sessao';
  * Quem recebeu convite cola o código e já cai na família certa.
  */
 export function Entrar(): ReactElement {
+  const t = useT();
   const { entrar, registrar } = useSessao();
   const [modo, setModo] = useState<'entrar' | 'criar'>('entrar');
   const [enviando, setEnviando] = useState(false);
@@ -48,8 +50,12 @@ export function Entrar(): ReactElement {
       <div className="mx-auto w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <img src="/icone-192.png" alt="" className="h-16 w-16 rounded-2xl shadow-sm" />
-          <h1 className="text-2xl font-bold text-slate-900">Family Finance</h1>
-          <p className="text-base text-slate-600">Os gastos da família, com privacidade para cada um.</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('Family Finance')}</h1>
+          <p className="text-base text-slate-600">
+            {t('Os gastos da família, com privacidade para cada um.')}
+          </p>
+          {/* Antes de ter conta a pessoa já escolhe o idioma. */}
+          <SeletorDeIdioma className="mt-1" />
         </div>
 
         <form onSubmit={(e) => void enviar(e)} className="cartao space-y-5 p-6">
@@ -57,7 +63,7 @@ export function Entrar(): ReactElement {
 
           {modo === 'criar' && (
             <Campo
-              rotulo="Seu nome"
+              rotulo={t('Seu nome')}
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               autoComplete="name"
@@ -67,7 +73,7 @@ export function Entrar(): ReactElement {
           )}
 
           <Campo
-            rotulo="E-mail"
+            rotulo={t('E-mail')}
             type="email"
             inputMode="email"
             value={email}
@@ -78,31 +84,31 @@ export function Entrar(): ReactElement {
           />
 
           <Campo
-            rotulo="Senha"
+            rotulo={t('Senha')}
             type="password"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
             autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
-            dica={modo === 'criar' ? 'Pelo menos 8 caracteres.' : undefined}
+            dica={modo === 'criar' ? t('Pelo menos 8 caracteres.') : undefined}
             erro={erro.campos.senha}
             required
           />
 
           {modo === 'criar' && (
             <Campo
-              rotulo="Código do grupo (opcional)"
+              rotulo={t('Código do grupo (opcional)')}
               value={codigoConvite}
               onChange={(e) => setCodigoConvite(e.target.value.toUpperCase())}
               maxLength={8}
               autoCapitalize="characters"
               className="uppercase tracking-widest"
-              dica="Recebeu um código como FF-9A3K2? Cole aqui. Se não, criamos um grupo só seu."
+              dica={t('Recebeu um código como FF-9A3K2? Cole aqui. Se não, criamos um grupo só seu.')}
               erro={erro.campos.codigoConvite}
             />
           )}
 
           <Botao type="submit" larguraTotal carregando={enviando}>
-            {modo === 'entrar' ? 'Entrar' : 'Criar minha conta'}
+            {modo === 'entrar' ? t('Entrar') : t('Criar minha conta')}
           </Botao>
 
           <div className="border-t border-slate-200 pt-4 text-center">
@@ -114,7 +120,7 @@ export function Entrar(): ReactElement {
               }}
               className="min-h-toque px-2 text-base font-semibold text-marca-700 hover:underline"
             >
-              {modo === 'entrar' ? 'Ainda não tenho conta' : 'Já tenho conta'}
+              {modo === 'entrar' ? t('Ainda não tenho conta') : t('Já tenho conta')}
             </button>
           </div>
         </form>

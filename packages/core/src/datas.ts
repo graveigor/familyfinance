@@ -45,6 +45,25 @@ const DIAS_SEMANA = [
   'sábado',
 ] as const;
 
+/**
+ * Idioma da interface. Fica aqui, e não numa biblioteca de i18n, porque estas
+ * funções formatam data à mão de propósito — ver o comentário do topo.
+ */
+export type Idioma = 'pt' | 'en';
+
+const MESES_EN = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const;
+
+const MESES_CURTOS_EN = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const;
+
+const DIAS_SEMANA_EN = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+] as const;
+
 /** Data em meia-noite UTC a partir de ano/mês(1-12)/dia. */
 export function dataUTC(ano: number, mes: number, dia: number): Date {
   return new Date(Date.UTC(ano, mes - 1, dia, 0, 0, 0, 0));
@@ -69,11 +88,12 @@ export function ontem(): Date {
   return d;
 }
 
-/** `dd/mm/aaaa` */
-export function formatarData(data: Date): string {
+/** `dd/mm/aaaa` em português, `mm/dd/aaaa` em inglês. */
+export function formatarData(data: Date, idioma: Idioma = 'pt'): string {
   const dia = String(data.getUTCDate()).padStart(2, '0');
   const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
-  return `${dia}/${mes}/${data.getUTCFullYear()}`;
+  const ano = data.getUTCFullYear();
+  return idioma === 'en' ? `${mes}/${dia}/${ano}` : `${dia}/${mes}/${ano}`;
 }
 
 /** `aaaa-mm-dd` — formato usado no tráfego da API. */
@@ -83,29 +103,39 @@ export function formatarDataISO(data: Date): string {
   return `${data.getUTCFullYear()}-${mes}-${dia}`;
 }
 
-/** `"12 de março"` / `"12 de março de 2024"` */
-export function formatarDataExtenso(data: Date, comAno = false): string {
+/** `"12 de março"` / `"March 12"`, com ano quando pedido. */
+export function formatarDataExtenso(data: Date, comAno = false, idioma: Idioma = 'pt'): string {
+  if (idioma === 'en') {
+    const mes = MESES_EN[data.getUTCMonth()] ?? '';
+    const base = `${mes} ${data.getUTCDate()}`;
+    return comAno ? `${base}, ${data.getUTCFullYear()}` : base;
+  }
   const mes = MESES[data.getUTCMonth()] ?? '';
   const base = `${data.getUTCDate()} de ${mes}`;
   return comAno ? `${base} de ${data.getUTCFullYear()}` : base;
 }
 
 /** Cabeçalho dos grupos da lista: "Hoje", "Ontem" ou "sexta-feira, 12 de março". */
-export function rotuloDoDia(data: Date, referencia: Date = hoje()): string {
+export function rotuloDoDia(
+  data: Date,
+  referencia: Date = hoje(),
+  idioma: Idioma = 'pt',
+): string {
   const diff = Math.round((normalizarData(data).getTime() - referencia.getTime()) / 86_400_000);
-  if (diff === 0) return 'Hoje';
-  if (diff === -1) return 'Ontem';
-  const diaSemana = DIAS_SEMANA[data.getUTCDay()] ?? '';
+  const ingles = idioma === 'en';
+  if (diff === 0) return ingles ? 'Today' : 'Hoje';
+  if (diff === -1) return ingles ? 'Yesterday' : 'Ontem';
+  const diaSemana = (ingles ? DIAS_SEMANA_EN : DIAS_SEMANA)[data.getUTCDay()] ?? '';
   const mesmoAno = data.getUTCFullYear() === referencia.getUTCFullYear();
-  return `${diaSemana}, ${formatarDataExtenso(data, !mesmoAno)}`;
+  return `${diaSemana}, ${formatarDataExtenso(data, !mesmoAno, idioma)}`;
 }
 
-export function nomeDoMes(mes: number): string {
-  return MESES[mes - 1] ?? '';
+export function nomeDoMes(mes: number, idioma: Idioma = 'pt'): string {
+  return (idioma === 'en' ? MESES_EN : MESES)[mes - 1] ?? '';
 }
 
-export function nomeCurtoDoMes(mes: number): string {
-  return MESES_CURTOS[mes - 1] ?? '';
+export function nomeCurtoDoMes(mes: number, idioma: Idioma = 'pt'): string {
+  return (idioma === 'en' ? MESES_CURTOS_EN : MESES_CURTOS)[mes - 1] ?? '';
 }
 
 export function inicioDoMes(ano: number, mes: number): Date {

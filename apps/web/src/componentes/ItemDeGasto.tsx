@@ -1,6 +1,7 @@
 import { formatarBRL, type Gasto } from '@gastos/core';
 import type { ReactElement } from 'react';
 import { Icone } from './Icone';
+import { useIdioma } from '../i18n';
 
 /**
  * Linha de gasto. O valor fica maior e à direita, que é onde o olho procura;
@@ -14,6 +15,7 @@ export function ItemDeGasto({
   gasto: Gasto;
   aoTocar?: (gasto: Gasto) => void;
 }): ReactElement {
+  const { t, idioma } = useIdioma();
   const conteudo = (
     <>
       <span
@@ -35,7 +37,7 @@ export function ItemDeGasto({
         <span className="flex flex-wrap items-center gap-x-1.5 text-sm text-slate-600">
           <span>{gasto.usuario.nome}</span>
           <span aria-hidden="true">·</span>
-          <span>{gasto.categoria?.nome ?? 'Sem categoria'}</span>
+          <span>{t(gasto.categoria?.nome ?? 'Sem categoria')}</span>
           {gasto.cartao && (
             <>
               <span aria-hidden="true">·</span>
@@ -57,7 +59,7 @@ export function ItemDeGasto({
           gasto.valorCentavos < 0 ? 'text-marca-700' : 'text-slate-900'
         }`}
       >
-        {formatarBRL(gasto.valorCentavos)}
+        {formatarBRL(gasto.valorCentavos, idioma)}
       </span>
     </>
   );

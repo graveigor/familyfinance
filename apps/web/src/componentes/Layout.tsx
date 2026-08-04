@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icone } from './Icone';
 import { BotaoDeAjuda } from './Tutorial';
+import { useT } from '../i18n';
 
 const ITENS = [
   { para: '/', rotulo: 'Início', icone: 'inicio' },
@@ -17,6 +18,7 @@ const ITENS = [
  * direito, do jeito que o polegar alcança.
  */
 export function Layout(): ReactElement {
+  const t = useT();
   const { pathname } = useLocation();
   const navegar = useNavigate();
   const mostrarBotaoAdicionar = pathname === '/' || pathname === '/gastos';
@@ -30,12 +32,12 @@ export function Layout(): ReactElement {
     <div className="min-h-dvh md:flex">
       {/* Computador: navegação lateral */}
       <nav
-        aria-label="Navegação principal"
+        aria-label={t('Navegação principal')}
         className="hidden w-60 shrink-0 border-r border-slate-200 bg-white p-4 md:block"
       >
         <div className="mb-6 flex items-center gap-2 px-2 py-3">
           <img src="/icone-192.png" alt="" className="h-9 w-9 rounded-lg" />
-          <span className="text-lg font-bold text-slate-900">Family Finance</span>
+          <span className="text-lg font-bold text-slate-900">{t('Family Finance')}</span>
         </div>
 
         <ul className="space-y-1">
@@ -54,7 +56,7 @@ export function Layout(): ReactElement {
               >
                 <>
                   <Icone nome={item.icone} tamanho={24} />
-                  {item.rotulo}
+                  {t(item.rotulo)}
                 </>
               </NavLink>
             </li>
@@ -69,7 +71,7 @@ export function Layout(): ReactElement {
             bg-marca-600 px-4 py-3 text-base font-semibold text-white hover:bg-marca-700"
         >
           <Icone nome="mais" tamanho={22} />
-          Adicionar gasto
+          {t('Adicionar gasto')}
         </button>
       </nav>
 
@@ -94,12 +96,12 @@ export function Layout(): ReactElement {
           style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
         >
           <Icone nome="mais" tamanho={32} />
-          <span className="sr-only">Adicionar gasto</span>
+          <span className="sr-only">{t('Adicionar gasto')}</span>
         </button>
       )}
 
       <nav
-        aria-label="Navegação principal"
+        aria-label={t('Navegação principal')}
         className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white md:hidden ${
           ehFormulario ? 'hidden' : ''
         }`}
@@ -121,7 +123,7 @@ export function Layout(): ReactElement {
               >
                 <>
                   <Icone nome={item.icone} tamanho={24} />
-                  {item.rotulo}
+                  {t(item.rotulo)}
                 </>
               </NavLink>
             </li>

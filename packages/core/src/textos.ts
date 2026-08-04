@@ -1,4 +1,4 @@
-import { nomeDoMes } from './datas.js';
+import { nomeDoMes, type Idioma } from './datas.js';
 import { formatarBRLCurto } from './dinheiro.js';
 import type { ResumoMensal } from './tipos.js';
 
@@ -6,17 +6,23 @@ import type { ResumoMensal } from './tipos.js';
  * Frase de comparação da tela inicial. O usuário precisa entender sem
  * interpretar número: "R$ 320 a mais que em junho".
  */
-export function fraseComparacaoMensal(resumo: ResumoMensal): string {
+export function fraseComparacaoMensal(resumo: ResumoMensal, idioma: Idioma = 'pt'): string {
   const { diferencaCentavos, mes } = resumo.mesAnterior;
-  const mesPassado = nomeDoMes(mes);
+  const mesPassado = nomeDoMes(mes, idioma);
+  const ingles = idioma === 'en';
 
   if (resumo.mesAnterior.totalCentavos === 0) {
-    return `Primeiro mês com gastos registrados.`;
+    return ingles ? 'First month with expenses recorded.' : 'Primeiro mês com gastos registrados.';
   }
   if (diferencaCentavos === 0) {
-    return `Mesmo valor que em ${mesPassado}.`;
+    return ingles ? `Same as in ${mesPassado}.` : `Mesmo valor que em ${mesPassado}.`;
   }
-  const valor = formatarBRLCurto(Math.abs(diferencaCentavos));
+  const valor = formatarBRLCurto(Math.abs(diferencaCentavos), idioma);
+  if (ingles) {
+    return diferencaCentavos > 0
+      ? `${valor} more than in ${mesPassado}.`
+      : `${valor} less than in ${mesPassado}.`;
+  }
   return diferencaCentavos > 0
     ? `${valor} a mais que em ${mesPassado}.`
     : `${valor} a menos que em ${mesPassado}.`;

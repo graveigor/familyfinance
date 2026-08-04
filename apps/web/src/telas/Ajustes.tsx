@@ -18,6 +18,7 @@ import {
   useCriarCategoria,
   useExcluirCategoria,
 } from '../consultas';
+import { SeletorDeIdioma, useT } from '../i18n';
 import { useSessao } from '../sessao';
 
 const PASSOS: PassoDeTutorial[] = [
@@ -61,6 +62,7 @@ const PASSOS: PassoDeTutorial[] = [
 
 export function Ajustes(): ReactElement {
   useTutorialDaPagina('ajustes', PASSOS);
+  const t = useT();
   const { usuario, sair } = useSessao();
   const navegar = useNavigate();
   const categorias = useCategorias();
@@ -82,56 +84,81 @@ export function Ajustes(): ReactElement {
   >(null);
 
   const secoes = [
-    { chave: 'perfil', icone: 'pessoa', titulo: 'Meu perfil', descricao: usuario?.email ?? '' },
+    { chave: 'perfil', icone: 'pessoa', titulo: t('Meu perfil'), descricao: usuario?.email ?? '' },
     {
       chave: 'grupos',
       icone: 'pessoas',
-      titulo: 'Meus grupos',
+      titulo: t('Meus grupos'),
       descricao: grupos.data?.length
-        ? `${grupos.data.length} grupos · em uso: ${grupos.data.find((g) => g.ativo)?.nome ?? '—'}`
-        : 'Criar, trocar e compartilhar códigos',
+        ? t('{total} grupos · em uso: {nome}', {
+            total: grupos.data.length,
+            nome: grupos.data.find((g) => g.ativo)?.nome ?? '—',
+          })
+        : t('Criar, trocar e compartilhar códigos'),
     },
     {
       chave: 'categorias',
       icone: 'etiqueta',
-      titulo: 'Categorias',
-      descricao: categorias.data ? `${categorias.data.length} categorias` : '...',
+      titulo: t('Categorias'),
+      descricao: categorias.data
+        ? t('{total} categorias', { total: categorias.data.length })
+        : '...',
     },
     {
       chave: 'cartoes',
       icone: 'cartao',
-      titulo: 'Cartões',
+      titulo: t('Cartões'),
       descricao: cartoes.data?.length
         ? cartoes.data.map((c) => c.nome).join(', ')
-        : 'Separe os gastos por cartão',
+        : t('Separe os gastos por cartão'),
     },
     {
       chave: 'contas-fixas',
       icone: 'calendario',
-      titulo: 'Contas fixas',
-      descricao: 'O que se repete todo mês',
+      titulo: t('Contas fixas'),
+      descricao: t('O que se repete todo mês'),
     },
     {
       chave: 'importar',
       icone: 'planilha',
-      titulo: 'Importar planilha',
-      descricao: 'Trazer os gastos de um arquivo do Excel',
+      titulo: t('Importar planilha'),
+      descricao: t('Trazer os gastos de um arquivo do Excel'),
     },
     {
       chave: 'exportar',
       icone: 'baixar',
-      titulo: 'Exportar meus dados',
-      descricao: 'Baixar tudo em Excel ou csv',
+      titulo: t('Exportar meus dados'),
+      descricao: t('Baixar tudo em Excel ou csv'),
     },
-    { chave: 'instalar', icone: 'baixar', titulo: 'Instalar o app', descricao: 'No celular ou no computador' },
+    {
+      chave: 'instalar',
+      icone: 'baixar',
+      titulo: t('Instalar o app'),
+      descricao: t('No celular ou no computador'),
+    },
   ] as const;
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-xl font-bold text-slate-900">Ajustes</h1>
+        <h1 className="text-xl font-bold text-slate-900">{t('Ajustes')}</h1>
         {household.data && <p className="text-base text-slate-600">{household.data.nome}</p>}
       </header>
+
+      {/* O botão de idioma fica solto e sempre visível, e não escondido num
+          painel: a pessoa troca quando quiser, inclusive para se achar. */}
+      <section data-tutorial="ajustes-idioma" className="cartao flex items-center gap-4 p-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+          <Icone nome="pessoas" tamanho={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-medium text-slate-900">{t('Idioma')}</span>
+          <span className="block truncate text-sm text-slate-600">
+            {t('Português e inglês. Muda na hora, em todas as telas.')}
+          </span>
+        </span>
+        <SeletorDeIdioma />
+      </section>
 
       <ul className="cartao divide-y divide-slate-100 overflow-hidden">
         {secoes.map((secao) => (
@@ -162,39 +189,39 @@ export function Ajustes(): ReactElement {
         icone="sair"
         onClick={() => {
           void sair();
-          aviso.mostrar('Você saiu da sua conta.');
+          aviso.mostrar(t('Você saiu da sua conta.'));
         }}
       >
-        Sair da conta
+        {t('Sair da conta')}
       </Botao>
 
-      <p className="pb-4 text-center text-sm text-slate-500">Family Finance · versão 1.0.0</p>
+      <p className="pb-4 text-center text-sm text-slate-500">{t('Family Finance · versão 1.0.0')}</p>
 
-      <Dialogo aberto={painel === 'perfil'} aoFechar={() => setPainel(null)} titulo="Meu perfil">
+      <Dialogo aberto={painel === 'perfil'} aoFechar={() => setPainel(null)} titulo={t('Meu perfil')}>
         <PainelPerfil aoConcluir={() => setPainel(null)} />
       </Dialogo>
 
-      <Dialogo aberto={painel === 'grupos'} aoFechar={() => setPainel(null)} titulo="Meus grupos">
+      <Dialogo aberto={painel === 'grupos'} aoFechar={() => setPainel(null)} titulo={t('Meus grupos')}>
         <PainelGrupos />
       </Dialogo>
 
-      <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo="Categorias">
+      <Dialogo aberto={painel === 'categorias'} aoFechar={() => setPainel(null)} titulo={t('Categorias')}>
         <PainelCategorias categorias={categorias.data ?? []} />
       </Dialogo>
 
-      <Dialogo aberto={painel === 'cartoes'} aoFechar={() => setPainel(null)} titulo="Cartões">
+      <Dialogo aberto={painel === 'cartoes'} aoFechar={() => setPainel(null)} titulo={t('Cartões')}>
         <PainelCartoes />
       </Dialogo>
 
-      <Dialogo aberto={painel === 'contas-fixas'} aoFechar={() => setPainel(null)} titulo="Contas fixas">
+      <Dialogo aberto={painel === 'contas-fixas'} aoFechar={() => setPainel(null)} titulo={t('Contas fixas')}>
         <PainelContasFixas />
       </Dialogo>
 
-      <Dialogo aberto={painel === 'exportar'} aoFechar={() => setPainel(null)} titulo="Exportar meus dados">
+      <Dialogo aberto={painel === 'exportar'} aoFechar={() => setPainel(null)} titulo={t('Exportar meus dados')}>
         <PainelExportar />
       </Dialogo>
 
-      <Dialogo aberto={painel === 'instalar'} aoFechar={() => setPainel(null)} titulo="Instalar o app">
+      <Dialogo aberto={painel === 'instalar'} aoFechar={() => setPainel(null)} titulo={t('Instalar o app')}>
         <CartaoInstalar />
       </Dialogo>
     </div>

@@ -14,6 +14,7 @@ import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutori
 import { ItemDeGasto } from '../componentes/ItemDeGasto';
 import { Carregando, CaixaDeErro, Vazio, traduzirErro } from '../componentes/ui';
 import { useGastos, useResumoMensal } from '../consultas';
+import { useIdioma } from '../i18n';
 import { useSessao } from '../sessao';
 
 const PASSOS: PassoDeTutorial[] = [
@@ -38,6 +39,7 @@ const PASSOS: PassoDeTutorial[] = [
 
 export function Inicio(): ReactElement {
   useTutorialDaPagina('inicio', PASSOS);
+  const { t, tp, idioma } = useIdioma();
   const { usuario } = useSessao();
   const referencia = hoje();
   const ano = referencia.getUTCFullYear();
@@ -54,9 +56,10 @@ export function Inicio(): ReactElement {
   return (
     <div className="space-y-5">
       <header>
-        <p className="text-base text-slate-600">Olá, {primeiroNome}</p>
+        <p className="text-base text-slate-600">{t('Olá, {nome}', { nome: primeiroNome })}</p>
         <h1 className="text-xl font-bold text-slate-900">
-          {nomeDoMes(mes).replace(/^./, (l) => l.toUpperCase())} de {ano}
+          {nomeDoMes(mes, idioma).replace(/^./, (l) => l.toUpperCase())}{idioma === 'en' ? ' ' : ' de '}
+          {ano}
         </h1>
       </header>
 
@@ -70,12 +73,12 @@ export function Inicio(): ReactElement {
         aria-labelledby="titulo-total"
       >
         <h2 id="titulo-total" className="text-base font-medium text-slate-600">
-          Gastos deste mês
+          {t('Gastos deste mês')}
         </h2>
 
         {resumo.isPending ? (
           <div className="py-4">
-            <Carregando texto="Somando..." />
+            <Carregando texto={t('Carregando...')} />
           </div>
         ) : resumo.isError ? (
           <div className="pt-4">
@@ -84,13 +87,17 @@ export function Inicio(): ReactElement {
         ) : (
           <>
             <p className="mt-2 text-5xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-6xl">
-              {formatarBRL(resumo.data.totalCentavos)}
+              {formatarBRL(resumo.data.totalCentavos, idioma)}
             </p>
             <p className="mt-3 text-base text-slate-700">
-              {fraseComparacaoMensal(resumo.data)}
+              {fraseComparacaoMensal(resumo.data, idioma)}
             </p>
             <p className="mt-1 text-sm text-slate-500">
-              {pluralizar(resumo.data.quantidade, 'gasto registrado', 'gastos registrados')}
+              {tp(
+                resumo.data.quantidade,
+                '{quantidade} gasto registrado',
+                '{quantidade} gastos registrados',
+              )}
             </p>
           </>
         )}
@@ -103,13 +110,13 @@ export function Inicio(): ReactElement {
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 id="titulo-ultimos" className="text-base font-semibold text-slate-800">
-            Últimos gastos
+            {t('Últimos gastos')}
           </h2>
           <Link
             to="/gastos"
             className="min-h-toque px-2 py-2 text-base font-semibold text-marca-700 hover:underline"
           >
-            Ver todos
+            {t('Ver todos')}
           </Link>
         </div>
 
@@ -121,8 +128,8 @@ export function Inicio(): ReactElement {
           </div>
         ) : ultimos.data.itens.length === 0 ? (
           <Vazio
-            titulo="Nenhum gasto ainda"
-            descricao="Toque no botão + para lançar o primeiro. Leva menos de dez segundos."
+            titulo={t('Nenhum gasto ainda')}
+            descricao={t('Toque no botão + para lançar o primeiro. Leva menos de dez segundos.')}
           />
         ) : (
           <ul className="divide-y divide-slate-100">
