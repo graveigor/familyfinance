@@ -14,6 +14,7 @@ import { Icone } from '../componentes/Icone';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { CaixaDeErro, Carregando, Vazio, traduzirErro } from '../componentes/ui';
 import { useEvolucao, useResumoMensal } from '../consultas';
+import { useIdioma, useT } from '../i18n';
 
 const PASSOS: PassoDeTutorial[] = [
   {
@@ -49,6 +50,7 @@ const PASSOS: PassoDeTutorial[] = [
 
 export function Resumo(): ReactElement {
   useTutorialDaPagina('resumo', PASSOS);
+  const { t, tp, idioma } = useIdioma();
   const agora = hoje();
   const [ano, setAno] = useState(agora.getUTCFullYear());
   const [mes, setMes] = useState(agora.getUTCMonth() + 1);
@@ -71,26 +73,28 @@ export function Resumo(): ReactElement {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-slate-900">Resumo</h1>
+      <h1 className="text-xl font-bold text-slate-900">{t('Resumo')}</h1>
 
       <div className="cartao flex items-center justify-between px-2 py-2" data-tutorial="resumo-mes">
         <button
           type="button"
           onClick={() => mudarMes(-1)}
-          aria-label="Mês anterior"
+          aria-label={t('Mês anterior')}
           className="flex h-toque w-toque items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"
         >
           <Icone nome="esquerda" tamanho={26} />
         </button>
 
         <p className="text-lg font-semibold text-slate-900">
-          {nomeDoMes(mes).replace(/^./, (l) => l.toUpperCase())} de {ano}
+          {nomeDoMes(mes, idioma).replace(/^./, (l) => l.toUpperCase())}
+          {idioma === 'en' ? ' ' : ' de '}
+          {ano}
         </p>
 
         <button
           type="button"
           onClick={() => mudarMes(1)}
-          aria-label="Próximo mês"
+          aria-label={t('Próximo mês')}
           disabled={ehMesAtual}
           className="flex h-toque w-toque items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 disabled:opacity-30"
         >
@@ -105,8 +109,8 @@ export function Resumo(): ReactElement {
       ) : consulta.data.quantidade === 0 ? (
         <Vazio
           icone="grafico"
-          titulo={`Nenhum gasto em ${nomeDoMes(mes)}`}
-          descricao="Escolha outro mês nas setas acima."
+          titulo={t('Nenhum gasto em {mes}', { mes: nomeDoMes(mes, idioma) })}
+          descricao={t('Escolha outro mês nas setas acima.')}
         />
       ) : (
         <ConteudoDoResumo resumo={consulta.data} />
@@ -119,19 +123,20 @@ export function Resumo(): ReactElement {
 
 /** Últimos seis meses lado a lado — a pergunta "estou gastando mais?". */
 function SecaoDeEvolucao(): ReactElement {
+  const t = useT();
   const evolucao = useEvolucao(6);
 
   return (
     <section className="cartao p-5" aria-labelledby="titulo-evolucao" data-tutorial="resumo-evolucao">
       <h2 id="titulo-evolucao" className="mb-4 text-base font-semibold text-slate-800">
-        Últimos 6 meses
+        {t('Últimos 6 meses')}
       </h2>
       {evolucao.isPending ? (
         <Carregando />
       ) : evolucao.isError ? (
         <CaixaDeErro mensagem={traduzirErro(evolucao.error).mensagem} />
       ) : evolucao.data.maiorCentavos === 0 ? (
-        <p className="text-base text-slate-600">Ainda não há gastos para comparar.</p>
+        <p className="text-base text-slate-600">{t('Ainda não há gastos para comparar.')}</p>
       ) : (
         <GraficoDeEvolucao evolucao={evolucao.data} />
       )}
@@ -140,24 +145,27 @@ function SecaoDeEvolucao(): ReactElement {
 }
 
 function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
+  const { t, tp, idioma } = useIdioma();
   return (
     <>
       <section className="cartao px-6 py-6 text-center" data-tutorial="resumo-total">
-        <p className="text-base text-slate-600">Total do mês</p>
+        <p className="text-base text-slate-600">{t('Total do mês')}</p>
         <p className="mt-1 text-4xl font-bold tabular-nums text-slate-900">
-          {formatarBRL(resumo.totalCentavos)}
+          {formatarBRL(resumo.totalCentavos, idioma)}
         </p>
-        <p className="mt-2 text-base text-slate-700">{fraseComparacaoMensal(resumo)}</p>
+        <p className="mt-2 text-base text-slate-700">{fraseComparacaoMensal(resumo, idioma)}</p>
         <p className="mt-1 text-sm text-slate-500">
-          {pluralizar(resumo.quantidade, 'gasto', 'gastos')} ·{' '}
-          {nomeCurtoDoMes(resumo.mesAnterior.mes)} foi{' '}
-          {formatarBRL(resumo.mesAnterior.totalCentavos)}
+          {t('{quantidade} gastos · {mes} foi {valor}', {
+            quantidade: resumo.quantidade,
+            mes: nomeCurtoDoMes(resumo.mesAnterior.mes, idioma),
+            valor: formatarBRL(resumo.mesAnterior.totalCentavos, idioma),
+          })}
         </p>
       </section>
 
       <section className="cartao p-5" aria-labelledby="titulo-categorias" data-tutorial="resumo-categorias">
         <h2 id="titulo-categorias" className="mb-4 text-base font-semibold text-slate-800">
-          Por categoria
+          {t('Por categoria')}
         </h2>
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           <Rosca resumo={resumo} />
@@ -174,10 +182,10 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
                     <Icone nome={linha.categoria?.icone ?? 'etiqueta'} tamanho={18} />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-base text-slate-800">
-                    {linha.categoria?.nome ?? 'Sem categoria'}
+                    {t(linha.categoria?.nome ?? 'Sem categoria')}
                   </span>
                   <span className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
-                    {formatarBRL(linha.totalCentavos)}
+                    {formatarBRL(linha.totalCentavos, idioma)}
                   </span>
                   <span className="w-12 shrink-0 text-right text-sm tabular-nums text-slate-600">
                     {parte}%
@@ -191,7 +199,7 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
 
       <section className="cartao p-5" aria-labelledby="titulo-pessoas" data-tutorial="resumo-pessoas">
         <h2 id="titulo-pessoas" className="mb-4 text-base font-semibold text-slate-800">
-          Por pessoa
+          {t('Por pessoa')}
         </h2>
         <ul className="space-y-4">
           {resumo.porPessoa.map((linha) => {
@@ -203,14 +211,14 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
                     {linha.usuario.nome}
                   </span>
                   <span className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
-                    {formatarBRL(linha.totalCentavos)}
+                    {formatarBRL(linha.totalCentavos, idioma)}
                     <span className="ml-2 text-sm font-normal text-slate-600">{parte}%</span>
                   </span>
                 </div>
                 <div
                   className="h-3 w-full overflow-hidden rounded-full bg-slate-100"
                   role="img"
-                  aria-label={`${linha.usuario.nome}: ${parte}% do total`}
+                  aria-label={t('{nome}: {parte}% do total', { nome: linha.usuario.nome, parte })}
                 >
                   <div
                     className="h-full rounded-full bg-marca-600"

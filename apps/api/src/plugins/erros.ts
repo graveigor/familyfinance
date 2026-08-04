@@ -1,4 +1,10 @@
-import { ErroApp, MENSAGENS_PADRAO, type CorpoErro } from '@gastos/core';
+import {
+  ErroApp,
+  MENSAGENS_PADRAO,
+  idiomaDoCabecalho,
+  traduzirMensagemDoServidor,
+  type CorpoErro,
+} from '@gastos/core';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { ehProducao } from '../ambiente.js';
@@ -24,7 +30,33 @@ function ehErroPrisma(erro: unknown): erro is { code: string; meta?: { target?: 
 }
 
 /**
- * Todo erro sai da API no mesmo formato e em português, sem jargão técnico.
+ * Traduz a mensagem geral e a de cada campo, no idioma que o cliente pediu.
+ * Fica aqui, e não nas rotas: cada rota continua escrevendo em português.
+ */
+function traduzirCorpo(corpo: CorpoErro, request: FastifyRequest): CorpoErro {
+  const idioma = idiomaDoCabecalho(request.headers['accept-language']);
+  if (idioma === 'pt') return corpo;
+
+  const campos = corpo.erro.campos
+    ? Object.fromEntries(
+        Object.entries(corpo.erro.campos).map(([campo, texto]) => [
+          campo,
+          traduzirMensagemDoServidor(texto, idioma),
+        ]),
+      )
+    : undefined;
+
+  return {
+    erro: {
+      ...corpo.erro,
+      mensagem: traduzirMensagemDoServidor(corpo.erro.mensagem, idioma),
+      ...(campos ? { campos } : {}),
+    },
+  };
+}
+
+/**
+ * Todo erro sai da API no mesmo formato, sem jargão técnico, no idioma pedido.
  * Detalhe de stack só vai para o log, nunca para a resposta.
  */
 export function configurarErros(app: FastifyInstance): void {
@@ -35,12 +67,12 @@ export function configurarErros(app: FastifyInstance): void {
         mensagem: `Não encontramos o endereço ${request.method} ${request.url}.`,
       },
     };
-    void reply.status(404).send(corpo);
+    void reply.status(404).send(traduzirCorpo(corpo, request));
   });
 
   app.setErrorHandler((erro: unknown, request: FastifyRequest, reply: FastifyReply) => {
     if (erro instanceof ErroApp) {
-      return reply.status(erro.status).send(erro.paraCorpo());
+      return reply.status(erro.status).send(traduzirCorpo(erro.paraCorpo(), request));
     }
 
     if (erro instanceof ZodError) {
@@ -51,7 +83,7 @@ export function configurarErros(app: FastifyInstance): void {
           campos: camposDoZod(erro),
         },
       };
-      return reply.status(400).send(corpo);
+      return reply.status(400).send(traduzirCorpo(corpo, request));
     }
 
     if (ehErroPrisma(erro)) {
@@ -65,13 +97,13 @@ export function configurarErros(app: FastifyInstance): void {
               : 'Esses dados já existem.',
           },
         };
-        return reply.status(409).send(corpo);
+        return reply.status(409).send(traduzirCorpo(corpo, request));
       }
       if (erro.code === 'P2025') {
         const corpo: CorpoErro = {
           erro: { codigo: 'NAO_ENCONTRADO', mensagem: MENSAGENS_PADRAO.NAO_ENCONTRADO },
         };
-        return reply.status(404).send(corpo);
+        return reply.status(404).send(traduzirCorpo(corpo, request));
       }
     }
 
@@ -81,7 +113,7 @@ export function configurarErros(app: FastifyInstance): void {
       const corpo: CorpoErro = {
         erro: { codigo: 'VALIDACAO', mensagem: 'Não entendemos os dados enviados.' },
       };
-      return reply.status(comCodigo.statusCode).send(corpo);
+      return reply.status(comCodigo.statusCode).send(traduzirCorpo(corpo, request));
     }
 
     request.log.error({ erro }, 'Erro não tratado');
@@ -93,6 +125,6 @@ export function configurarErros(app: FastifyInstance): void {
           : `${MENSAGENS_PADRAO.INTERNO} (${comCodigo.message ?? 'sem detalhe'})`,
       },
     };
-    return reply.status(500).send(corpo);
+    return reply.status(500).send(traduzirCorpo(corpo, request));
   });
 }

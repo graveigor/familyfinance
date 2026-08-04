@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Icone } from './Icone';
+import { useT } from '../i18n';
 
 /** Peças de interface usadas em todas as telas. Alvo de toque mínimo: 48px. */
 
@@ -72,6 +73,7 @@ interface CampoProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Campo({ rotulo, erro, dica, id, className = '', type, ...resto }: CampoProps): ReactElement {
+  const t = useT();
   const gerado = useRef(`campo-${Math.random().toString(36).slice(2, 9)}`);
   const idFinal = id ?? gerado.current;
   const ehSenha = type === 'password';
@@ -95,7 +97,7 @@ export function Campo({ rotulo, erro, dica, id, className = '', type, ...resto }
           <button
             type="button"
             onClick={() => setSenhaVisivel(!senhaVisivel)}
-            aria-label={senhaVisivel ? 'Esconder senha' : 'Mostrar senha'}
+            aria-label={senhaVisivel ? t('Esconder senha') : t('Mostrar senha')}
             aria-pressed={senhaVisivel}
             className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:text-slate-700"
           >
@@ -119,14 +121,15 @@ export function Campo({ rotulo, erro, dica, id, className = '', type, ...resto }
   );
 }
 
-export function Carregando({ texto = 'Carregando...' }: { texto?: string }): ReactElement {
+export function Carregando({ texto }: { texto?: string }): ReactElement {
+  const t = useT();
   return (
     <div className="flex items-center justify-center gap-3 py-12 text-slate-600" role="status">
       <span
         className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-marca-600"
         aria-hidden="true"
       />
-      <span className="text-base">{texto}</span>
+      <span className="text-base">{texto ?? t('Carregando...')}</span>
     </div>
   );
 }

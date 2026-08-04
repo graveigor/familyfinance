@@ -4,6 +4,7 @@ import { Confirmar } from './Dialogo';
 import { Icone } from './Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from './ui';
 import { useCartoes, useCriarCartao, useExcluirCartao } from '../consultas';
+import { useT } from '../i18n';
 
 const CORES = ['#334155', '#EA580C', '#DC2626', '#7C3AED', '#0891B2', '#16A34A'];
 
@@ -13,6 +14,7 @@ const CORES = ['#334155', '#EA580C', '#DC2626', '#7C3AED', '#0891B2', '#16A34A']
  * etiqueta a mais, para dois cartões do mesmo banco não se confundirem.
  */
 export function PainelCartoes(): ReactElement {
+  const t = useT();
   const lista = useCartoes();
   const criar = useCriarCartao();
   const excluir = useExcluirCartao();
@@ -29,7 +31,7 @@ export function PainelCartoes(): ReactElement {
     try {
       await criar.mutateAsync({ nome: nome.trim(), tipo, cor });
       setNome('');
-      aviso.mostrar('Cartão adicionado.');
+      aviso.mostrar(t('Cartão adicionado.'));
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     }
@@ -41,8 +43,10 @@ export function PainelCartoes(): ReactElement {
       const resultado = (await excluir.mutateAsync(aExcluir.id)) as { gastosSemCartao: number };
       aviso.mostrar(
         resultado.gastosSemCartao > 0
-          ? `Cartão removido. ${resultado.gastosSemCartao} gasto(s) ficaram sem cartão.`
-          : 'Cartão removido.',
+          ? t('Cartão removido. {total} gasto(s) ficaram sem cartão.', {
+              total: resultado.gastosSemCartao,
+            })
+          : t('Cartão removido.'),
       );
     } catch (falha) {
       aviso.mostrar(traduzirErro(falha).mensagem);
@@ -54,8 +58,7 @@ export function PainelCartoes(): ReactElement {
   return (
     <div className="space-y-5">
       <p className="text-base text-slate-700">
-        Separe os gastos por cartão para saber quanto foi em cada um. Dê o nome que você usa no dia
-        a dia — "Itaú", "Bradesco", "Vale-refeição".
+        {t('Separe os gastos por cartão para saber quanto foi em cada um. Dê o nome que você usa no dia a dia — "Itaú", "Bradesco", "Vale-refeição".')}
       </p>
 
       {lista.isPending ? (
@@ -64,8 +67,7 @@ export function PainelCartoes(): ReactElement {
         <CaixaDeErro mensagem={traduzirErro(lista.error).mensagem} />
       ) : lista.data.length === 0 ? (
         <p className="rounded-xl bg-slate-50 p-4 text-base text-slate-600">
-          Nenhum cartão ainda. Enquanto não houver nenhum, o campo de cartão nem aparece ao lançar
-          um gasto.
+          {t('Nenhum cartão ainda. Enquanto não houver nenhum, o campo de cartão nem aparece ao lançar um gasto.')}
         </p>
       ) : (
         <ul className="divide-y divide-slate-100">
@@ -80,13 +82,13 @@ export function PainelCartoes(): ReactElement {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-base text-slate-900">{cartao.nome}</span>
                 <span className="block text-sm text-slate-600">
-                  {ROTULO_TIPO_CARTAO[cartao.tipo]}
+                  {t(ROTULO_TIPO_CARTAO[cartao.tipo])}
                 </span>
               </span>
               <button
                 type="button"
                 onClick={() => setAExcluir(cartao)}
-                aria-label={`Excluir cartão ${cartao.nome}`}
+                aria-label={t('Excluir cartão {nome}', { nome: cartao.nome })}
                 className="flex h-toque w-toque shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-700"
               >
                 <Icone nome="lixeira" tamanho={20} />
@@ -97,18 +99,18 @@ export function PainelCartoes(): ReactElement {
       )}
 
       <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-        <p className="text-base font-semibold text-slate-800">Novo cartão</p>
+        <p className="text-base font-semibold text-slate-800">{t('Novo cartão')}</p>
         <CaixaDeErro mensagem={erro} />
 
         <Campo
-          rotulo="Nome ou apelido"
+          rotulo={t('Nome ou apelido')}
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Itaú, Bradesco, Nubank da Ana..."
+          placeholder={t('Itaú, Bradesco, Nubank da Ana...')}
         />
 
         <div>
-          <p className="rotulo">Tipo</p>
+          <p className="rotulo">{t('Tipo')}</p>
           <div className="flex gap-2">
             {TIPOS_CARTAO.map((opcao) => (
               <button
@@ -122,21 +124,21 @@ export function PainelCartoes(): ReactElement {
                     : 'border-slate-200 bg-white text-slate-700'
                 }`}
               >
-                {ROTULO_TIPO_CARTAO[opcao]}
+                {t(ROTULO_TIPO_CARTAO[opcao])}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <p className="rotulo">Cor</p>
+          <p className="rotulo">{t('Cor')}</p>
           <div className="flex flex-wrap gap-2">
             {CORES.map((opcao) => (
               <button
                 key={opcao}
                 type="button"
                 aria-pressed={cor === opcao}
-                aria-label={`Cor ${opcao}`}
+                aria-label={t('Cor {cor}', { cor: opcao })}
                 onClick={() => setCor(opcao)}
                 className={`flex h-toque w-toque items-center justify-center rounded-xl border-2 ${
                   cor === opcao ? 'border-marca-600' : 'border-slate-200'
@@ -160,14 +162,14 @@ export function PainelCartoes(): ReactElement {
           carregando={criar.isPending}
           onClick={() => void adicionar()}
         >
-          Adicionar cartão
+          {t('Adicionar cartão')}
         </Botao>
       </div>
 
       <Confirmar
         aberto={aExcluir !== null}
-        titulo={`Excluir "${aExcluir?.nome ?? ''}"?`}
-        descricao="Os gastos desse cartão NÃO serão apagados — eles apenas ficam sem cartão e continuam somando no total."
+        titulo={t('Excluir "{nome}"?', { nome: aExcluir?.nome ?? '' })}
+        descricao={t('Os gastos desse cartão NÃO serão apagados — eles apenas ficam sem cartão e continuam somando no total.')}
         carregando={excluir.isPending}
         aoConfirmar={() => void confirmarExclusao()}
         aoCancelar={() => setAExcluir(null)}

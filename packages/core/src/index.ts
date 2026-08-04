@@ -4,6 +4,7 @@ export * from './datas.js';
 export * from './dinheiro.js';
 export * from './erros.js';
 export * from './importacao.js';
+export * from './mensagens-servidor.js';
 export * from './textos.js';
 export * from './tipos.js';
 

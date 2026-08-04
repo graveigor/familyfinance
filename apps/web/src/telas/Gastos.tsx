@@ -20,6 +20,7 @@ import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutori
 import { Botao, CaixaDeErro, Carregando, Vazio, traduzirErro, useAviso } from '../componentes/ui';
 import { api } from '../api';
 import { EscolherCartao, nomeCompleto } from '../componentes/EscolherCartao';
+import { useIdioma, useT } from '../i18n';
 import {
   useCartoes,
   useCategorias,
@@ -79,6 +80,7 @@ const PASSOS: PassoDeTutorial[] = [
 
 export function Gastos(): ReactElement {
   useTutorialDaPagina('gastos', PASSOS);
+  const { t, tp, idioma } = useIdioma();
   const navegar = useNavigate();
   const aviso = useAviso();
   const categorias = useCategorias();
@@ -134,7 +136,7 @@ export function Gastos(): ReactElement {
     const texto =
       filtros.periodo === 'personalizado'
         ? `${filtros.de ?? '...'} a ${filtros.ate ?? '...'}`
-        : PERIODOS[filtros.periodo].rotulo;
+        : t(PERIODOS[filtros.periodo].rotulo);
     etiquetas.push({
       texto,
       remover: () =>
@@ -142,7 +144,7 @@ export function Gastos(): ReactElement {
     });
   }
   if (filtros.userId) {
-    const nome = membros.data?.find((m) => m.id === filtros.userId)?.nome ?? 'Pessoa';
+    const nome = membros.data?.find((m) => m.id === filtros.userId)?.nome ?? t('Pessoa');
     etiquetas.push({
       texto: nome,
       remover: () => setFiltros((a) => ({ ...a, userId: undefined })),
@@ -151,8 +153,8 @@ export function Gastos(): ReactElement {
   if (filtros.categoriaId) {
     const nome =
       filtros.categoriaId === 'sem-categoria'
-        ? 'Sem categoria'
-        : (categorias.data?.find((c) => c.id === filtros.categoriaId)?.nome ?? 'Categoria');
+        ? t('Sem categoria')
+        : t(categorias.data?.find((c) => c.id === filtros.categoriaId)?.nome ?? 'Categoria');
     etiquetas.push({
       texto: nome,
       remover: () => setFiltros((a) => ({ ...a, categoriaId: undefined })),
@@ -162,8 +164,8 @@ export function Gastos(): ReactElement {
   if (filtros.cartaoId) {
     const nome =
       filtros.cartaoId === 'sem-cartao'
-        ? 'Sem cartão'
-        : (cartoes.data?.find((c) => c.id === filtros.cartaoId)?.nome ?? 'Cartão');
+        ? t('Sem cartão')
+        : (cartoes.data?.find((c) => c.id === filtros.cartaoId)?.nome ?? t('Cartão'));
     etiquetas.push({
       texto: nome,
       remover: () => setFiltros((a) => ({ ...a, cartaoId: undefined })),
@@ -174,7 +176,7 @@ export function Gastos(): ReactElement {
     if (!confirmandoExclusao) return;
     try {
       await excluir.mutateAsync(confirmandoExclusao.id);
-      aviso.mostrar('Gasto excluído.');
+      aviso.mostrar(t('Gasto excluído.'));
     } catch (falha) {
       aviso.mostrar(traduzirErro(falha).mensagem);
     } finally {
@@ -186,7 +188,7 @@ export function Gastos(): ReactElement {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-slate-900">Gastos</h1>
+        <h1 className="text-xl font-bold text-slate-900">{t('Gastos')}</h1>
         <button
           type="button"
           onClick={() => setGavetaAberta(true)}
@@ -194,7 +196,7 @@ export function Gastos(): ReactElement {
           className="flex min-h-toque items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-4 text-base font-semibold text-slate-700 hover:bg-slate-50"
         >
           <Icone nome="filtro" tamanho={20} />
-          Filtrar
+          {t('Filtrar')}
         </button>
       </header>
 
@@ -206,8 +208,8 @@ export function Gastos(): ReactElement {
           type="search"
           value={buscaDigitada}
           onChange={(e) => setBuscaDigitada(e.target.value)}
-          placeholder="Buscar por onde foi o gasto"
-          aria-label="Buscar gastos"
+          placeholder={t('Buscar por onde foi o gasto')}
+          aria-label={t('Buscar gastos')}
           className="campo pl-12"
         />
       </div>
@@ -223,7 +225,7 @@ export function Gastos(): ReactElement {
               >
                 {etiqueta.texto}
                 <Icone nome="fechar" tamanho={16} />
-                <span className="sr-only">Remover filtro</span>
+                <span className="sr-only">{t('Remover filtro')}</span>
               </button>
             </li>
           ))}
@@ -233,10 +235,10 @@ export function Gastos(): ReactElement {
       {consulta.data && (
         <div data-tutorial="gastos-total" className="cartao flex items-baseline justify-between px-4 py-3">
           <span className="text-base text-slate-600">
-            {pluralizar(consulta.data.paginacao.totalItens, 'gasto', 'gastos')}
+            {tp(consulta.data.paginacao.totalItens, '{quantidade} gasto', '{quantidade} gastos')}
           </span>
           <span className="text-xl font-bold tabular-nums text-slate-900">
-            {formatarBRL(consulta.data.totalCentavos)}
+            {formatarBRL(consulta.data.totalCentavos, idioma)}
           </span>
         </div>
       )}
@@ -248,8 +250,8 @@ export function Gastos(): ReactElement {
       ) : dias.length === 0 ? (
         <Vazio
           icone="lupa"
-          titulo="Nenhum gasto encontrado"
-          descricao="Tente mudar o período ou limpar os filtros."
+          titulo={t('Nenhum gasto encontrado')}
+          descricao={t('Tente mudar o período ou limpar os filtros.')}
           acao={
             <Botao
               variante="secundario"
@@ -258,7 +260,7 @@ export function Gastos(): ReactElement {
                 setFiltros({ busca: '', periodo: 'tudo' });
               }}
             >
-              Limpar filtros
+              {t('Limpar filtros')}
             </Botao>
           }
         />
@@ -271,10 +273,10 @@ export function Gastos(): ReactElement {
               <section key={dia} className="cartao overflow-hidden">
                 <div className="flex items-baseline justify-between bg-slate-50 px-4 py-2.5">
                   <h2 className="text-base font-semibold text-slate-800">
-                    {data ? rotuloDoDia(data) : dia}
+                    {data ? rotuloDoDia(data, undefined, idioma) : dia}
                   </h2>
                   <span className="text-base font-semibold tabular-nums text-slate-700">
-                    {formatarBRL(subtotal)}
+                    {formatarBRL(subtotal, idioma)}
                   </span>
                 </div>
                 <ul className="divide-y divide-slate-100">
@@ -296,17 +298,20 @@ export function Gastos(): ReactElement {
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
-                Anterior
+                {t('Anterior')}
               </Botao>
               <span className="text-base text-slate-600">
-                Página {consulta.data.paginacao.pagina} de {consulta.data.paginacao.totalPaginas}
+                {t('Página {pagina} de {total}', {
+                  pagina: consulta.data.paginacao.pagina,
+                  total: consulta.data.paginacao.totalPaginas,
+                })}
               </span>
               <Botao
                 variante="secundario"
                 disabled={pagina >= consulta.data.paginacao.totalPaginas}
                 onClick={() => setPagina((p) => p + 1)}
               >
-                Próxima
+                {t('Próxima')}
               </Botao>
             </div>
           )}
@@ -322,19 +327,23 @@ export function Gastos(): ReactElement {
         {emFoco && (
           <div className="space-y-5">
             <p className="text-3xl font-bold tabular-nums text-slate-900">
-              {formatarBRL(emFoco.valorCentavos)}
+              {formatarBRL(emFoco.valorCentavos, idioma)}
             </p>
             <dl className="space-y-2 text-base">
-              <Linha rotulo="Quem gastou" valor={emFoco.usuario.nome} />
+              <Linha rotulo={t('Quem gastou')} valor={emFoco.usuario.nome} />
               <Linha
-                rotulo="Data"
-                valor={parseData(emFoco.data) ? rotuloDoDia(parseData(emFoco.data)!) : emFoco.data}
+                rotulo={t('Data')}
+                valor={
+                  parseData(emFoco.data)
+                    ? rotuloDoDia(parseData(emFoco.data)!, undefined, idioma)
+                    : emFoco.data
+                }
               />
-              <Linha rotulo="Categoria" valor={emFoco.categoria?.nome ?? 'Sem categoria'} />
-              {emFoco.cartao && <Linha rotulo="Cartão" valor={nomeCompleto(emFoco.cartao)} />}
-              {emFoco.observacao && <Linha rotulo="Observação" valor={emFoco.observacao} />}
+              <Linha rotulo={t('Categoria')} valor={t(emFoco.categoria?.nome ?? 'Sem categoria')} />
+              {emFoco.cartao && <Linha rotulo={t('Cartão')} valor={nomeCompleto(emFoco.cartao, t)} />}
+              {emFoco.observacao && <Linha rotulo={t('Observação')} valor={emFoco.observacao} />}
               {emFoco.recorrenciaId && (
-                <Linha rotulo="Origem" valor="Lançado por uma conta fixa" />
+                <Linha rotulo={t('Origem')} valor={t('Lançado por uma conta fixa')} />
               )}
             </dl>
 
@@ -353,7 +362,7 @@ export function Gastos(): ReactElement {
                   setEmFoco(null);
                 }}
               >
-                Editar
+                {t('Editar')}
               </Botao>
               <Botao
                 variante="perigo"
@@ -361,7 +370,7 @@ export function Gastos(): ReactElement {
                 icone="lixeira"
                 onClick={() => setConfirmandoExclusao(emFoco)}
               >
-                Excluir
+                {t('Excluir')}
               </Botao>
             </div>
           </div>
@@ -370,10 +379,16 @@ export function Gastos(): ReactElement {
 
       <Confirmar
         aberto={confirmandoExclusao !== null}
-        titulo="Excluir este gasto?"
+        titulo={t('Excluir este gasto?')}
         descricao={
           confirmandoExclusao
-            ? `"${confirmandoExclusao.descricao}" de ${formatarBRL(confirmandoExclusao.valorCentavos)} será removido e o total do mês vai mudar. Não dá para desfazer.`
+            ? t(
+                '"{descricao}" de {valor} será removido e o total do mês vai mudar. Não dá para desfazer.',
+                {
+                  descricao: confirmandoExclusao.descricao,
+                  valor: formatarBRL(confirmandoExclusao.valorCentavos, idioma),
+                },
+              )
             : ''
         }
         carregando={excluir.isPending}
@@ -520,6 +535,7 @@ function GavetaDeFiltros({
   membros: Array<{ id: string; nome: string }>;
   categorias: Array<{ id: string; nome: string }>;
 }): ReactElement {
+  const t = useT();
   const [rascunho, setRascunho] = useState(filtros);
 
   useEffect(() => {
@@ -530,7 +546,7 @@ function GavetaDeFiltros({
     <Dialogo
       aberto={aberta}
       aoFechar={aoFechar}
-      titulo="Filtrar gastos"
+      titulo={t('Filtrar gastos')}
       rodape={
         <>
           <Botao
@@ -538,17 +554,17 @@ function GavetaDeFiltros({
             larguraTotal
             onClick={() => aoAplicar({ busca: filtros.busca, periodo: 'tudo' })}
           >
-            Limpar
+            {t('Limpar')}
           </Botao>
           <Botao larguraTotal onClick={() => aoAplicar(rascunho)}>
-            Aplicar
+            {t('Aplicar')}
           </Botao>
         </>
       }
     >
       <div className="space-y-6">
         <fieldset>
-          <legend className="rotulo">Período</legend>
+          <legend className="rotulo">{t('Período')}</legend>
           <div className="flex flex-wrap gap-2">
             {(['mes', 'mes-passado', 'tudo'] as const).map((chave) => (
               <button
@@ -569,7 +585,7 @@ function GavetaDeFiltros({
                     : 'border-slate-200 text-slate-700'
                 }`}
               >
-                {PERIODOS[chave].rotulo}
+                {t(PERIODOS[chave].rotulo)}
               </button>
             ))}
           </div>
@@ -578,7 +594,7 @@ function GavetaDeFiltros({
               própria e sem isso os dois empilhavam no celular. */}
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="min-w-0 text-sm font-medium text-slate-600">
-              De
+              {t('De')}
               <input
                 type="date"
                 value={rascunho.de ?? ''}
@@ -589,7 +605,7 @@ function GavetaDeFiltros({
               />
             </label>
             <label className="min-w-0 text-sm font-medium text-slate-600">
-              Até
+              {t('Até')}
               <input
                 type="date"
                 value={rascunho.ate ?? ''}
@@ -605,7 +621,7 @@ function GavetaDeFiltros({
         {membros.length > 1 && (
           <div>
             <label htmlFor="filtro-pessoa" className="rotulo">
-              Pessoa
+              {t('Pessoa')}
             </label>
             <select
               id="filtro-pessoa"
@@ -613,7 +629,7 @@ function GavetaDeFiltros({
               onChange={(e) => setRascunho({ ...rascunho, userId: e.target.value || undefined })}
               className="campo"
             >
-              <option value="">Todas as pessoas</option>
+              <option value="">{t('Todas as pessoas')}</option>
               {membros.map((membro) => (
                 <option key={membro.id} value={membro.id}>
                   {membro.nome}
@@ -625,7 +641,7 @@ function GavetaDeFiltros({
 
         <div>
           <label htmlFor="filtro-categoria" className="rotulo">
-            Categoria
+            {t('Categoria')}
           </label>
           <select
             id="filtro-categoria"
@@ -633,11 +649,11 @@ function GavetaDeFiltros({
             onChange={(e) => setRascunho({ ...rascunho, categoriaId: e.target.value || undefined })}
             className="campo"
           >
-            <option value="">Todas as categorias</option>
-            <option value="sem-categoria">Sem categoria</option>
+            <option value="">{t('Todas as categorias')}</option>
+            <option value="sem-categoria">{t('Sem categoria')}</option>
             {categorias.map((categoria) => (
               <option key={categoria.id} value={categoria.id}>
-                {categoria.nome}
+                {t(categoria.nome)}
               </option>
             ))}
           </select>
@@ -645,7 +661,7 @@ function GavetaDeFiltros({
 
         <EscolherCartao
           id="filtro-cartao"
-          rotulo="Cartão"
+          rotulo={t('Cartão')}
           incluirSemCartao
           valor={rascunho.cartaoId ?? ''}
           aoMudar={(cartaoId) => setRascunho({ ...rascunho, cartaoId: cartaoId || undefined })}

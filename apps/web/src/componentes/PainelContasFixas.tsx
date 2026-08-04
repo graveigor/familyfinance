@@ -18,12 +18,14 @@ import {
   useExcluirRecorrencia,
   useRecorrencias,
 } from '../consultas';
+import { useIdioma } from '../i18n';
 
 /**
  * Contas fixas: o que se repete todo mês (aluguel, internet, mensalidade).
  * O lançamento do mês é criado quando alguém abre o app — nada roda escondido.
  */
 export function PainelContasFixas(): ReactElement {
+  const { t, idioma } = useIdioma();
   const lista = useRecorrencias();
   const categorias = useCategorias();
   const criar = useCriarRecorrencia();
@@ -57,7 +59,7 @@ export function PainelContasFixas(): ReactElement {
       });
       setDigitos('');
       setDescricao('');
-      aviso.mostrar('Conta fixa criada e já lançada neste mês.');
+      aviso.mostrar(t('Conta fixa criada e já lançada neste mês.'));
     } catch (falha) {
       setErro(traduzirErro(falha));
     }
@@ -69,8 +71,10 @@ export function PainelContasFixas(): ReactElement {
       const resultado = (await excluir.mutateAsync(aExcluir.id)) as { gastosMantidos: number };
       aviso.mostrar(
         resultado.gastosMantidos > 0
-          ? `Conta fixa removida. Os ${resultado.gastosMantidos} lançamentos já feitos continuam.`
-          : 'Conta fixa removida.',
+          ? t('Conta fixa removida. Os {total} lançamentos já feitos continuam.', {
+              total: resultado.gastosMantidos,
+            })
+          : t('Conta fixa removida.'),
       );
     } catch (falha) {
       aviso.mostrar(traduzirErro(falha).mensagem);
@@ -82,8 +86,7 @@ export function PainelContasFixas(): ReactElement {
   return (
     <div className="space-y-5">
       <p className="text-base text-slate-700">
-        Contas que se repetem todo mês. O lançamento entra sozinho na data escolhida — você não
-        precisa digitar de novo.
+        {t('Contas que se repetem todo mês. O lançamento entra sozinho na data escolhida — você não precisa digitar de novo.')}
       </p>
 
       {lista.isPending ? (
@@ -92,7 +95,7 @@ export function PainelContasFixas(): ReactElement {
         <CaixaDeErro mensagem={traduzirErro(lista.error).mensagem} />
       ) : lista.data.length === 0 ? (
         <p className="rounded-xl bg-slate-50 p-4 text-base text-slate-600">
-          Nenhuma conta fixa ainda.
+          {t('Nenhuma conta fixa ainda.')}
         </p>
       ) : (
         <ul className="divide-y divide-slate-100">
@@ -117,11 +120,12 @@ export function PainelContasFixas(): ReactElement {
                     {recorrencia.descricao}
                   </span>
                   <span className="block truncate text-sm text-slate-600">
-                    {formatarBRL(recorrencia.valorCentavos)} · todo dia {recorrencia.diaDoMes}
+                    {formatarBRL(recorrencia.valorCentavos, idioma)} ·{' '}
+                    {t('todo dia {dia}', { dia: recorrencia.diaDoMes })}
                     {recorrencia.cartao ? ` · ${recorrencia.cartao.nome}` : ''}
                     {recorrencia.ativa && proximo
-                      ? ` · próximo em ${formatarData(proximo)}`
-                      : ' · pausada'}
+                      ? ` · ${t('próximo em {data}', { data: formatarData(proximo, idioma) })}`
+                      : ` · ${t('pausada')}`}
                   </span>
                 </span>
 
@@ -132,8 +136,8 @@ export function PainelContasFixas(): ReactElement {
                   }
                   aria-label={
                     recorrencia.ativa
-                      ? `Pausar ${recorrencia.descricao}`
-                      : `Retomar ${recorrencia.descricao}`
+                      ? t('Pausar {nome}', { nome: recorrencia.descricao })
+                      : t('Retomar {nome}', { nome: recorrencia.descricao })
                   }
                   className={`min-h-toque shrink-0 rounded-xl border-2 px-3 text-sm font-semibold ${
                     recorrencia.ativa
@@ -141,13 +145,13 @@ export function PainelContasFixas(): ReactElement {
                       : 'border-slate-300 text-slate-600'
                   }`}
                 >
-                  {recorrencia.ativa ? 'Ativa' : 'Pausada'}
+                  {recorrencia.ativa ? t('Ativa') : t('Pausada')}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setAExcluir(recorrencia)}
-                  aria-label={`Excluir ${recorrencia.descricao}`}
+                  aria-label={t('Excluir {nome}', { nome: recorrencia.descricao })}
                   className="flex h-toque w-toque shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-700"
                 >
                   <Icone nome="lixeira" tamanho={20} />
@@ -159,41 +163,41 @@ export function PainelContasFixas(): ReactElement {
       )}
 
       <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-        <p className="text-base font-semibold text-slate-800">Nova conta fixa</p>
+        <p className="text-base font-semibold text-slate-800">{t('Nova conta fixa')}</p>
         <CaixaDeErro mensagem={erro.mensagem || null} />
 
         <Campo
-          rotulo="O que é"
+          rotulo={t('O que é')}
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
-          placeholder="Aluguel, internet, mensalidade..."
+          placeholder={t('Aluguel, internet, mensalidade...')}
           erro={erro.campos.descricao}
         />
 
         <div className="grid grid-cols-2 gap-3">
           <Campo
-            rotulo="Valor"
+            rotulo={t('Valor')}
             inputMode="numeric"
-            value={mascararMoeda(digitos)}
+            value={mascararMoeda(digitos, idioma)}
             onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
             placeholder="R$ 0,00"
             erro={erro.campos.valorCentavos}
           />
           <Campo
-            rotulo="Todo dia"
+            rotulo={t('Todo dia')}
             type="number"
             min={1}
             max={31}
             value={diaDoMes}
             onChange={(e) => setDiaDoMes(e.target.value)}
-            dica="Dia 31 cai no último dia dos meses curtos."
+            dica={t('Dia 31 cai no último dia dos meses curtos.')}
             erro={erro.campos.diaDoMes}
           />
         </div>
 
         <div>
           <label htmlFor="categoria-fixa" className="rotulo">
-            Categoria (opcional)
+            {t('Categoria (opcional)')}
           </label>
           <select
             id="categoria-fixa"
@@ -201,10 +205,10 @@ export function PainelContasFixas(): ReactElement {
             onChange={(e) => setCategoriaId(e.target.value)}
             className="campo"
           >
-            <option value="">Sem categoria</option>
+            <option value="">{t('Sem categoria')}</option>
             {categorias.data?.map((categoria) => (
               <option key={categoria.id} value={categoria.id}>
-                {categoria.nome}
+                {t(categoria.nome)}
               </option>
             ))}
           </select>
@@ -219,7 +223,7 @@ export function PainelContasFixas(): ReactElement {
           carregando={criar.isPending}
           onClick={() => void adicionar()}
         >
-          Adicionar conta fixa
+          {t('Adicionar conta fixa')}
         </Botao>
       </div>
 

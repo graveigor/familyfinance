@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Botao } from './ui';
 import { Icone } from './Icone';
+import { useT } from '../i18n';
 
 /**
  * Painel que sobe pela base no celular e aparece centralizado no computador.
@@ -20,6 +21,7 @@ export function Dialogo({
   children: ReactNode;
   rodape?: ReactNode;
 }): ReactElement | null {
+  const t = useT();
   const painel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function Dialogo({
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button
         type="button"
-        aria-label="Fechar"
+        aria-label={t('Fechar')}
         className="absolute inset-0 bg-slate-900/50"
         onClick={aoFechar}
       />
@@ -64,7 +66,7 @@ export function Dialogo({
           <button
             type="button"
             onClick={aoFechar}
-            aria-label="Fechar"
+            aria-label={t('Fechar')}
             className="-mr-2 flex h-toque w-toque items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
           >
             <Icone nome="fechar" tamanho={24} />
@@ -92,7 +94,7 @@ export function Confirmar({
   aberto,
   titulo,
   descricao,
-  rotuloConfirmar = 'Excluir',
+  rotuloConfirmar,
   aoConfirmar,
   aoCancelar,
   carregando = false,
@@ -105,6 +107,7 @@ export function Confirmar({
   aoCancelar: () => void;
   carregando?: boolean;
 }): ReactElement | null {
+  const t = useT();
   return (
     <Dialogo
       aberto={aberto}
@@ -113,10 +116,10 @@ export function Confirmar({
       rodape={
         <>
           <Botao variante="secundario" larguraTotal onClick={aoCancelar}>
-            Cancelar
+            {t('Cancelar')}
           </Botao>
           <Botao variante="perigo" larguraTotal onClick={aoConfirmar} carregando={carregando}>
-            {rotuloConfirmar}
+            {rotuloConfirmar ?? t('Excluir')}
           </Botao>
         </>
       }

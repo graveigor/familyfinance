@@ -29,6 +29,7 @@ import {
   useMembros,
   useSugestoes,
 } from '../consultas';
+import { useIdioma, useT } from '../i18n';
 import { useSessao } from '../sessao';
 
 /**
@@ -88,6 +89,7 @@ const PASSOS: PassoDeTutorial[] = [
  */
 export function NovoGasto(): ReactElement {
   useTutorialDaPagina('novo-gasto', PASSOS);
+  const { t, idioma } = useIdioma();
   const { id } = useParams<{ id: string }>();
   const editando = Boolean(id);
   const navegar = useNavigate();
@@ -153,7 +155,7 @@ export function NovoGasto(): ReactElement {
   const centavos = centavosDoTextoMascarado(digitosValor);
   const dataComoTexto = useMemo(() => {
     const convertida = parseData(data);
-    return convertida ? formatarData(convertida) : data;
+    return convertida ? formatarData(convertida, idioma) : data;
   }, [data]);
 
   const jurosMensal = temJuros ? taxaDigitada(jurosDigitado) : 0;
@@ -171,7 +173,7 @@ export function NovoGasto(): ReactElement {
     setErro({ mensagem: '', campos: {} });
 
     if (centavos === 0) {
-      setErro({ mensagem: '', campos: { valorCentavos: 'Informe um valor maior que zero.' } });
+      setErro({ mensagem: '', campos: { valorCentavos: t('Informe um valor maior que zero.') } });
       campoValor.current?.focus();
       return;
     }
@@ -190,13 +192,18 @@ export function NovoGasto(): ReactElement {
     try {
       if (editando && id) {
         await atualizar.mutateAsync({ id, dados });
-        aviso.mostrar('Gasto atualizado.');
+        aviso.mostrar(t('Gasto atualizado.'));
       } else if (parcelas > 1) {
         // Um lançamento por mês, com o número da parcela no nome, para o total
         // de cada mês já refletir só a parcela daquele mês.
         const nota =
           jurosMensal > 0
-            ? `Compra de ${formatarBRL(centavos)} em ${parcelas}x com juros de ${jurosDigitado.replace('.', ',')}% ao mês (total ${formatarBRL(plano.totalCentavos)}).`
+            ? t('Compra de {valor} em {parcelas}x com juros de {taxa}% ao mês (total {total}).', {
+                valor: formatarBRL(centavos, idioma),
+                parcelas,
+                taxa: jurosDigitado.replace('.', ','),
+                total: formatarBRL(plano.totalCentavos, idioma),
+              })
             : '';
         // Uma chamada por parcela, em ordem. Num parcelamento longo isso são
         // dezenas de idas ao servidor: se cair no meio, a pessoa precisa saber
@@ -219,19 +226,26 @@ export function NovoGasto(): ReactElement {
               mensagem:
                 i === 0
                   ? detalhe.mensagem
-                  : `${detalhe.mensagem} As ${i} primeiras parcelas já foram salvas — lance só as que faltam, da ${i + 1}ª em diante.`,
+                  : `${detalhe.mensagem} ${t('As {feitas} primeiras parcelas já foram salvas — lance só as que faltam, da {proxima}ª em diante.', { feitas: i, proxima: i + 1 })}`,
             });
             return;
           }
         }
         aviso.mostrar(
           jurosMensal > 0
-            ? `Salvo em ${parcelas}x de ${formatarBRL(plano.valores[0]!)} — total ${formatarBRL(plano.totalCentavos)}.`
-            : `Compra de ${formatarBRL(centavos)} salva em ${parcelas} parcelas.`,
+            ? t('Salvo em {parcelas}x de {valor} — total {total}.', {
+                parcelas,
+                valor: formatarBRL(plano.valores[0]!, idioma),
+                total: formatarBRL(plano.totalCentavos, idioma),
+              })
+            : t('Compra de {valor} salva em {parcelas} parcelas.', {
+                valor: formatarBRL(centavos, idioma),
+                parcelas,
+              }),
         );
       } else {
         await criar.mutateAsync(dados);
-        aviso.mostrar(`Gasto de ${formatarBRL(centavos)} salvo.`);
+        aviso.mostrar(t('Gasto de {valor} salvo.', { valor: formatarBRL(centavos, idioma) }));
       }
       navegar(-1);
     } catch (falha) {
@@ -247,13 +261,13 @@ export function NovoGasto(): ReactElement {
         <button
           type="button"
           onClick={() => navegar(-1)}
-          aria-label="Voltar"
+          aria-label={t('Voltar')}
           className="-ml-2 flex h-toque w-toque items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"
         >
           <Icone nome="esquerda" tamanho={26} />
         </button>
         <h1 className="text-xl font-bold text-slate-900">
-          {editando ? 'Editar gasto' : 'Novo gasto'}
+          {editando ? t('Editar gasto') : t('Novo gasto')}
         </h1>
       </header>
 
@@ -262,7 +276,7 @@ export function NovoGasto(): ReactElement {
       {/* 1. Valor */}
       <section className="cartao p-5" data-tutorial="gasto-valor">
         <label htmlFor="valor" className="rotulo">
-          Quanto foi?
+          {t('Quanto foi?')}
         </label>
         <input
           id="valor"
@@ -270,7 +284,7 @@ export function NovoGasto(): ReactElement {
           // `inputMode="numeric"` faz o celular abrir o teclado de números.
           inputMode="numeric"
           autoComplete="off"
-          value={mascararMoeda(digitosValor)}
+          value={mascararMoeda(digitosValor, idioma)}
           onChange={(e) => setDigitosValor(e.target.value.replace(/\D/g, ''))}
           placeholder="R$ 0,00"
           aria-describedby={erro.campos.valorCentavos ? 'valor-erro' : undefined}
@@ -292,7 +306,7 @@ export function NovoGasto(): ReactElement {
       {/* 2. Onde foi */}
       <section className="cartao relative p-5" data-tutorial="gasto-onde">
         <Campo
-          rotulo="Onde foi?"
+          rotulo={t('Onde foi?')}
           value={descricao}
           onChange={(e) => {
             setDescricao(e.target.value);
@@ -301,7 +315,7 @@ export function NovoGasto(): ReactElement {
           onFocus={() => setSugestaoAberta(true)}
           // Espera o clique na sugestão antes de fechar a lista.
           onBlur={() => setTimeout(() => setSugestaoAberta(false), 150)}
-          placeholder="Supermercado, farmácia, posto..."
+          placeholder={t('Supermercado, farmácia, posto...')}
           autoComplete="off"
           erro={erro.campos.descricao}
           required
@@ -329,9 +343,9 @@ export function NovoGasto(): ReactElement {
 
       {/* 3. Categoria */}
       <section className="cartao p-5" data-tutorial="gasto-categoria">
-        <p className="rotulo">Categoria (opcional)</p>
+        <p className="rotulo">{t('Categoria (opcional)')}</p>
         {categorias.isPending ? (
-          <Carregando texto="Carregando categorias..." />
+          <Carregando texto={t('Carregando categorias...')} />
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {categorias.data?.map((categoria) => {
@@ -341,7 +355,7 @@ export function NovoGasto(): ReactElement {
                   key={categoria.id}
                   type="button"
                   aria-pressed={escolhida}
-                  aria-label={`Categoria ${categoria.nome}`}
+                  aria-label={t('Categoria {nome}', { nome: t(categoria.nome) })}
                   onClick={() => setCategoriaId(escolhida ? null : categoria.id)}
                   className={`flex min-h-[88px] flex-col items-center justify-center gap-1.5 rounded-xl
                     border-2 px-2 py-3 text-sm font-medium transition-colors ${
@@ -356,10 +370,10 @@ export function NovoGasto(): ReactElement {
                   >
                     <Icone nome={categoria.icone} tamanho={22} />
                   </span>
-                  <span className="text-center leading-tight">{categoria.nome}</span>
+                  <span className="text-center leading-tight">{t(categoria.nome)}</span>
                   {/* Marca de seleção: não depende só da cor da borda. */}
                   {escolhida && (
-                    <span className="sr-only">selecionada</span>
+                    <span className="sr-only">{t('selecionada')}</span>
                   )}
                 </button>
               );
@@ -370,21 +384,21 @@ export function NovoGasto(): ReactElement {
 
       {/* 4. Data */}
       <section className="cartao p-5">
-        <p className="rotulo">Quando foi?</p>
+        <p className="rotulo">{t('Quando foi?')}</p>
         <div className="flex flex-wrap gap-2">
           <BotaoDeData
-            rotulo="Hoje"
+            rotulo={t('Hoje')}
             ativo={data === formatarDataISO(hoje())}
             onClick={() => setData(formatarDataISO(hoje()))}
           />
           <BotaoDeData
-            rotulo="Ontem"
+            rotulo={t('Ontem')}
             ativo={data === formatarDataISO(ontem())}
             onClick={() => setData(formatarDataISO(ontem()))}
           />
           <label className="flex min-h-toque flex-1 items-center gap-2 rounded-xl border-2 border-slate-300 px-3">
             <Icone nome="calendario" tamanho={20} className="shrink-0 text-slate-500" />
-            <span className="sr-only">Escolher outra data</span>
+            <span className="sr-only">{t('Escolher outra data')}</span>
             <input
               type="date"
               value={data}
@@ -394,7 +408,7 @@ export function NovoGasto(): ReactElement {
             />
           </label>
         </div>
-        <p className="mt-2 text-sm text-slate-600">Data escolhida: {dataComoTexto}</p>
+        <p className="mt-2 text-sm text-slate-600">{t('Data escolhida: {data}', { data: dataComoTexto })}</p>
       </section>
 
       {/* 4a. Cartão — some sozinho quando a família não cadastrou nenhum. */}
@@ -406,7 +420,7 @@ export function NovoGasto(): ReactElement {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="parcelas" className="rotulo">
-                Foi parcelado?
+                {t('Foi parcelado?')}
               </label>
               <select
                 id="parcelas"
@@ -420,10 +434,10 @@ export function NovoGasto(): ReactElement {
                 }}
                 className="campo px-2"
               >
-                <option value={1}>Não, à vista</option>
+                <option value={1}>{t('Não, à vista')}</option>
                 {Array.from({ length: MAXIMO_DE_PARCELAS - 1 }, (_, i) => i + 2).map((n) => (
                   <option key={n} value={n}>
-                    Sim, em {n}x
+                    {t('Sim, em {n}x', { n })}
                   </option>
                 ))}
               </select>
@@ -431,7 +445,7 @@ export function NovoGasto(): ReactElement {
 
             <div>
               <label htmlFor="tem-juros" className="rotulo">
-                Teve juros?
+                {t('Teve juros?')}
               </label>
               <select
                 id="tem-juros"
@@ -440,8 +454,8 @@ export function NovoGasto(): ReactElement {
                 onChange={(e) => setTemJuros(e.target.value === 'sim')}
                 className="campo px-2 disabled:bg-slate-50 disabled:text-slate-400"
               >
-                <option value="nao">Não, sem juros</option>
-                <option value="sim">Sim, teve juros</option>
+                <option value="nao">{t('Não, sem juros')}</option>
+                <option value="sim">{t('Sim, teve juros')}</option>
               </select>
             </div>
           </div>
@@ -449,7 +463,7 @@ export function NovoGasto(): ReactElement {
           {temJuros && parcelas > 1 && (
             <div className="mt-3">
               <label htmlFor="juros" className="rotulo">
-                Juros ao mês
+                {t('Juros ao mês')}
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -464,8 +478,7 @@ export function NovoGasto(): ReactElement {
                 <span className="text-xl font-semibold text-slate-600">%</span>
               </div>
               <p className="mt-1.5 text-sm text-slate-600">
-                A taxa mensal que a loja ou o cartão informou. O valor lá em cima é o preço à
-                vista.
+                {t('A taxa mensal que a loja ou o cartão informou. O valor lá em cima é o preço à vista.')}
               </p>
             </div>
           )}
@@ -473,22 +486,26 @@ export function NovoGasto(): ReactElement {
           {parcelas > 1 && centavos > 0 && (
             <div className="mt-3 rounded-xl bg-slate-50 p-4">
               <p className="text-base font-semibold text-slate-900">
-                {parcelas}x de {formatarBRL(plano.valores[0] ?? 0)}
+                {t('{parcelas}x de {valor}', {
+                  parcelas,
+                  valor: formatarBRL(plano.valores[0] ?? 0, idioma),
+                })}
               </p>
               <p className="mt-1 text-sm text-slate-600">
                 {jurosMensal > 0 ? (
-                  <>
-                    Total de {formatarBRL(plano.totalCentavos)}, sendo{' '}
-                    {formatarBRL(plano.jurosCentavos)} de juros. Cada parcela entra num mês, a
-                    partir da data escolhida.
-                  </>
+                  t(
+                    'Total de {total}, sendo {juros} de juros. Cada parcela entra num mês, a partir da data escolhida.',
+                    {
+                      total: formatarBRL(plano.totalCentavos, idioma),
+                      juros: formatarBRL(plano.jurosCentavos, idioma),
+                    },
+                  )
                 ) : temJuros ? (
-                  'Digite a taxa acima para eu calcular as parcelas.'
+                  t('Digite a taxa acima para eu calcular as parcelas.')
                 ) : (
-                  <>
-                    O valor informado é o total da compra. Cada parcela entra num mês, a partir da
-                    data escolhida.
-                  </>
+                  t(
+                    'O valor informado é o total da compra. Cada parcela entra num mês, a partir da data escolhida.',
+                  )
                 )}
               </p>
             </div>
@@ -500,7 +517,7 @@ export function NovoGasto(): ReactElement {
       {(membros.data?.length ?? 0) > 1 && (
         <section className="cartao p-5">
           <label htmlFor="quem" className="rotulo">
-            Quem gastou?
+            {t('Quem gastou?')}
           </label>
           <select
             id="quem"
@@ -511,7 +528,7 @@ export function NovoGasto(): ReactElement {
             {membros.data?.map((membro) => (
               <option key={membro.id} value={membro.id}>
                 {membro.nome}
-                {membro.id === usuario?.id ? ' (você)' : ''}
+                {membro.id === usuario?.id ? t(' (você)') : ''}
               </option>
             ))}
           </select>
@@ -525,14 +542,14 @@ export function NovoGasto(): ReactElement {
           onClick={() => setMostrarMais(!mostrarMais)}
           className="flex min-h-toque w-full items-center justify-between text-base font-semibold text-slate-700"
         >
-          Mais detalhes
+          {t('Mais detalhes')}
           <Icone nome={mostrarMais ? 'cima' : 'baixo'} tamanho={22} />
         </button>
 
         {mostrarMais && (
           <div className="mt-4 space-y-4">
             <div>
-              <p className="rotulo">Forma de pagamento</p>
+              <p className="rotulo">{t('Forma de pagamento')}</p>
               <div className="flex flex-wrap gap-2">
                 {FORMAS_PAGAMENTO.map((forma) => (
                   <button
@@ -546,7 +563,7 @@ export function NovoGasto(): ReactElement {
                         : 'border-slate-200 bg-white text-slate-700'
                     }`}
                   >
-                    {ROTULO_FORMA_PAGAMENTO[forma]}
+                    {t(ROTULO_FORMA_PAGAMENTO[forma])}
                   </button>
                 ))}
               </div>
@@ -554,7 +571,7 @@ export function NovoGasto(): ReactElement {
 
             <div>
               <label htmlFor="observacao" className="rotulo">
-                Observação
+                {t('Observação')}
               </label>
               <textarea
                 id="observacao"
@@ -563,7 +580,7 @@ export function NovoGasto(): ReactElement {
                 rows={3}
                 maxLength={500}
                 className="campo resize-none"
-                placeholder="Algo que ajude a lembrar depois."
+                placeholder={t('Algo que ajude a lembrar depois.')}
               />
             </div>
           </div>
@@ -577,7 +594,7 @@ export function NovoGasto(): ReactElement {
       >
         <div className="mx-auto max-w-3xl">
           <Botao type="submit" larguraTotal carregando={salvando} className="text-lg">
-            {editando ? 'Salvar alterações' : 'Salvar gasto'}
+            {editando ? t('Salvar alterações') : t('Salvar gasto')}
           </Botao>
         </div>
       </div>
@@ -597,6 +614,7 @@ function SecaoCartao({
   valor: string;
   aoMudar: (id: string) => void;
 }): ReactElement {
+  const t = useT();
   const cartoes = useCartoes();
   const navegar = useNavigate();
   const vazio = (cartoes.data?.length ?? 0) === 0;
@@ -605,9 +623,9 @@ function SecaoCartao({
     <section className="cartao p-5" data-tutorial="gasto-cartao">
       {vazio ? (
         <>
-          <p className="rotulo">Cartão</p>
+          <p className="rotulo">{t('Cartão')}</p>
           <p className="text-base text-slate-600">
-            Cadastre seus cartões para saber quanto foi em cada um — "Itaú", "Bradesco".
+            {t('Cadastre seus cartões para saber quanto foi em cada um — "Itaú", "Bradesco".')}
           </p>
           <Botao
             variante="secundario"
@@ -616,7 +634,7 @@ function SecaoCartao({
             className="mt-3"
             onClick={() => navegar('/ajustes')}
           >
-            Cadastrar um cartão
+            {t('Cadastrar um cartão')}
           </Botao>
         </>
       ) : (

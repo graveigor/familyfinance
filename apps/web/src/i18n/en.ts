@@ -342,6 +342,7 @@ export const EN: Record<string, string> = {
   'Grupo "{nome}" criado e em uso.': 'Group "{nome}" created and in use.',
   'Agora você está em "{nome}".': 'You are now in "{nome}".',
   'Código novo gerado.': 'New code generated.',
+  'Novo grupo': 'New group',
   'Casa da praia, Família da mãe...': 'Beach house, Mum’s family...',
 
   // --- Contas fixas ---------------------------------------------------------
@@ -397,6 +398,124 @@ export const EN: Record<string, string> = {
   Avançar: 'Continue',
   'Passo {atual} de {total}': 'Step {atual} of {total}',
   'Ajuda: {titulo}': 'Help: {titulo}',
+
+  // --- Passo a passo das telas ----------------------------------------------
+  'Quanto você gastou no mês':
+    'How much you spent this month',
+  'Este é o número que resume o mês, com a comparação com o mês passado logo abaixo. Só entra aqui o que é seu e o de quem escolheu compartilhar com o grupo.':
+    'This is the number that sums up the month, with the comparison to last month right below. It only includes what is yours and what people chose to share with the group.',
+  'Seus últimos lançamentos':
+    'Your latest entries',
+  'Os gastos mais recentes ficam aqui. Toque em "Ver todos" para buscar e filtrar.':
+    'Your most recent expenses live here. Tap "See all" to search and filter.',
+  'Lançar um gasto':
+    'Add an expense',
+  'Este botão abre o lançamento. São dois campos obrigatórios: quanto foi e onde foi — leva menos de dez segundos.':
+    'This button opens the form. Only two fields are required: how much and where — it takes less than ten seconds.',
+  'Procurar um gasto':
+    'Find an expense',
+  'Digite parte do nome do lugar. A busca só olha os lançamentos que você pode ver.':
+    'Type part of the place name. The search only looks at entries you are allowed to see.',
+  'Filtrar por período e pessoa':
+    'Filter by period and person',
+  'Aqui você escolhe o mês, a categoria e a pessoa. Os filtros ligados viram etiquetas, e dá para remover uma a uma.':
+    'Here you pick the month, the category and the person. Active filters become tags you can remove one by one.',
+  'O total do que está filtrado':
+    'The total of what is filtered',
+  'Este valor soma tudo que o filtro alcança, não só o que está na tela.':
+    'This adds up everything the filter reaches, not just what is on screen.',
+  'Seus gastos são só seus':
+    'Your expenses are yours alone',
+  'Por padrão, ninguém do grupo vê o que você lança — nem quem administra. Ligue a chave aqui se quiser que o grupo acompanhe seus gastos. Dá para desligar quando quiser.':
+    'By default nobody in the group sees what you add — not even the moderator. Turn it on here if you want the group to follow your spending. You can turn it off whenever you want.',
+  'Convide quem você quiser':
+    'Invite whoever you like',
+  'Gere um código como FF-9A3K2 e mande pelo WhatsApp. Quem receber usa esse código ao criar a conta e entra no seu grupo.':
+    'Generate a code like FF-9A3K2 and send it on WhatsApp. Whoever gets it uses the code when creating their account and joins your group.',
+  'Aqui aparecem as pessoas do grupo e quem escolheu compartilhar os gastos. O cadeado indica que os lançamentos daquela pessoa são privados.':
+    'Here you see the people in the group and who chose to share their expenses. The padlock means that person\'s entries are private.',
+  'Metas de todo mundo':
+    'Everyone\'s goals',
+  'Metas conjuntas, como "Viagem de férias", aparecem para o grupo inteiro. É o único valor que todos veem junto.':
+    'Shared goals, like "Holiday trip", are visible to the whole group. It is the only amount everyone sees together.',
+  'Seus grupos':
+    'Your groups',
+  'Você pode participar de vários grupos, cada um com os próprios gastos. Aqui você cria, troca o que está em uso, compartilha o código e apaga os que não usa mais.':
+    'You can be in several groups, each with its own expenses. Here you create them, switch the one in use, share the code and delete the ones you no longer need.',
+  'Crie e apague categorias do jeito da sua casa. Apagar uma categoria nunca apaga gasto — os lançamentos só ficam sem etiqueta.':
+    'Create and delete categories to suit your home. Deleting a category never deletes an expense — the entries simply lose their label.',
+  'Seus cartões':
+    'Your cards',
+  'Cadastre os cartões pelo apelido que você usa — "Itaú", "Bradesco" — e marque se é crédito ou débito. Depois dá para lançar o gasto no cartão certo e filtrar por ele.':
+    'Add your cards using the nickname you actually use — "Itaú", "Bradesco" — and mark whether it is credit or debit. You can then put each expense on the right card and filter by it.',
+  'Contas que se repetem':
+    'Bills that repeat',
+  'Aluguel, internet, mensalidade: cadastre uma vez e o lançamento entra sozinho todo mês, na data escolhida.':
+    'Rent, internet, subscriptions: add it once and the expense appears on its own every month, on the day you chose.',
+  'Trazer de uma planilha':
+    'Bring in from a spreadsheet',
+  'Já tem os gastos no Excel? Envie o arquivo e o app importa, deixando você conferir antes de confirmar.':
+    'Already have your expenses in Excel? Send the file and the app imports it, letting you check everything before confirming.',
+  'Levar seus dados embora':
+    'Take your data with you',
+  'Baixe tudo em Excel quando quiser. Seus dados são seus — nada aqui prende você ao aplicativo.':
+    'Download everything as Excel whenever you want. Your data is yours — nothing here locks you into the app.',
+  'Quanto foi':
+    'How much',
+  'Digite só os números: o app põe a vírgula sozinho. É o único campo que sempre precisa ser preenchido, junto com o lugar.':
+    'Just type the numbers: the app places the decimal point for you. It is the only field always required, along with the place.',
+  'Onde foi o gasto':
+    'Where you spent',
+  'O nome do lugar. Conforme você digita, aparecem sugestões do que já lançou antes — toque para reaproveitar.':
+    'The name of the place. As you type, suggestions from what you added before appear — tap one to reuse it.',
+  'Categoria, se quiser':
+    'Category, if you like',
+  'Serve para o Resumo separar os gastos por tipo. Pode deixar em branco e escolher depois.':
+    'It lets the Summary split expenses by type. You can leave it blank and choose later.',
+  'Em qual cartão caiu':
+    'Which card it went on',
+  'Escolha o cartão para saber depois quanto foi em cada um. Se ainda não cadastrou nenhum, dá para criar aqui mesmo.':
+    'Pick the card so you can see later how much went on each one. If you have not added any yet, you can create one right here.',
+  'Compra parcelada':
+    'Purchase in instalments',
+  'Diga em quantas vezes foi e, se teve juros, a taxa ao mês. O app cria um lançamento por mês com o valor certo, então a conta de cada mês fica correta.':
+    'Say how many instalments it was and, if there was interest, the monthly rate. The app creates one entry per month with the right amount, so each month adds up correctly.',
+  'Escolha o mês':
+    'Pick the month',
+  'As setas andam para trás e para frente no calendário. Tudo nesta tela fala do mês que estiver aqui.':
+    'The arrows move back and forth through the calendar. Everything on this screen is about the month shown here.',
+  'Quanto foi no mês':
+    'How much the month was',
+  'O total e a comparação com o mês passado. Só entra o que é seu e o de quem escolheu compartilhar com o grupo.':
+    'The total and the comparison with last month. It only includes what is yours and what people chose to share with the group.',
+  'Para onde foi o dinheiro':
+    'Where the money went',
+  'A rosca e a lista mostram o peso de cada categoria. É onde costuma aparecer a surpresa do mês.':
+    'The ring and the list show the weight of each category. This is usually where the surprise of the month shows up.',
+  'Quem gastou quanto':
+    'Who spent how much',
+  'A divisão por pessoa, para quem divide as contas da casa.':
+    'The split by person, for households that share the bills.',
+  'Os últimos seis meses':
+    'The last six months',
+  'Responde "estou gastando mais que antes?" sem precisar abrir mês por mês.':
+    'Answers "am I spending more than before?" without opening month by month.',
+  'Três passos':
+    'Three steps',
+  'Enviar o arquivo, dizer o que é cada coluna e conferir antes de gravar. Nada entra nos seus gastos até o último passo.':
+    'Send the file, say what each column is and check before saving. Nothing enters your expenses until the last step.',
+  'A planilha':
+    'The spreadsheet',
+  'Vale Excel (.xlsx) ou .csv. Pode arrastar o arquivo para cá ou tocar para procurar no celular.':
+    'Excel (.xlsx) or .csv both work. Drag the file here or tap to browse on your phone.',
+  'O que é cada coluna':
+    'What each column is',
+  'O app tenta adivinhar sozinho olhando os títulos. Onde ele errar, corrija aqui — só data, valor e descrição são obrigatórios.':
+    'The app tries to guess by looking at the headers. Fix whatever it got wrong here — only date, amount and description are required.',
+  'Confira antes de gravar':
+    'Check before saving',
+  'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
+    'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
 
   // --- Peças comuns ---------------------------------------------------------
   Cancelar: 'Cancel',

@@ -26,6 +26,13 @@ function arquivosDeCodigo(pasta: string): string[] {
 /** `t('texto')` e `t('texto', { ... })`, com aspas simples ou duplas. */
 const USO_DE_T = /\bt\(\s*(['"])((?:\\.|(?!\1)[^\\])+)\1/g;
 
+/**
+ * Títulos e textos dos passos de tutorial. Eles não passam por `t(...)` no
+ * lugar onde são escritos — são dados, traduzidos na hora de exibir —, então
+ * escapariam da varredura acima.
+ */
+const TEXTO_DE_PASSO = /^\s*(?:titulo|texto):\s*(?:\n\s*)?(['"])((?:\\.|(?!\1)[^\\])+)\1/gm;
+
 /** `tp(n, 'singular', 'plural')` — as duas formas precisam de tradução. */
 const USO_DE_TP =
   /\btp\(\s*[^,]+,\s*(['"])((?:\\.|(?!\1)[^\\])+)\1\s*,\s*(['"])((?:\\.|(?!\3)[^\\])+)\3/g;
@@ -44,6 +51,9 @@ function chavesUsadas(): Map<string, string> {
     for (const achado of conteudo.matchAll(USO_DE_TP)) {
       guardar(achado[2]!);
       guardar(achado[4]!);
+    }
+    if (conteudo.includes('PassoDeTutorial[]')) {
+      for (const achado of conteudo.matchAll(TEXTO_DE_PASSO)) guardar(achado[2]!);
     }
   }
   return encontradas;

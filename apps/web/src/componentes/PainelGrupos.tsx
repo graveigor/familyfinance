@@ -6,12 +6,14 @@ import { Confirmar } from './Dialogo';
 import { Icone } from './Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from './ui';
 import { useSessao } from '../sessao';
+import { useIdioma } from '../i18n';
 
 /**
  * Todos os grupos da pessoa: qual está em uso, o código de cada um para
  * compartilhar, e a porta de saída para apagar os que não servem mais.
  */
 export function PainelGrupos(): ReactElement {
+  const { t, tp, idioma } = useIdioma();
   const { atualizarUsuario } = useSessao();
   const queryClient = useQueryClient();
   const aviso = useAviso();
@@ -31,7 +33,7 @@ export function PainelGrupos(): ReactElement {
     try {
       atualizarUsuario(await api.household.ativarGrupo(grupo.id));
       await queryClient.invalidateQueries();
-      aviso.mostrar(`Agora você está em "${grupo.nome}".`);
+      aviso.mostrar(t('Agora você está em "{nome}".', { nome: grupo.nome }));
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     } finally {
@@ -45,7 +47,7 @@ export function PainelGrupos(): ReactElement {
     try {
       atualizarUsuario(await api.household.criarGrupo({ nome: nome.trim() }));
       await queryClient.invalidateQueries();
-      aviso.mostrar(`Grupo "${nome.trim()}" criado e em uso.`);
+      aviso.mostrar(t('Grupo "{nome}" criado e em uso.', { nome: nome.trim() }));
       setNome('');
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
@@ -62,7 +64,7 @@ export function PainelGrupos(): ReactElement {
       if (!grupo.ativo) atualizarUsuario(await api.household.ativarGrupo(grupo.id));
       await api.household.criarConvite(7);
       await queryClient.invalidateQueries();
-      aviso.mostrar('Código novo gerado.');
+      aviso.mostrar(t('Código novo gerado.'));
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     } finally {
@@ -76,7 +78,7 @@ export function PainelGrupos(): ReactElement {
     try {
       atualizarUsuario(await api.household.excluirGrupo(aExcluir.id));
       await queryClient.invalidateQueries();
-      aviso.mostrar(`Grupo "${aExcluir.nome}" apagado.`);
+      aviso.mostrar(t('Grupo "{nome}" apagado.', { nome: aExcluir.nome }));
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     } finally {
@@ -88,8 +90,7 @@ export function PainelGrupos(): ReactElement {
   return (
     <div className="space-y-5">
       <p className="text-base text-slate-700">
-        Você pode participar de vários grupos — "Casa", "Família da mãe", "Casa da praia". Cada um
-        tem os próprios gastos e o próprio código.
+        {t('Você pode participar de vários grupos — "Casa", "Família da mãe", "Casa da praia". Cada um tem os próprios gastos e o próprio código.')}
       </p>
 
       <CaixaDeErro mensagem={erro} />
@@ -113,10 +114,10 @@ export function PainelGrupos(): ReactElement {
                     {grupo.nome}
                   </span>
                   <span className="block text-sm text-slate-600">
-                    {grupo.ativo ? 'Em uso agora · ' : ''}
-                    {pluralizar(grupo.totalMembros, 'pessoa', 'pessoas')} ·{' '}
-                    {pluralizar(grupo.totalGastos, 'gasto', 'gastos')}
-                    {grupo.papel === 'ADMIN' ? ' · você modera' : ''}
+                    {grupo.ativo ? t('Em uso agora · ') : ''}
+                    {tp(grupo.totalMembros, '{quantidade} pessoa', '{quantidade} pessoas')} ·{' '}
+                    {tp(grupo.totalGastos, '{quantidade} gasto', '{quantidade} gastos')}
+                    {grupo.papel === 'ADMIN' ? t(' · você modera') : ''}
                   </span>
                 </span>
 
@@ -124,7 +125,7 @@ export function PainelGrupos(): ReactElement {
                   <button
                     type="button"
                     onClick={() => setAExcluir(grupo)}
-                    aria-label={`Apagar grupo ${grupo.nome}`}
+                    aria-label={t('Apagar grupo {nome}', { nome: grupo.nome })}
                     className="flex h-toque w-toque shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-700"
                   >
                     <Icone nome="lixeira" tamanho={20} />
@@ -143,18 +144,18 @@ export function PainelGrupos(): ReactElement {
                             {codigo.codigo}
                           </span>
                           <span className="block text-sm text-slate-600">
-                            {validade ? `Vale até ${formatarData(validade)}` : 'Ativo'}
+                            {validade ? t('Vale até {data}', { data: formatarData(validade, idioma) }) : t('Ativo')}
                           </span>
                         </span>
                         <button
                           type="button"
                           onClick={() => {
                             void navigator.clipboard?.writeText(codigo.codigo);
-                            aviso.mostrar('Código copiado.');
+                            aviso.mostrar(t('Código copiado.'));
                           }}
                           className="min-h-toque shrink-0 rounded-xl border-2 border-slate-300 px-3 text-sm font-semibold text-slate-700"
                         >
-                          Copiar
+                          {t('Copiar')}
                         </button>
                         <a
                           href={`https://wa.me/?text=${encodeURIComponent(
@@ -164,7 +165,7 @@ export function PainelGrupos(): ReactElement {
                           rel="noreferrer"
                           className="flex min-h-toque shrink-0 items-center rounded-xl border-2 border-slate-300 px-3 text-sm font-semibold text-slate-700"
                         >
-                          Enviar
+                          {t('Enviar')}
                         </a>
                       </li>
                     );
@@ -175,7 +176,7 @@ export function PainelGrupos(): ReactElement {
               <div className="mt-3 flex flex-wrap gap-2">
                 {!grupo.ativo && (
                   <Botao variante="secundario" disabled={ocupado} onClick={() => void trocar(grupo)}>
-                    Usar este grupo
+                    {t('Usar este grupo')}
                   </Botao>
                 )}
                 {grupo.papel === 'ADMIN' && (
@@ -185,7 +186,7 @@ export function PainelGrupos(): ReactElement {
                     disabled={ocupado}
                     onClick={() => void gerarCodigo(grupo)}
                   >
-                    {grupo.codigos.length > 0 ? 'Gerar outro código' : 'Gerar código'}
+                    {grupo.codigos.length > 0 ? t('Gerar outro código') : t('Gerar código')}
                   </Botao>
                 )}
               </div>
@@ -195,12 +196,12 @@ export function PainelGrupos(): ReactElement {
       )}
 
       <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-        <p className="text-base font-semibold text-slate-800">Novo grupo</p>
+        <p className="text-base font-semibold text-slate-800">{t('Novo grupo')}</p>
         <Campo
-          rotulo="Nome do grupo"
+          rotulo={t('Nome do grupo')}
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Casa da praia, Família da mãe..."
+          placeholder={t('Casa da praia, Família da mãe...')}
         />
         <Botao
           larguraTotal
@@ -209,19 +210,25 @@ export function PainelGrupos(): ReactElement {
           carregando={criando}
           onClick={() => void criar()}
         >
-          Criar grupo
+          {t('Criar grupo')}
         </Botao>
       </div>
 
       <Confirmar
         aberto={aExcluir !== null}
-        titulo={`Apagar "${aExcluir?.nome ?? ''}"?`}
+        titulo={t('Apagar "{nome}"?', { nome: aExcluir?.nome ?? '' })}
         descricao={
           aExcluir
-            ? `Isto apaga o grupo e ${pluralizar(aExcluir.totalGastos, 'o lançamento feito nele', 'os lançamentos feitos nele')}. Não dá para desfazer.`
+            ? t('Isto apaga o grupo e {lancamentos}. Não dá para desfazer.', {
+                lancamentos: tp(
+                  aExcluir.totalGastos,
+                  'o lançamento feito nele',
+                  'os lançamentos feitos nele',
+                ),
+              })
             : ''
         }
-        rotuloConfirmar="Apagar grupo"
+        rotuloConfirmar={t('Apagar grupo')}
         carregando={ocupado}
         aoCancelar={() => setAExcluir(null)}
         aoConfirmar={() => void excluir()}

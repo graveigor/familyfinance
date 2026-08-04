@@ -229,6 +229,7 @@ export function Ajustes(): ReactElement {
 }
 
 function PainelPerfil({ aoConcluir }: { aoConcluir: () => void }): ReactElement {
+  const t = useT();
   const { usuario, atualizarUsuario } = useSessao();
   const aviso = useAviso();
   const [nome, setNome] = useState(usuario?.nome ?? '');
@@ -249,7 +250,7 @@ function PainelPerfil({ aoConcluir }: { aoConcluir: () => void }): ReactElement 
         ...(novaSenha ? { novaSenha, senhaAtual } : {}),
       });
       atualizarUsuario(atualizado);
-      aviso.mostrar('Perfil atualizado.');
+      aviso.mostrar(t('Perfil atualizado.'));
       aoConcluir();
     } catch (falha) {
       setErro(traduzirErro(falha));
@@ -261,16 +262,26 @@ function PainelPerfil({ aoConcluir }: { aoConcluir: () => void }): ReactElement 
   return (
     <div className="space-y-4">
       <CaixaDeErro mensagem={erro.mensagem || null} />
-      <Campo rotulo="Nome" value={nome} onChange={(e) => setNome(e.target.value)} erro={erro.campos.nome} />
-      <Campo rotulo="E-mail" value={usuario?.email ?? ''} disabled dica="O e-mail não pode ser alterado." />
+      <Campo
+        rotulo={t('Nome')}
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        erro={erro.campos.nome}
+      />
+      <Campo
+        rotulo={t('E-mail')}
+        value={usuario?.email ?? ''}
+        disabled
+        dica={t('O e-mail não pode ser alterado.')}
+      />
 
       <details className="rounded-xl border-2 border-slate-200 p-4">
         <summary className="cursor-pointer text-base font-semibold text-slate-700">
-          Trocar minha senha
+          {t('Trocar minha senha')}
         </summary>
         <div className="mt-4 space-y-4">
           <Campo
-            rotulo="Senha atual"
+            rotulo={t('Senha atual')}
             type="password"
             value={senhaAtual}
             onChange={(e) => setSenhaAtual(e.target.value)}
@@ -278,25 +289,26 @@ function PainelPerfil({ aoConcluir }: { aoConcluir: () => void }): ReactElement 
             erro={erro.campos.senhaAtual}
           />
           <Campo
-            rotulo="Nova senha"
+            rotulo={t('Nova senha')}
             type="password"
             value={novaSenha}
             onChange={(e) => setNovaSenha(e.target.value)}
             autoComplete="new-password"
-            dica="Pelo menos 8 caracteres."
+            dica={t('Pelo menos 8 caracteres.')}
             erro={erro.campos.novaSenha}
           />
         </div>
       </details>
 
       <Botao larguraTotal carregando={salvando} onClick={() => void salvar()}>
-        Salvar
+        {t('Salvar')}
       </Botao>
     </div>
   );
 }
 
 function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactElement {
+  const t = useT();
   const criar = useCriarCategoria();
   const excluir = useExcluirCategoria();
   const aviso = useAviso();
@@ -313,7 +325,7 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
     try {
       await criar.mutateAsync({ nome: nome.trim(), icone, cor });
       setNome('');
-      aviso.mostrar('Categoria criada.');
+      aviso.mostrar(t('Categoria criada.'));
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     }
@@ -325,8 +337,10 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
       const resultado = (await excluir.mutateAsync(aExcluir.id)) as { gastosSemCategoria: number };
       aviso.mostrar(
         resultado.gastosSemCategoria > 0
-          ? `Categoria excluída. ${resultado.gastosSemCategoria} gasto(s) ficaram sem categoria.`
-          : 'Categoria excluída.',
+          ? t('Categoria excluída. {total} gasto(s) ficaram sem categoria.', {
+              total: resultado.gastosSemCategoria,
+            })
+          : t('Categoria excluída.'),
       );
     } catch (falha) {
       aviso.mostrar(traduzirErro(falha).mensagem);
@@ -346,11 +360,11 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
             >
               <Icone nome={categoria.icone} tamanho={20} />
             </span>
-            <span className="flex-1 truncate text-base text-slate-900">{categoria.nome}</span>
+            <span className="flex-1 truncate text-base text-slate-900">{t(categoria.nome)}</span>
             <button
               type="button"
               onClick={() => setAExcluir(categoria)}
-              aria-label={`Excluir categoria ${categoria.nome}`}
+              aria-label={t('Excluir categoria {nome}', { nome: t(categoria.nome) })}
               className="flex h-toque w-toque items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-700"
             >
               <Icone nome="lixeira" tamanho={20} />
@@ -360,19 +374,19 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
       </ul>
 
       <div className="space-y-3 rounded-xl bg-slate-50 p-4">
-        <p className="text-base font-semibold text-slate-800">Nova categoria</p>
+        <p className="text-base font-semibold text-slate-800">{t('Nova categoria')}</p>
         <CaixaDeErro mensagem={erro} />
-        <Campo rotulo="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+        <Campo rotulo={t('Nome')} value={nome} onChange={(e) => setNome(e.target.value)} />
 
         <div>
-          <p className="rotulo">Ícone</p>
+          <p className="rotulo">{t('Ícone')}</p>
           <div className="flex flex-wrap gap-2">
             {iconesDisponiveis.map((nomeIcone) => (
               <button
                 key={nomeIcone}
                 type="button"
                 aria-pressed={icone === nomeIcone}
-                aria-label={`Ícone ${nomeIcone}`}
+                aria-label={t('Ícone {nome}', { nome: nomeIcone })}
                 onClick={() => setIcone(nomeIcone)}
                 className={`flex h-toque w-toque items-center justify-center rounded-xl border-2 ${
                   icone === nomeIcone ? 'border-marca-600 bg-marca-50' : 'border-slate-200 bg-white'
@@ -386,7 +400,7 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
 
         <div>
           <label htmlFor="cor" className="rotulo">
-            Cor
+            {t('Cor')}
           </label>
           <input
             id="cor"
@@ -404,14 +418,14 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
           carregando={criar.isPending}
           onClick={() => void adicionar()}
         >
-          Adicionar categoria
+          {t('Adicionar categoria')}
         </Botao>
       </div>
 
       <Confirmar
         aberto={aExcluir !== null}
-        titulo={`Excluir "${aExcluir?.nome ?? ''}"?`}
-        descricao="Os gastos dessa categoria NÃO serão apagados — eles apenas ficam sem categoria e continuam somando no total."
+        titulo={t('Excluir "{nome}"?', { nome: t(aExcluir?.nome ?? '') })}
+        descricao={t('Os gastos dessa categoria NÃO serão apagados — eles apenas ficam sem categoria e continuam somando no total.')}
         carregando={excluir.isPending}
         aoConfirmar={() => void confirmarExclusao()}
         aoCancelar={() => setAExcluir(null)}
@@ -421,6 +435,7 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
 }
 
 function PainelExportar(): ReactElement {
+  const t = useT();
   const aviso = useAviso();
   const [formato, setFormato] = useState<'xlsx' | 'csv'>('xlsx');
   const [de, setDe] = useState('');
@@ -448,7 +463,7 @@ function PainelExportar(): ReactElement {
       link.remove();
       URL.revokeObjectURL(endereco);
 
-      aviso.mostrar('Arquivo baixado.');
+      aviso.mostrar(t('Arquivo baixado.'));
     } catch (falha) {
       setErro(traduzirErro(falha).mensagem);
     } finally {
@@ -460,11 +475,11 @@ function PainelExportar(): ReactElement {
     <div className="space-y-4">
       <CaixaDeErro mensagem={erro} />
       <p className="text-base text-slate-700">
-        Baixe seus gastos a qualquer momento. O arquivo abre no Excel e nos programas de planilha.
+        {t('Baixe seus gastos a qualquer momento. O arquivo abre no Excel e nos programas de planilha.')}
       </p>
 
       <div>
-        <p className="rotulo">Formato</p>
+        <p className="rotulo">{t('Formato')}</p>
         <div className="flex gap-2">
           {(['xlsx', 'csv'] as const).map((opcao) => (
             <button
@@ -478,7 +493,7 @@ function PainelExportar(): ReactElement {
                   : 'border-slate-200 bg-white text-slate-700'
               }`}
             >
-              {opcao === 'xlsx' ? 'Excel (.xlsx)' : 'Texto (.csv)'}
+              {opcao === 'xlsx' ? t('Excel (.xlsx)') : t('Texto (.csv)')}
             </button>
           ))}
         </div>
@@ -486,18 +501,20 @@ function PainelExportar(): ReactElement {
 
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm font-medium text-slate-600">
-          De (opcional)
+          {t('De (opcional)')}
           <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="campo mt-1" />
         </label>
         <label className="text-sm font-medium text-slate-600">
-          Até (opcional)
+          {t('Até (opcional)')}
           <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="campo mt-1" />
         </label>
       </div>
-      <p className="text-sm text-slate-600">Sem período escolhido, baixa o histórico inteiro.</p>
+      <p className="text-sm text-slate-600">
+        {t('Sem período escolhido, baixa o histórico inteiro.')}
+      </p>
 
       <Botao larguraTotal icone="baixar" carregando={baixando} onClick={() => void baixar()}>
-        Baixar arquivo
+        {t('Baixar arquivo')}
       </Botao>
     </div>
   );

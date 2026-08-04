@@ -56,6 +56,8 @@ export interface OpcoesCliente {
   armazenamento: ArmazenamentoDeSessao;
   /** Chamado quando a sessão cai de vez (refresh recusado). */
   aoPerderSessao?: () => void;
+  /** Idioma atual da interface — vai em `Accept-Language` a cada chamada. */
+  idioma?: () => 'pt' | 'en';
 }
 
 type Parametros = Record<string, string | number | boolean | undefined | null>;
@@ -184,7 +186,12 @@ export interface Cliente {
   };
 }
 
-export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesCliente): Cliente {
+export function criarCliente({
+  baseUrl,
+  armazenamento,
+  aoPerderSessao,
+  idioma,
+}: OpcoesCliente): Cliente {
   // Um refresh por vez: se três telas receberem 401 juntas, todas esperam a
   // mesma renovação em vez de disparar três.
   let renovacaoEmAndamento: Promise<Sessao | null> | null = null;
@@ -233,6 +240,9 @@ export function criarCliente({ baseUrl, armazenamento, aoPerderSessao }: OpcoesC
     const sessao = opcoes.publica ? null : await armazenamento.ler();
 
     const cabecalhos: Record<string, string> = {};
+    // Sem isto o servidor responderia sempre em português, mesmo com o app
+    // em inglês — erro de login e de campo obrigatório saem por aqui.
+    cabecalhos['accept-language'] = idioma?.() === 'en' ? 'en' : 'pt-BR';
     if (!opcoes.binaria) cabecalhos.accept = 'application/json';
     if (opcoes.corpo !== undefined) cabecalhos['content-type'] = 'application/json';
     if (sessao?.accessToken) cabecalhos.authorization = `Bearer ${sessao.accessToken}`;

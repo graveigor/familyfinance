@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Icone } from './Icone';
+import { useT } from '../i18n';
 
 /**
  * Tutorial em "quadrados flutuantes".
@@ -154,6 +155,7 @@ function Passo({
   aoAvancar: () => void;
   aoFechar: () => void;
 }): ReactElement | null {
+  const t = useT();
   const passo = passos[indice];
   const [area, setArea] = useState<Retangulo | null>(null);
 
@@ -219,7 +221,7 @@ function Passo({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Ajuda: ${passo.titulo}`}
+      aria-label={t('Ajuda: {titulo}', { titulo: t(passo.titulo) })}
       className="fixed inset-0 z-[60]"
     >
       {area ? (
@@ -243,7 +245,7 @@ function Passo({
       {/* Clicar fora avança, como a pessoa espera de um passo a passo. */}
       <button
         type="button"
-        aria-label="Avançar"
+        aria-label={t('Avançar')}
         className="absolute inset-0 h-full w-full cursor-default"
         onClick={aoAvancar}
       />
@@ -259,21 +261,21 @@ function Passo({
         }
       >
         <div className="mb-2 flex items-start justify-between gap-3">
-          <h2 className="text-lg font-bold text-slate-900">{passo.titulo}</h2>
+          <h2 className="text-lg font-bold text-slate-900">{t(passo.titulo)}</h2>
           <button
             type="button"
             onClick={aoFechar}
-            aria-label="Fechar ajuda"
+            aria-label={t('Fechar ajuda')}
             className="-mr-2 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
           >
             <Icone nome="fechar" tamanho={20} />
           </button>
         </div>
 
-        <p className="text-base text-slate-700">{passo.texto}</p>
+        <p className="text-base text-slate-700">{t(passo.texto)}</p>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="flex gap-1.5" aria-label={`Passo ${indice + 1} de ${passos.length}`}>
+          <div className="flex gap-1.5" aria-label={t('Passo {atual} de {total}', { atual: indice + 1, total: passos.length })}>
             {passos.map((outro, i) => (
               <span
                 key={outro.alvo}
@@ -289,7 +291,7 @@ function Passo({
                 onClick={aoFechar}
                 className="min-h-toque px-3 text-base font-medium text-slate-600 hover:underline"
               >
-                Pular
+                {t('Pular')}
               </button>
             )}
             <button
@@ -297,7 +299,7 @@ function Passo({
               onClick={aoAvancar}
               className="min-h-toque rounded-xl bg-marca-700 px-5 text-base font-semibold text-white hover:bg-marca-800"
             >
-              {ultimo ? 'Entendi' : 'Próximo'}
+              {ultimo ? t('Entendi') : t('Próximo')}
             </button>
           </div>
         </div>
@@ -345,6 +347,7 @@ export function BotaoDeAjuda({
 }: {
   acimaDoBotaoAdicionar?: boolean;
 }): ReactElement | null {
+  const t = useT();
   const { reabrir, temTutorial } = useTutorial();
   if (!temTutorial) return null;
 
@@ -359,8 +362,8 @@ export function BotaoDeAjuda({
     <button
       type="button"
       onClick={reabrir}
-      aria-label="Ajuda desta tela"
-      title="Ajuda desta tela"
+      aria-label={t('Ajuda desta tela')}
+      title={t('Ajuda desta tela')}
       className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full border
         border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm hover:bg-marca-50
         md:bottom-auto md:right-6 md:top-6 ${posicao}`}

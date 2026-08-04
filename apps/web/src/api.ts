@@ -28,6 +28,14 @@ const armazenamento: ArmazenamentoDeSessao = {
 };
 
 export const api = criarCliente({
+  // Lido do mesmo lugar que o seletor grava: o cliente não depende do React.
+  idioma: () => {
+    try {
+      return localStorage.getItem('familyfinance.idioma') === 'en' ? 'en' : 'pt';
+    } catch {
+      return 'pt';
+    }
+  },
   // Em desenvolvimento o Vite repassa /api para o backend; em produção o mesmo
   // domínio serve o app e a API.
   baseUrl: import.meta.env.VITE_API_URL ?? '',
