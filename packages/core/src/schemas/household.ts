@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MOEDAS } from '../dinheiro.js';
 import { PAPEIS } from '../tipos.js';
 import { zNome } from './comuns.js';
 
@@ -27,9 +28,13 @@ export const entrarComConviteSchema = z.object({
   codigo: zCodigoConvite,
 });
 
-export const atualizarHouseholdSchema = z.object({
-  nome: zNome,
+export const zMoeda = z.enum(MOEDAS, {
+  errorMap: () => ({ message: 'Escolha uma moeda válida.' }),
 });
+
+export const atualizarHouseholdSchema = z
+  .object({ nome: zNome.optional(), moeda: zMoeda.optional() })
+  .refine((d) => Object.keys(d).length > 0, { message: 'Nada para alterar.' });
 
 export const atualizarMembroSchema = z.object({
   papel: z.enum(PAPEIS, { errorMap: () => ({ message: 'Escolha um papel válido.' }) }),
@@ -50,6 +55,7 @@ export const criarMetaSchema = z.object({
 /** Criar um grupo novo (qualquer pessoa pode). */
 export const criarGrupoSchema = z.object({
   nome: zNome,
+  moeda: zMoeda.default('BRL'),
 });
 
 export type CriarMetaEntrada = z.infer<typeof criarMetaSchema>;

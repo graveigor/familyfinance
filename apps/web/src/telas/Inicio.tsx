@@ -1,5 +1,4 @@
 import {
-  formatarBRL,
   formatarDataISO,
   fraseComparacaoMensal,
   hoje,
@@ -14,6 +13,7 @@ import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutori
 import { ItemDeGasto } from '../componentes/ItemDeGasto';
 import { Carregando, CaixaDeErro, Vazio, traduzirErro } from '../componentes/ui';
 import { useGastos, useResumoMensal } from '../consultas';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
 import { useSessao } from '../sessao';
 
@@ -38,6 +38,7 @@ const PASSOS: PassoDeTutorial[] = [
 ];
 
 export function Inicio(): ReactElement {
+  const { dinheiro, moeda } = useDinheiro();
   useTutorialDaPagina('inicio', PASSOS);
   const { t, tp, idioma } = useIdioma();
   const { usuario } = useSessao();
@@ -87,10 +88,10 @@ export function Inicio(): ReactElement {
         ) : (
           <>
             <p className="mt-2 text-5xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-6xl">
-              {formatarBRL(resumo.data.totalCentavos, idioma)}
+              {dinheiro(resumo.data.totalCentavos)}
             </p>
             <p className="mt-3 text-base text-slate-700">
-              {fraseComparacaoMensal(resumo.data, idioma)}
+              {fraseComparacaoMensal(resumo.data, idioma, moeda)}
             </p>
             <p className="mt-1 text-sm text-slate-500">
               {tp(

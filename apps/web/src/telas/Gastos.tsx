@@ -1,5 +1,4 @@
 import {
-  formatarBRL,
   formatarDataISO,
   hoje,
   inicioDoMes,
@@ -20,6 +19,7 @@ import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutori
 import { Botao, CaixaDeErro, Carregando, Vazio, traduzirErro, useAviso } from '../componentes/ui';
 import { api } from '../api';
 import { EscolherCartao, nomeCompleto } from '../componentes/EscolherCartao';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma, useT } from '../i18n';
 import {
   useCartoes,
@@ -79,6 +79,7 @@ const PASSOS: PassoDeTutorial[] = [
 ];
 
 export function Gastos(): ReactElement {
+  const { dinheiro } = useDinheiro();
   useTutorialDaPagina('gastos', PASSOS);
   const { t, tp, idioma } = useIdioma();
   const navegar = useNavigate();
@@ -238,7 +239,7 @@ export function Gastos(): ReactElement {
             {tp(consulta.data.paginacao.totalItens, '{quantidade} gasto', '{quantidade} gastos')}
           </span>
           <span className="text-xl font-bold tabular-nums text-slate-900">
-            {formatarBRL(consulta.data.totalCentavos, idioma)}
+            {dinheiro(consulta.data.totalCentavos)}
           </span>
         </div>
       )}
@@ -276,7 +277,7 @@ export function Gastos(): ReactElement {
                     {data ? rotuloDoDia(data, undefined, idioma) : dia}
                   </h2>
                   <span className="text-base font-semibold tabular-nums text-slate-700">
-                    {formatarBRL(subtotal, idioma)}
+                    {dinheiro(subtotal)}
                   </span>
                 </div>
                 <ul className="divide-y divide-slate-100">
@@ -327,7 +328,7 @@ export function Gastos(): ReactElement {
         {emFoco && (
           <div className="space-y-5">
             <p className="text-3xl font-bold tabular-nums text-slate-900">
-              {formatarBRL(emFoco.valorCentavos, idioma)}
+              {dinheiro(emFoco.valorCentavos)}
             </p>
             <dl className="space-y-2 text-base">
               <Linha rotulo={t('Quem gastou')} valor={emFoco.usuario.nome} />
@@ -386,7 +387,7 @@ export function Gastos(): ReactElement {
                 '"{descricao}" de {valor} será removido e o total do mês vai mudar. Não dá para desfazer.',
                 {
                   descricao: confirmandoExclusao.descricao,
-                  valor: formatarBRL(confirmandoExclusao.valorCentavos, idioma),
+                  valor: dinheiro(confirmandoExclusao.valorCentavos),
                 },
               )
             : ''

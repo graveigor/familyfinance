@@ -1,6 +1,6 @@
 import {
-  formatarBRL,
-  formatarBRLCurto,
+  formatarDinheiro,
+  formatarDinheiroCurto,
   fraseComparacaoMensal,
   hoje,
   nomeDoMes,
@@ -115,11 +115,11 @@ function Evolucao(): ReactElement {
                 <View key={`${ponto.ano}-${ponto.mes}`} style={estilos.colunaDoGrafico}>
                   {/* `adjustsFontSizeToFit`: encolhe em vez de cortar o valor. */}
                   <Text style={estilos.valorDaColuna} numberOfLines={1} adjustsFontSizeToFit>
-                    {ponto.totalCentavos > 0 ? formatarBRLCurto(ponto.totalCentavos) : ''}
+                    {ponto.totalCentavos > 0 ? formatarDinheiroCurto(ponto.totalCentavos) : ''}
                   </Text>
                   <View
                     accessibilityRole="image"
-                    accessibilityLabel={`${ponto.rotulo}: ${formatarBRL(ponto.totalCentavos)}`}
+                    accessibilityLabel={`${ponto.rotulo}: ${formatarDinheiro(ponto.totalCentavos)}`}
                     style={[
                       estilos.barraDoGrafico,
                       {
@@ -136,7 +136,7 @@ function Evolucao(): ReactElement {
           </View>
           {evolucao.data.mediaCentavos > 0 && (
             <Text style={estilos.textoSuave}>
-              Média dos meses com gasto: {formatarBRL(evolucao.data.mediaCentavos)}
+              Média dos meses com gasto: {formatarDinheiro(evolucao.data.mediaCentavos)}
             </Text>
           )}
         </>
@@ -151,7 +151,7 @@ function Conteudo({ resumo }: { resumo: ResumoMensal }): ReactElement {
       <Cartao estilo={estilos.cartaoDoTotal}>
         <Text style={estilos.rotuloDoTotal}>Total do mês</Text>
         <Text style={estilos.total} adjustsFontSizeToFit numberOfLines={1}>
-          {formatarBRL(resumo.totalCentavos)}
+          {formatarDinheiro(resumo.totalCentavos)}
         </Text>
         <Text style={estilos.comparacao}>{fraseComparacaoMensal(resumo)}</Text>
         <Text style={estilos.quantidade}>{pluralizar(resumo.quantidade, 'gasto', 'gastos')}</Text>
@@ -173,7 +173,7 @@ function Conteudo({ resumo }: { resumo: ResumoMensal }): ReactElement {
               <Text style={estilos.nomeDaCategoria} numberOfLines={1}>
                 {linha.categoria?.nome ?? 'Sem categoria'}
               </Text>
-              <Text style={estilos.valorDaCategoria}>{formatarBRL(linha.totalCentavos)}</Text>
+              <Text style={estilos.valorDaCategoria}>{formatarDinheiro(linha.totalCentavos)}</Text>
               <Text style={estilos.percentual}>
                 {percentual(linha.totalCentavos, resumo.totalCentavos)}%
               </Text>
@@ -193,7 +193,7 @@ function Conteudo({ resumo }: { resumo: ResumoMensal }): ReactElement {
                   {linha.usuario.nome}
                 </Text>
                 <Text style={estilos.valorDaCategoria}>
-                  {formatarBRL(linha.totalCentavos)}{' '}
+                  {formatarDinheiro(linha.totalCentavos)}{' '}
                   <Text style={estilos.percentual}>{parte}%</Text>
                 </Text>
               </View>

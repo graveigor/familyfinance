@@ -1,5 +1,4 @@
 import {
-  formatarBRL,
   fraseComparacaoMensal,
   hoje,
   nomeCurtoDoMes,
@@ -14,6 +13,7 @@ import { Icone } from '../componentes/Icone';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { CaixaDeErro, Carregando, Vazio, traduzirErro } from '../componentes/ui';
 import { useEvolucao, useResumoMensal } from '../consultas';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma, useT } from '../i18n';
 
 const PASSOS: PassoDeTutorial[] = [
@@ -145,20 +145,21 @@ function SecaoDeEvolucao(): ReactElement {
 }
 
 function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
+  const { dinheiro, moeda } = useDinheiro();
   const { t, tp, idioma } = useIdioma();
   return (
     <>
       <section className="cartao px-6 py-6 text-center" data-tutorial="resumo-total">
         <p className="text-base text-slate-600">{t('Total do mês')}</p>
         <p className="mt-1 text-4xl font-bold tabular-nums text-slate-900">
-          {formatarBRL(resumo.totalCentavos, idioma)}
+          {dinheiro(resumo.totalCentavos)}
         </p>
-        <p className="mt-2 text-base text-slate-700">{fraseComparacaoMensal(resumo, idioma)}</p>
+        <p className="mt-2 text-base text-slate-700">{fraseComparacaoMensal(resumo, idioma, moeda)}</p>
         <p className="mt-1 text-sm text-slate-500">
           {t('{quantidade} gastos · {mes} foi {valor}', {
             quantidade: resumo.quantidade,
             mes: nomeCurtoDoMes(resumo.mesAnterior.mes, idioma),
-            valor: formatarBRL(resumo.mesAnterior.totalCentavos, idioma),
+            valor: dinheiro(resumo.mesAnterior.totalCentavos),
           })}
         </p>
       </section>
@@ -185,7 +186,7 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
                     {t(linha.categoria?.nome ?? 'Sem categoria')}
                   </span>
                   <span className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
-                    {formatarBRL(linha.totalCentavos, idioma)}
+                    {dinheiro(linha.totalCentavos)}
                   </span>
                   <span className="w-12 shrink-0 text-right text-sm tabular-nums text-slate-600">
                     {parte}%
@@ -211,7 +212,7 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
                     {linha.usuario.nome}
                   </span>
                   <span className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
-                    {formatarBRL(linha.totalCentavos, idioma)}
+                    {dinheiro(linha.totalCentavos)}
                     <span className="ml-2 text-sm font-normal text-slate-600">{parte}%</span>
                   </span>
                 </div>

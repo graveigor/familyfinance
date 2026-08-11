@@ -7,22 +7,46 @@
 import type { Idioma } from './datas.js';
 
 /**
- * A moeda continua sendo o real: o dinheiro é o mesmo, muda só como o número
- * é escrito. `R$ 1.234,56` em português, `R$ 1,234.56` em inglês.
+ * Moeda do grupo. É DADO, não preferência de exibição: os valores são inteiros
+ * de centavos, então trocar a moeda na tela transformaria R$ 100 em US$ 100.
+ * Quem escolhe é o grupo, uma vez; a tela só formata.
  */
-const FORMATADORES_BRL: Record<Idioma, Intl.NumberFormat> = {
-  pt: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }),
-  en: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'BRL' }),
-};
+export const MOEDAS = ['BRL', 'USD'] as const;
+export type Moeda = (typeof MOEDAS)[number];
+
+export const SIMBOLO_DA_MOEDA: Record<Moeda, string> = { BRL: 'R$', USD: '$' };
+
+/** Idioma decide como o número é escrito; moeda decide qual é o dinheiro. */
+const LOCALE: Record<Idioma, string> = { pt: 'pt-BR', en: 'en-US' };
+
+const formatadores = new Map<string, Intl.NumberFormat>();
+
+function formatador(idioma: Idioma, moeda: Moeda, casas?: number): Intl.NumberFormat {
+  const chave = `${idioma}-${moeda}-${casas ?? 2}`;
+  let achado = formatadores.get(chave);
+  if (!achado) {
+    achado = new Intl.NumberFormat(LOCALE[idioma], {
+      style: 'currency',
+      currency: moeda,
+      ...(casas === 0 ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}),
+    });
+    formatadores.set(chave, achado);
+  }
+  return achado;
+}
 
 const FORMATADOR_NUMERO = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
-/** `123456` -> `"R$ 1.234,56"`. Negativos saem como `"-R$ 1.234,56"`. */
-export function formatarBRL(centavos: number, idioma: Idioma = 'pt'): string {
-  return FORMATADORES_BRL[idioma].format(centavos / 100);
+/** `123456` -> `"R$ 1.234,56"` ou `"$1,234.56"`. */
+export function formatarDinheiro(
+  centavos: number,
+  idioma: Idioma = 'pt',
+  moeda: Moeda = 'BRL',
+): string {
+  return formatador(idioma, moeda).format(centavos / 100);
 }
 
 /** `123456` -> `"1.234,56"` (sem símbolo, para campos de formulário). */
@@ -34,17 +58,13 @@ export function formatarNumero(centavos: number): string {
  * Versão curta para textos de comparação: `"R$ 320"` quando não há centavos,
  * `"R$ 320,50"` quando há. Usada em frases como "R$ 320 a mais que em junho".
  */
-export function formatarBRLCurto(centavos: number, idioma: Idioma = 'pt'): string {
-  const absoluto = Math.abs(centavos);
-  if (absoluto % 100 === 0) {
-    return new Intl.NumberFormat(idioma === 'en' ? 'en-US' : 'pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(centavos / 100);
-  }
-  return formatarBRL(centavos, idioma);
+export function formatarDinheiroCurto(
+  centavos: number,
+  idioma: Idioma = 'pt',
+  moeda: Moeda = 'BRL',
+): string {
+  const casas = Math.abs(centavos) % 100 === 0 ? 0 : 2;
+  return formatador(idioma, moeda, casas).format(centavos / 100);
 }
 
 /**
@@ -146,10 +166,14 @@ export function parseValorParaCentavos(entrada: string | number): number | null 
  * Aplica máscara de moeda enquanto o usuário digita: só os dígitos importam e
  * os dois últimos são os centavos (`"1234"` -> `"R$ 12,34"`).
  */
-export function mascararMoeda(digitado: string, idioma: Idioma = 'pt'): string {
+export function mascararMoeda(
+  digitado: string,
+  idioma: Idioma = 'pt',
+  moeda: Moeda = 'BRL',
+): string {
   const digitos = digitado.replace(/\D/g, '').slice(0, 15);
   if (digitos === '') return '';
-  return formatarBRL(Number(digitos), idioma);
+  return formatarDinheiro(Number(digitos), idioma, moeda);
 }
 
 /** Centavos correspondentes ao que já foi digitado no campo com máscara. */

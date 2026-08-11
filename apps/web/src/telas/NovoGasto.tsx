@@ -4,11 +4,9 @@ import {
   ROTULO_FORMA_PAGAMENTO,
   calcularParcelas,
   centavosDoTextoMascarado,
-  formatarBRL,
   formatarData,
   formatarDataISO,
   hoje,
-  mascararMoeda,
   ontem,
   parseData,
   type FormaPagamento,
@@ -29,6 +27,7 @@ import {
   useMembros,
   useSugestoes,
 } from '../consultas';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma, useT } from '../i18n';
 import { useSessao } from '../sessao';
 
@@ -88,6 +87,7 @@ const PASSOS: PassoDeTutorial[] = [
  * quanto, onde, do quê, quando, quem. Só "quanto" e "onde" são obrigatórios.
  */
 export function NovoGasto(): ReactElement {
+  const { dinheiro, mascara } = useDinheiro();
   useTutorialDaPagina('novo-gasto', PASSOS);
   const { t, idioma } = useIdioma();
   const { id } = useParams<{ id: string }>();
@@ -199,10 +199,10 @@ export function NovoGasto(): ReactElement {
         const nota =
           jurosMensal > 0
             ? t('Compra de {valor} em {parcelas}x com juros de {taxa}% ao mês (total {total}).', {
-                valor: formatarBRL(centavos, idioma),
+                valor: dinheiro(centavos),
                 parcelas,
                 taxa: jurosDigitado.replace('.', ','),
-                total: formatarBRL(plano.totalCentavos, idioma),
+                total: dinheiro(plano.totalCentavos),
               })
             : '';
         // Uma chamada por parcela, em ordem. Num parcelamento longo isso são
@@ -235,17 +235,17 @@ export function NovoGasto(): ReactElement {
           jurosMensal > 0
             ? t('Salvo em {parcelas}x de {valor} — total {total}.', {
                 parcelas,
-                valor: formatarBRL(plano.valores[0]!, idioma),
-                total: formatarBRL(plano.totalCentavos, idioma),
+                valor: dinheiro(plano.valores[0]!),
+                total: dinheiro(plano.totalCentavos),
               })
             : t('Compra de {valor} salva em {parcelas} parcelas.', {
-                valor: formatarBRL(centavos, idioma),
+                valor: dinheiro(centavos),
                 parcelas,
               }),
         );
       } else {
         await criar.mutateAsync(dados);
-        aviso.mostrar(t('Gasto de {valor} salvo.', { valor: formatarBRL(centavos, idioma) }));
+        aviso.mostrar(t('Gasto de {valor} salvo.', { valor: dinheiro(centavos) }));
       }
       navegar(-1);
     } catch (falha) {
@@ -284,7 +284,7 @@ export function NovoGasto(): ReactElement {
           // `inputMode="numeric"` faz o celular abrir o teclado de números.
           inputMode="numeric"
           autoComplete="off"
-          value={mascararMoeda(digitosValor, idioma)}
+          value={mascara(digitosValor)}
           onChange={(e) => setDigitosValor(e.target.value.replace(/\D/g, ''))}
           placeholder="R$ 0,00"
           aria-describedby={erro.campos.valorCentavos ? 'valor-erro' : undefined}
@@ -488,7 +488,7 @@ export function NovoGasto(): ReactElement {
               <p className="text-base font-semibold text-slate-900">
                 {t('{parcelas}x de {valor}', {
                   parcelas,
-                  valor: formatarBRL(plano.valores[0] ?? 0, idioma),
+                  valor: dinheiro(plano.valores[0] ?? 0),
                 })}
               </p>
               <p className="mt-1 text-sm text-slate-600">
@@ -496,8 +496,8 @@ export function NovoGasto(): ReactElement {
                   t(
                     'Total de {total}, sendo {juros} de juros. Cada parcela entra num mês, a partir da data escolhida.',
                     {
-                      total: formatarBRL(plano.totalCentavos, idioma),
-                      juros: formatarBRL(plano.jurosCentavos, idioma),
+                      total: dinheiro(plano.totalCentavos),
+                      juros: dinheiro(plano.jurosCentavos),
                     },
                   )
                 ) : temJuros ? (

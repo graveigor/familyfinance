@@ -1,3 +1,5 @@
+import type { Moeda } from './dinheiro.js';
+
 /** Tipos de domínio compartilhados entre backend, web e mobile. */
 
 export const PAPEIS = ['ADMIN', 'MEMBRO'] as const;
@@ -36,6 +38,8 @@ export interface Usuario {
   nome: string;
   email: string;
   papel: Papel;
+  /** Moeda do grupo ativo — a tela formata o dinheiro com ela. */
+  moeda: Moeda;
   /** Quando ligado, os lançamentos desta pessoa ficam visíveis para o grupo. */
   compartilhaGastos: boolean;
   householdId: string;
@@ -45,6 +49,7 @@ export interface Usuario {
 export interface Household {
   id: string;
   nome: string;
+  moeda: Moeda;
   criadoEm: string;
 }
 
@@ -52,6 +57,7 @@ export interface Household {
 export interface GrupoDaPessoa {
   id: string;
   nome: string;
+  moeda: Moeda;
   /** Papel da pessoa NESTE grupo. */
   papel: Papel;
   /** É o grupo em uso agora. */

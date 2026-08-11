@@ -1,4 +1,4 @@
-import { formatarBRL, type Gasto } from '@gastos/core';
+import { formatarDinheiro, type Gasto } from '@gastos/core';
 import type { ReactElement } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ALVO_DE_TOQUE, cores, espaco, fonte, raio } from '../tema';
@@ -35,7 +35,7 @@ export function ItemDeGasto({
           gasto.valorCentavos < 0 && { color: cores.marcaEscura },
         ]}
       >
-        {formatarBRL(gasto.valorCentavos)}
+        {formatarDinheiro(gasto.valorCentavos)}
       </Text>
     </>
   );
@@ -45,7 +45,7 @@ export function ItemDeGasto({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${gasto.descricao}, ${formatarBRL(gasto.valorCentavos)}`}
+      accessibilityLabel={`${gasto.descricao}, ${formatarDinheiro(gasto.valorCentavos)}`}
       onPress={() => aoTocar(gasto)}
       style={({ pressed }) => [estilos.linha, pressed && { backgroundColor: '#F1F5F9' }]}
     >

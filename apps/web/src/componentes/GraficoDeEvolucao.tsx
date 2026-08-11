@@ -1,4 +1,5 @@
-import { formatarBRL, formatarBRLCurto, type Evolucao } from '@gastos/core';
+import { formatarDinheiro, formatarDinheiroCurto, type Evolucao } from '@gastos/core';
+import { useDinheiro } from '../i18n/dinheiro';
 import type { ReactElement } from 'react';
 
 /**
@@ -6,6 +7,7 @@ import type { ReactElement } from 'react';
  * nem grade: o número que importa está escrito em cima da barra.
  */
 export function GraficoDeEvolucao({ evolucao }: { evolucao: Evolucao }): ReactElement {
+  const { dinheiro } = useDinheiro();
   const maior = Math.max(evolucao.maiorCentavos, 1);
   const alturaDaMedia = (evolucao.mediaCentavos / maior) * 100;
 
@@ -37,12 +39,12 @@ export function GraficoDeEvolucao({ evolucao }: { evolucao: Evolucao }): ReactEl
                 // Os 85% deixam espaço para o valor escrito acima da barra.
                 style={{ height: `${Math.max(altura * 0.85, ponto.totalCentavos > 0 ? 4 : 0)}%` }}
                 role="img"
-                aria-label={`${ponto.rotulo} de ${ponto.ano}: ${formatarBRL(ponto.totalCentavos)}`}
+                aria-label={`${ponto.rotulo} de ${ponto.ano}: ${dinheiro(ponto.totalCentavos)}`}
               >
                 {/* Fora do fluxo, para não influenciar a largura da coluna. */}
                 {ponto.totalCentavos > 0 && (
                   <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap text-xs font-medium tabular-nums text-slate-600">
-                    {formatarBRLCurto(ponto.totalCentavos)}
+                    {formatarDinheiroCurto(ponto.totalCentavos)}
                   </span>
                 )}
               </div>
@@ -65,7 +67,7 @@ export function GraficoDeEvolucao({ evolucao }: { evolucao: Evolucao }): ReactEl
       {evolucao.mediaCentavos > 0 && (
         <p className="mt-3 flex items-center gap-2 text-base text-slate-700">
           <span className="inline-block w-6 border-t-2 border-dashed border-slate-400" aria-hidden="true" />
-          Média dos meses com gasto: {formatarBRL(evolucao.mediaCentavos)}
+          Média dos meses com gasto: {dinheiro(evolucao.mediaCentavos)}
         </p>
       )}
     </div>

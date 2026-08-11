@@ -16,6 +16,9 @@ datasource db {
 model Household {
   id       String   @id @default(uuid())
   nome     String
+  /// Moeda do grupo (BRL, USD). Os valores são centavos dessa moeda — trocar
+  /// aqui não converte nada, só muda como o número aparece.
+  moeda    String   @default("BRL")
   criadoEm DateTime @default(now())
 
   /// Quem criou o grupo. Nulo nos grupos anteriores ao campo.

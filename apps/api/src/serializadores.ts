@@ -2,6 +2,7 @@ import {
   formatarDataISO,
   type Cartao,
   type Categoria,
+  type Moeda,
   type Gasto,
   type Usuario,
 } from '@gastos/core';
@@ -36,12 +37,13 @@ export function serializarCartao(cartao: CartaoDb): Cartao {
   };
 }
 
-export function serializarUsuario(usuario: UserDb): Usuario {
+export function serializarUsuario(usuario: UserDb, moeda: Moeda = 'BRL'): Usuario {
   return {
     id: usuario.id,
     nome: usuario.nome,
     email: usuario.email,
     papel: usuario.papel,
+    moeda,
     compartilhaGastos: usuario.compartilhaGastos,
     householdId: usuario.householdId,
     criadoEm: usuario.criadoEm.toISOString(),

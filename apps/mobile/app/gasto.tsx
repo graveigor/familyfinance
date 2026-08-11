@@ -1,6 +1,6 @@
 import {
   centavosDoTextoMascarado,
-  formatarBRL,
+  formatarDinheiro,
   formatarData,
   formatarDataISO,
   hoje,

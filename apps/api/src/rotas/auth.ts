@@ -1,4 +1,5 @@
 import {
+  type Moeda,
   CATEGORIAS_PADRAO,
   atualizarPerfilSchema,
   erroConflito,
@@ -15,6 +16,16 @@ import { prisma } from '../prisma.js';
 import { serializarUsuario } from '../serializadores.js';
 import { conferirSenha, gerarHashSenha } from '../servicos/senha.js';
 import { gerarAccessToken, gerarRefreshToken, verificarRefreshToken } from '../servicos/tokens.js';
+
+/** Moeda de um grupo, para preencher o usuário devolvido pela rota. */
+async function moedaDoGrupo(householdId: string): Promise<Moeda> {
+  const grupo = await prisma.household.findUnique({
+    where: { id: householdId },
+    select: { moeda: true },
+  });
+  return grupo?.moeda === 'USD' ? 'USD' : 'BRL';
+}
+
 
 async function montarSessao(usuario: {
   id: string;
@@ -101,7 +112,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
     const sessao: Sessao = {
       ...(await montarSessao(usuario)),
-      usuario: serializarUsuario(usuario),
+      usuario: serializarUsuario(usuario, await moedaDoGrupo(usuario.householdId)),
     };
     return reply.status(201).send(sessao);
   });
@@ -124,7 +135,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
     const sessao: Sessao = {
       ...(await montarSessao(usuario)),
-      usuario: serializarUsuario(usuario),
+      usuario: serializarUsuario(usuario, await moedaDoGrupo(usuario.householdId)),
     };
     return sessao;
   });
@@ -138,7 +149,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
     const sessao: Sessao = {
       ...(await montarSessao(usuario)),
-      usuario: serializarUsuario(usuario),
+      usuario: serializarUsuario(usuario, await moedaDoGrupo(usuario.householdId)),
     };
     return sessao;
   });
@@ -151,14 +162,16 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
       const usuario = await prisma.user.findUniqueOrThrow({ where: { id: autenticado.id } });
       const household = await prisma.household.findUniqueOrThrow({
         where: { id: usuario.householdId },
-        select: { id: true, nome: true, criadoEm: true },
+        select: { id: true, nome: true, moeda: true, criadoEm: true },
       });
 
+      const moeda: Moeda = household.moeda === 'USD' ? 'USD' : 'BRL';
       return {
-        usuario: serializarUsuario(usuario),
+        usuario: serializarUsuario(usuario, moeda),
         household: {
           id: household.id,
           nome: household.nome,
+          moeda,
           criadoEm: household.criadoEm.toISOString(),
         },
       };
@@ -188,6 +201,6 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
       where: { id: usuario.id },
       data: atualizacao,
     });
-    return serializarUsuario(atualizado);
+    return serializarUsuario(atualizado, await moedaDoGrupo(atualizado.householdId));
   });
 }

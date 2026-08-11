@@ -1,8 +1,6 @@
 import {
   centavosDoTextoMascarado,
-  formatarBRL,
   formatarData,
-  mascararMoeda,
   parseData,
   type Recorrencia,
 } from '@gastos/core';
@@ -18,6 +16,7 @@ import {
   useExcluirRecorrencia,
   useRecorrencias,
 } from '../consultas';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
 
 /**
@@ -25,6 +24,7 @@ import { useIdioma } from '../i18n';
  * O lançamento do mês é criado quando alguém abre o app — nada roda escondido.
  */
 export function PainelContasFixas(): ReactElement {
+  const { dinheiro, mascara } = useDinheiro();
   const { t, idioma } = useIdioma();
   const lista = useRecorrencias();
   const categorias = useCategorias();
@@ -120,7 +120,7 @@ export function PainelContasFixas(): ReactElement {
                     {recorrencia.descricao}
                   </span>
                   <span className="block truncate text-sm text-slate-600">
-                    {formatarBRL(recorrencia.valorCentavos, idioma)} ·{' '}
+                    {dinheiro(recorrencia.valorCentavos)} ·{' '}
                     {t('todo dia {dia}', { dia: recorrencia.diaDoMes })}
                     {recorrencia.cartao ? ` · ${recorrencia.cartao.nome}` : ''}
                     {recorrencia.ativa && proximo
@@ -178,7 +178,7 @@ export function PainelContasFixas(): ReactElement {
           <Campo
             rotulo={t('Valor')}
             inputMode="numeric"
-            value={mascararMoeda(digitos, idioma)}
+            value={mascara(digitos)}
             onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
             placeholder="R$ 0,00"
             erro={erro.campos.valorCentavos}

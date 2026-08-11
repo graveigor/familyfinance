@@ -1,6 +1,7 @@
-import { formatarBRL, type Gasto } from '@gastos/core';
+import { formatarDinheiro, type Gasto } from '@gastos/core';
 import type { ReactElement } from 'react';
 import { Icone } from './Icone';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
 
 /**
@@ -16,6 +17,7 @@ export function ItemDeGasto({
   aoTocar?: (gasto: Gasto) => void;
 }): ReactElement {
   const { t, idioma } = useIdioma();
+  const { dinheiro } = useDinheiro();
   const conteudo = (
     <>
       <span
@@ -59,7 +61,7 @@ export function ItemDeGasto({
           gasto.valorCentavos < 0 ? 'text-marca-700' : 'text-slate-900'
         }`}
       >
-        {formatarBRL(gasto.valorCentavos, idioma)}
+        {dinheiro(gasto.valorCentavos)}
       </span>
     </>
   );

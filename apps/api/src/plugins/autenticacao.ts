@@ -1,4 +1,4 @@
-import { erroNaoAutenticado, erroSemPermissao, type Papel } from '@gastos/core';
+import { erroNaoAutenticado, erroSemPermissao, type Moeda, type Papel } from '@gastos/core';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../prisma.js';
 import { verificarAccessToken } from '../servicos/tokens.js';
@@ -7,6 +7,8 @@ export interface UsuarioAutenticado {
   id: string;
   householdId: string;
   papel: Papel;
+  /** Moeda do grupo ativo — vai junto para não consultar de novo em cada rota. */
+  moeda: Moeda;
 }
 
 declare module 'fastify' {
@@ -40,11 +42,21 @@ export function configurarAutenticacao(app: FastifyInstance): void {
     // valham já na próxima requisição, sem esperar o token expirar.
     const usuario = await prisma.user.findUnique({
       where: { id: conteudo.sub },
-      select: { id: true, householdId: true, papel: true },
+      select: {
+        id: true,
+        householdId: true,
+        papel: true,
+        household: { select: { moeda: true } },
+      },
     });
     if (!usuario) throw erroNaoAutenticado();
 
-    request.usuario = usuario;
+    request.usuario = {
+      id: usuario.id,
+      householdId: usuario.householdId,
+      papel: usuario.papel,
+      moeda: usuario.household.moeda === 'USD' ? 'USD' : 'BRL',
+    };
   });
 
   app.decorate('exigirAdmin', async (request: FastifyRequest): Promise<void> => {

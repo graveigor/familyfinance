@@ -12,6 +12,8 @@ import {
   erroValidacao,
   zId,
   type Convite,
+  type Household,
+  type Moeda,
   type Meta,
 } from '@gastos/core';
 import { randomInt } from 'node:crypto';
@@ -19,9 +21,33 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
+
+/** Moeda de um grupo, para preencher o usuário devolvido pela rota. */
+async function moedaDoGrupo(householdId: string): Promise<Moeda> {
+  const grupo = await prisma.household.findUnique({
+    where: { id: householdId },
+    select: { moeda: true },
+  });
+  return grupo?.moeda === 'USD' ? 'USD' : 'BRL';
+}
 import { serializarUsuario } from '../serializadores.js';
 
 const paramsSchema = z.object({ id: zId });
+
+/** A moeda vem do banco como texto; o contrato público é `Moeda`. */
+function serializarGrupo(g: {
+  id: string;
+  nome: string;
+  moeda: string;
+  criadoEm: Date;
+}): Household {
+  return {
+    id: g.id,
+    nome: g.nome,
+    moeda: (g.moeda === 'USD' ? 'USD' : 'BRL') as Moeda,
+    criadoEm: g.criadoEm.toISOString(),
+  };
+}
 
 /**
  * Código de grupo no formato `FF-9A3K2`: o prefixo é a marca (Family Finance)
@@ -83,8 +109,9 @@ async function criarGrupoParaPessoa(
   tx: Transacao,
   usuarioId: string,
   nome: string,
+  moeda: Moeda = 'BRL',
 ): Promise<{ id: string }> {
-  const grupo = await tx.household.create({ data: { nome, criadoPorId: usuarioId } });
+  const grupo = await tx.household.create({ data: { nome, moeda, criadoPorId: usuarioId } });
   await tx.categoria.createMany({
     data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: grupo.id })),
   });
@@ -153,9 +180,9 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const household = await prisma.household.findUniqueOrThrow({
       where: { id: usuario.householdId },
-      select: { id: true, nome: true, criadoEm: true },
+      select: { id: true, nome: true, moeda: true, criadoEm: true },
     });
-    return { id: household.id, nome: household.nome, criadoEm: household.criadoEm.toISOString() };
+    return serializarGrupo(household);
   });
 
   app.patch('/', { preHandler: [app.exigirAdmin] }, async (request: FastifyRequest) => {
@@ -164,9 +191,9 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     const household = await prisma.household.update({
       where: { id: usuario.householdId },
       data: dados,
-      select: { id: true, nome: true, criadoEm: true },
+      select: { id: true, nome: true, moeda: true, criadoEm: true },
     });
-    return { id: household.id, nome: household.nome, criadoEm: household.criadoEm.toISOString() };
+    return serializarGrupo(household);
   });
 
   /**
@@ -181,7 +208,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       orderBy: { user: { nome: 'asc' } },
     });
     return {
-      itens: participacoes.map((p) => ({ ...serializarUsuario(p.user), papel: p.papel })),
+      itens: participacoes.map((p) => ({ ...serializarUsuario(p.user, usuario.moeda), papel: p.papel })),
     };
   });
 
@@ -221,7 +248,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
         return participacao.user;
       });
 
-      return { ...serializarUsuario(atualizado), papel };
+      return { ...serializarUsuario(atualizado, await moedaDoGrupo(atualizado.householdId)), papel };
     },
   );
 
@@ -345,7 +372,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
-    return serializarUsuario(atualizado);
+    return serializarUsuario(atualizado, await moedaDoGrupo(atualizado.householdId));
   });
 
   /**
@@ -388,7 +415,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
-    return reply.status(200).send(serializarUsuario(atualizado));
+    return reply.status(200).send(serializarUsuario(atualizado, await moedaDoGrupo(atualizado.householdId)));
   });
 
   /**
@@ -397,14 +424,14 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
    */
   app.post('/nova', async (request, reply) => {
     const usuario = usuarioDaRequisicao(request);
-    const { nome } = criarGrupoSchema.parse(request.body);
+    const { nome, moeda } = criarGrupoSchema.parse(request.body);
 
     const atualizado = await prisma.$transaction(async (tx) => {
-      await criarGrupoParaPessoa(tx, usuario.id, nome);
+      await criarGrupoParaPessoa(tx, usuario.id, nome, moeda);
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
-    return reply.status(201).send(serializarUsuario(atualizado));
+    return reply.status(201).send(serializarUsuario(atualizado, await moedaDoGrupo(atualizado.householdId)));
   });
 
   /**
@@ -435,6 +462,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       itens: participacoes.map((p) => ({
         id: p.household.id,
         nome: p.household.nome,
+        moeda: (p.household.moeda === 'USD' ? 'USD' : 'BRL') as Moeda,
         papel: p.papel,
         ativo: p.householdId === usuario.householdId,
         souDono: p.household.criadoPorId === usuario.id,
@@ -462,7 +490,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
-    return serializarUsuario(atualizado);
+    return serializarUsuario(atualizado, await moedaDoGrupo(atualizado.householdId));
   });
 
   /**
@@ -520,7 +548,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     });
 
     const atual = await prisma.user.findUniqueOrThrow({ where: { id: usuario.id } });
-    return reply.status(200).send(serializarUsuario(atual));
+    return reply.status(200).send(serializarUsuario(atual, await moedaDoGrupo(atual.householdId)));
   });
 
   // --- Metas conjuntas ------------------------------------------------------

@@ -1,5 +1,5 @@
 import {
-  formatarBRL,
+  formatarDinheiro,
   formatarDataISO,
   fraseComparacaoMensal,
   hoje,
@@ -82,9 +82,9 @@ export default function Inicio(): ReactElement {
                 style={estilos.total}
                 adjustsFontSizeToFit
                 numberOfLines={1}
-                accessibilityLabel={`Total do mês: ${formatarBRL(resumo.data.totalCentavos)}`}
+                accessibilityLabel={`Total do mês: ${formatarDinheiro(resumo.data.totalCentavos)}`}
               >
-                {formatarBRL(resumo.data.totalCentavos)}
+                {formatarDinheiro(resumo.data.totalCentavos)}
               </Text>
               <Text style={estilos.comparacao}>{fraseComparacaoMensal(resumo.data)}</Text>
               <Text style={estilos.quantidade}>

@@ -2,7 +2,6 @@ import {
   CAMPOS_IMPORTACAO,
   CAMPOS_OBRIGATORIOS,
   ROTULO_CAMPO,
-  formatarBRL,
   formatarData,
   parseData,
   pluralizar,
@@ -12,6 +11,7 @@ import {
   type PreviaImportacao,
   type StatusLinha,
 } from '@gastos/core';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -66,6 +66,7 @@ const CORES_STATUS: Record<StatusLinha, { fundo: string; texto: string; rotulo: 
 
 export function Importar(): ReactElement {
   useTutorialDaPagina('importar', PASSOS);
+  const { dinheiro } = useDinheiro();
   const navegar = useNavigate();
   const aviso = useAviso();
   const queryClient = useQueryClient();
@@ -231,7 +232,7 @@ export function Importar(): ReactElement {
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-semibold text-slate-900">
-                {formatarBRL(totalMarcado)}
+                {dinheiro(totalMarcado)}
               </p>
               <p className="truncate text-sm text-slate-600">
                 {pluralizar(marcadas.length, 'selecionado', 'selecionados')}
@@ -586,6 +587,7 @@ function EtapaConferencia({
 }
 
 function ResumoDaLinha({ linha }: { linha: LinhaAnalisada }): ReactElement {
+  const { dinheiro } = useDinheiro();
   const data = linha.data ? parseData(linha.data) : null;
   return (
     <div className="min-w-0">
@@ -594,7 +596,7 @@ function ResumoDaLinha({ linha }: { linha: LinhaAnalisada }): ReactElement {
           {linha.descricao || <span className="text-slate-400">sem descrição</span>}
         </span>
         <span className="shrink-0 text-base font-semibold tabular-nums text-slate-900">
-          {linha.valorCentavos === null ? '—' : formatarBRL(linha.valorCentavos)}
+          {linha.valorCentavos === null ? '—' : dinheiro(linha.valorCentavos)}
         </span>
       </div>
       <p className="truncate text-sm text-slate-600">
@@ -626,6 +628,7 @@ function DialogoDeEdicao({
   aoFechar: () => void;
   aoSalvar: (linha: LinhaAnalisada) => void;
 }): ReactElement | null {
+  const { dinheiro } = useDinheiro();
   const [rascunho, setRascunho] = useState<LinhaAnalisada | null>(linha);
   const [valorTexto, setValorTexto] = useState('');
 
@@ -680,7 +683,7 @@ function DialogoDeEdicao({
         <Campo
           rotulo="Valor"
           inputMode="numeric"
-          value={centavos === 0 ? '' : formatarBRL(negativo ? -centavos : centavos)}
+          value={centavos === 0 ? '' : dinheiro(negativo ? -centavos : centavos)}
           onChange={(e) => setValorTexto(e.target.value.replace(/\D/g, ''))}
           placeholder="R$ 0,00"
           dica={negativo ? 'Este lançamento é um estorno (valor negativo).' : undefined}

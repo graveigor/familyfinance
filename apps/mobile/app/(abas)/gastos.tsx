@@ -1,6 +1,6 @@
 import {
   fimDoMes,
-  formatarBRL,
+  formatarDinheiro,
   formatarDataISO,
   hoje,
   inicioDoMes,
@@ -89,7 +89,7 @@ export default function Gastos(): ReactElement {
     // Alerta nativo: é o aviso que a pessoa já reconhece no aparelho dela.
     Alert.alert(
       'Excluir este gasto?',
-      `"${gasto.descricao}" de ${formatarBRL(gasto.valorCentavos)} será removido e o total do mês vai mudar. Não dá para desfazer.`,
+      `"${gasto.descricao}" de ${formatarDinheiro(gasto.valorCentavos)} será removido e o total do mês vai mudar. Não dá para desfazer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -156,7 +156,7 @@ export default function Gastos(): ReactElement {
             <Text style={estilos.textoSuave}>
               {pluralizar(consulta.data.paginacao.totalItens, 'gasto', 'gastos')}
             </Text>
-            <Text style={estilos.totalDoPeriodo}>{formatarBRL(consulta.data.totalCentavos)}</Text>
+            <Text style={estilos.totalDoPeriodo}>{formatarDinheiro(consulta.data.totalCentavos)}</Text>
           </Cartao>
         )}
 
@@ -178,7 +178,7 @@ export default function Gastos(): ReactElement {
                 <View style={estilos.cabecalhoDoDia}>
                   <Text style={estilos.tituloDoDia}>{data ? rotuloDoDia(data) : dia}</Text>
                   <Text style={estilos.subtotal}>
-                    {formatarBRL(somarCentavos(gastos.map((g) => g.valorCentavos)))}
+                    {formatarDinheiro(somarCentavos(gastos.map((g) => g.valorCentavos)))}
                   </Text>
                 </View>
                 {gastos.map((gasto, indice) => (
@@ -225,7 +225,7 @@ export default function Gastos(): ReactElement {
                 </Pressable>
               </View>
 
-              <Text style={estilos.valorDoPainel}>{formatarBRL(emFoco.valorCentavos)}</Text>
+              <Text style={estilos.valorDoPainel}>{formatarDinheiro(emFoco.valorCentavos)}</Text>
 
               <View style={estilos.detalhes}>
                 <Linha rotulo="Quem gastou" valor={emFoco.usuario.nome} />

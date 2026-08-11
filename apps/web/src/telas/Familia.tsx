@@ -1,8 +1,9 @@
 import {
+  MOEDAS,
+  SIMBOLO_DA_MOEDA,
   centavosDoTextoMascarado,
-  formatarBRL,
-  mascararMoeda,
   type Meta,
+  type Moeda,
   type Usuario,
 } from '@gastos/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,6 +14,7 @@ import { Icone } from '../componentes/Icone';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from '../componentes/ui';
 import { chaves, useMembros } from '../consultas';
+import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
 import { useSessao } from '../sessao';
 
@@ -44,6 +46,7 @@ const PASSOS: PassoDeTutorial[] = [
 ];
 
 export function Familia(): ReactElement {
+  const { dinheiro } = useDinheiro();
   useTutorialDaPagina('familia', PASSOS);
   const { t, idioma } = useIdioma();
   const { usuario, atualizarUsuario } = useSessao();
@@ -310,7 +313,7 @@ export function Familia(): ReactElement {
                   <span className="block truncate text-sm text-slate-600">
                     {meta.valorAlvoCentavos !== null
                       ? t('{valor} · criada por {nome}', {
-                          valor: formatarBRL(meta.valorAlvoCentavos, idioma),
+                          valor: dinheiro(meta.valorAlvoCentavos),
                           nome: meta.criadoPor.nome,
                         })
                       : t('Criada por {nome}', { nome: meta.criadoPor.nome })}
@@ -422,6 +425,7 @@ function PainelNovoGrupo({
   const queryClient = useQueryClient();
   const aviso = useAviso();
   const [nome, setNome] = useState('');
+  const [moeda, setMoeda] = useState<Moeda>('BRL');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -429,7 +433,7 @@ function PainelNovoGrupo({
     setSalvando(true);
     setErro(null);
     try {
-      const atualizado = await api.household.criarGrupo({ nome: nome.trim() });
+      const atualizado = await api.household.criarGrupo({ nome: nome.trim(), moeda });
       atualizarUsuario(atualizado);
       await queryClient.invalidateQueries();
       aviso.mostrar('Grupo criado. Seus lançamentos vieram junto.');
@@ -540,6 +544,7 @@ function PainelNovaMeta({
   aoFechar: () => void;
   aoConcluir: () => void;
 }): ReactElement {
+  const { mascara } = useDinheiro();
   const queryClient = useQueryClient();
   const aviso = useAviso();
   const [nome, setNome] = useState('');
@@ -585,7 +590,7 @@ function PainelNovaMeta({
         <Campo
           rotulo="Valor (opcional)"
           inputMode="numeric"
-          value={mascararMoeda(digitos)}
+          value={mascara(digitos)}
           onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
           placeholder="R$ 0,00"
           dica="Pode deixar em branco se ainda não tem um número."

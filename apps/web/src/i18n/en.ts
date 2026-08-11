@@ -247,6 +247,9 @@ export const EN: Record<string, string> = {
   Salvar: 'Save',
   'Perfil atualizado.': 'Profile updated.',
   Idioma: 'Language',
+  Moeda: 'Currency',
+  'Os valores deste grupo passam a ser nesta moeda. Não converte nada — escolha a moeda em que a família gasta.':
+    'Amounts in this group will be in this currency. Nothing is converted — pick the currency the family actually spends in.',
   'Português e inglês. Muda na hora, em todas as telas.':
     'Portuguese and English. Changes instantly, on every screen.',
   'Meus grupos': 'My groups',

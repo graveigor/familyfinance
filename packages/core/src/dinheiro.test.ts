@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatarDinheiroCurto,
   calcularParcelas,
   centavosDoTextoMascarado,
-  formatarBRL,
-  formatarBRLCurto,
+  formatarDinheiro,
+  formatarDinheiroCurto,
   mascararMoeda,
   parseValorParaCentavos,
   percentual,
@@ -74,14 +75,14 @@ describe('parseValorParaCentavos', () => {
 
 describe('formatação', () => {
   it('formata em reais', () => {
-    expect(formatarBRL(123456).replace(/ /g, ' ')).toBe('R$ 1.234,56');
-    expect(formatarBRL(0).replace(/ /g, ' ')).toBe('R$ 0,00');
-    expect(formatarBRL(-4590).replace(/ /g, ' ')).toBe('-R$ 45,90');
+    expect(formatarDinheiro(123456).replace(/ /g, ' ')).toBe('R$ 1.234,56');
+    expect(formatarDinheiro(0).replace(/ /g, ' ')).toBe('R$ 0,00');
+    expect(formatarDinheiro(-4590).replace(/ /g, ' ')).toBe('-R$ 45,90');
   });
 
   it('omite centavos quando são zero na versão curta', () => {
-    expect(formatarBRLCurto(32000).replace(/ /g, ' ')).toBe('R$ 320');
-    expect(formatarBRLCurto(32050).replace(/ /g, ' ')).toBe('R$ 320,50');
+    expect(formatarDinheiroCurto(32000).replace(/ /g, ' ')).toBe('R$ 320');
+    expect(formatarDinheiroCurto(32050).replace(/ /g, ' ')).toBe('R$ 320,50');
   });
 
   it('mascara conforme o usuário digita', () => {
@@ -157,5 +158,27 @@ describe('calcularParcelas', () => {
     const { valores, jurosCentavos } = calcularParcelas(500000, 64, 1.5);
     expect(valores).toHaveLength(64);
     expect(jurosCentavos).toBeGreaterThan(0);
+  });
+});
+
+describe('moeda', () => {
+  it('mesmo número, moeda e idioma diferentes', () => {
+    const limpo = (s: string): string => s.replace(/ | /g, ' ');
+    expect(limpo(formatarDinheiro(123456, 'pt', 'BRL'))).toBe('R$ 1.234,56');
+    expect(limpo(formatarDinheiro(123456, 'en', 'USD'))).toBe('$1,234.56');
+    // Trocar a moeda NÃO converte: os centavos são os mesmos, muda o símbolo.
+    expect(limpo(formatarDinheiro(123456, 'en', 'BRL'))).toBe('R$1,234.56');
+  });
+
+  it('a versão curta some com os centavos redondos', () => {
+    const limpo = (s: string): string => s.replace(/ | /g, ' ');
+    expect(limpo(formatarDinheiroCurto(32000, 'en', 'USD'))).toBe('$320');
+    expect(limpo(formatarDinheiroCurto(32050, 'en', 'USD'))).toBe('$320.50');
+  });
+
+  it('a máscara segue a moeda do grupo', () => {
+    const limpo = (s: string): string => s.replace(/ | /g, ' ');
+    expect(limpo(mascararMoeda('1234', 'en', 'USD'))).toBe('$12.34');
+    expect(limpo(mascararMoeda('1234', 'pt', 'BRL'))).toBe('R$ 12,34');
   });
 });

@@ -1,4 +1,11 @@
-import { formatarData, parseData, pluralizar, type GrupoDaPessoa } from '@gastos/core';
+import {
+  MOEDAS,
+  SIMBOLO_DA_MOEDA,
+  formatarData,
+  parseData,
+  type GrupoDaPessoa,
+  type Moeda,
+} from '@gastos/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactElement } from 'react';
 import { api } from '../api';
@@ -21,6 +28,7 @@ export function PainelGrupos(): ReactElement {
   const lista = useQuery({ queryKey: ['grupos'], queryFn: () => api.household.grupos() });
 
   const [nome, setNome] = useState('');
+  const [moeda, setMoeda] = useState<Moeda>('BRL');
   const [criando, setCriando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [aExcluir, setAExcluir] = useState<GrupoDaPessoa | null>(null);
@@ -45,7 +53,7 @@ export function PainelGrupos(): ReactElement {
     setCriando(true);
     setErro(null);
     try {
-      atualizarUsuario(await api.household.criarGrupo({ nome: nome.trim() }));
+      atualizarUsuario(await api.household.criarGrupo({ nome: nome.trim(), moeda }));
       await queryClient.invalidateQueries();
       aviso.mostrar(t('Grupo "{nome}" criado e em uso.', { nome: nome.trim() }));
       setNome('');
@@ -117,7 +125,7 @@ export function PainelGrupos(): ReactElement {
                     {grupo.ativo ? t('Em uso agora · ') : ''}
                     {tp(grupo.totalMembros, '{quantidade} pessoa', '{quantidade} pessoas')} ·{' '}
                     {tp(grupo.totalGastos, '{quantidade} gasto', '{quantidade} gastos')}
-                    {grupo.papel === 'ADMIN' ? t(' · você modera') : ''}
+                    {grupo.papel === 'ADMIN' ? t(' · você modera') : ''} · {grupo.moeda}
                   </span>
                 </span>
 
@@ -203,6 +211,31 @@ export function PainelGrupos(): ReactElement {
           onChange={(e) => setNome(e.target.value)}
           placeholder={t('Casa da praia, Família da mãe...')}
         />
+
+        <div>
+          <p className="rotulo">{t('Moeda')}</p>
+          <div className="flex gap-2">
+            {MOEDAS.map((opcao) => (
+              <button
+                key={opcao}
+                type="button"
+                aria-pressed={moeda === opcao}
+                onClick={() => setMoeda(opcao)}
+                className={`min-h-toque flex-1 rounded-xl border-2 px-4 text-base font-semibold ${
+                  moeda === opcao
+                    ? 'border-marca-600 bg-marca-50 text-marca-900'
+                    : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                {SIMBOLO_DA_MOEDA[opcao]} {opcao}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-sm text-slate-600">
+            {t('Os valores deste grupo passam a ser nesta moeda. Não converte nada — escolha a moeda em que a família gasta.')}
+          </p>
+        </div>
+
         <Botao
           larguraTotal
           icone="mais"
