@@ -22,6 +22,8 @@ interface ContextoSessao {
     nomeHousehold?: string;
     codigoConvite?: string;
   }): Promise<void>;
+  /** Troca a senha com o código do e-mail e já entra. */
+  redefinirSenha(dados: { email: string; codigo: string; novaSenha: string }): Promise<void>;
   sair(): Promise<void>;
   atualizarUsuario(usuario: Usuario): void;
 }
@@ -62,6 +64,15 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }): JSX.Ele
     [queryClient],
   );
 
+  const redefinirSenha = useCallback<ContextoSessao['redefinirSenha']>(
+    async (dados) => {
+      const nova = await api.auth.redefinirSenha(dados);
+      setSessao(nova);
+      await queryClient.invalidateQueries();
+    },
+    [queryClient],
+  );
+
   const sair = useCallback(async () => {
     await api.auth.sair();
     setSessao(null);
@@ -78,10 +89,11 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }): JSX.Ele
       autenticado: Boolean(sessao?.accessToken),
       entrar,
       registrar,
+      redefinirSenha,
       sair,
       atualizarUsuario,
     }),
-    [sessao, entrar, registrar, sair, atualizarUsuario],
+    [sessao, entrar, registrar, redefinirSenha, sair, atualizarUsuario],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

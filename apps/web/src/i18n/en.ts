@@ -36,6 +36,14 @@ export const EN: Record<string, string> = {
   'Código do grupo (opcional)': 'Group code (optional)',
   'Recebeu um código como FF-9A3K2? Cole aqui. Se não, criamos um grupo só seu.':
     'Got a code like FF-9A3K2? Paste it here. If not, we create a group just for you.',
+  'Esqueci minha senha': 'I forgot my password',
+  'Digite o e-mail da sua conta. Vamos mandar um código de 6 números para você criar uma senha nova.':
+    "Enter your account email. We'll send you a 6-digit code so you can set a new password.",
+  'Se existe uma conta com esse e-mail, o código chegou lá. Ele vale por 15 minutos.':
+    'If an account exists for that email, the code is on its way. It is valid for 15 minutes.',
+  'Código do e-mail': 'Code from the email',
+  'Enviar código': 'Send code',
+  'Trocar senha e entrar': 'Change password and sign in',
   'Mostrar senha': 'Show password',
   'Esconder senha': 'Hide password',
 

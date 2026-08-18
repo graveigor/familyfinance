@@ -15,7 +15,13 @@ import type {
   Sessao,
   Usuario,
 } from './tipos.js';
-import type { AtualizarPerfilEntrada, LoginEntrada, RegistrarEntrada } from './schemas/auth.js';
+import type {
+  AtualizarPerfilEntrada,
+  EsqueciSenhaEntrada,
+  LoginEntrada,
+  RedefinirSenhaEntrada,
+  RegistrarEntrada,
+} from './schemas/auth.js';
 import type { AtualizarCartaoEntrada, CriarCartaoEntrada } from './schemas/cartao.js';
 import type {
   AtualizarCategoriaEntrada,
@@ -99,6 +105,10 @@ export interface Cliente {
     login(dados: LoginEntrada): Promise<Sessao>;
     eu(): Promise<{ usuario: Usuario; household: Household }>;
     atualizarPerfil(dados: AtualizarPerfilEntrada): Promise<Usuario>;
+    /** Manda um código para o e-mail. Nunca revela se a conta existe. */
+    esqueciSenha(dados: EsqueciSenhaEntrada): Promise<void>;
+    /** Troca a senha com o código recebido e já deixa a pessoa logada. */
+    redefinirSenha(dados: RedefinirSenhaEntrada): Promise<Sessao>;
     sair(): Promise<void>;
   };
   gastos: {
@@ -311,6 +321,15 @@ export function criarCliente({
       },
       eu: () => requisitar('GET', '/api/v1/auth/eu'),
       atualizarPerfil: (dados) => requisitar('PATCH', '/api/v1/auth/eu', { corpo: dados }),
+      esqueciSenha: (dados) =>
+        requisitar('POST', '/api/v1/auth/esqueci-senha', { corpo: dados, publica: true }),
+      async redefinirSenha(dados) {
+        const sessao = await requisitar<Sessao>('POST', '/api/v1/auth/redefinir-senha', {
+          corpo: dados,
+          publica: true,
+        });
+        return guardarSessao(sessao);
+      },
       async sair() {
         await armazenamento.gravar(null);
       },

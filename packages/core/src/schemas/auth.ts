@@ -43,3 +43,20 @@ export type RegistrarEntrada = z.infer<typeof registrarSchema>;
 export type LoginEntrada = z.infer<typeof loginSchema>;
 export type RefreshEntrada = z.infer<typeof refreshSchema>;
 export type AtualizarPerfilEntrada = z.infer<typeof atualizarPerfilSchema>;
+
+/** Pedir um código de troca de senha. */
+export const esqueciSenhaSchema = z.object({ email: zEmail });
+
+export const zCodigoDeSenha = z
+  .string({ required_error: 'Informe o código que chegou no seu e-mail.' })
+  .trim()
+  .regex(/^\d{6}$/, 'O código tem 6 números.');
+
+export const redefinirSenhaSchema = z.object({
+  email: zEmail,
+  codigo: zCodigoDeSenha,
+  novaSenha: zSenha,
+});
+
+export type EsqueciSenhaEntrada = z.infer<typeof esqueciSenhaSchema>;
+export type RedefinirSenhaEntrada = z.infer<typeof redefinirSenhaSchema>;

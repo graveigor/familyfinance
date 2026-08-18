@@ -33,6 +33,14 @@ const ambienteSchema = z.object({
   JWT_REFRESH_EXPIRA_EM: z.string().default('30d'),
   /** Origens liberadas no CORS, separadas por vírgula. `*` libera todas. */
   CORS_ORIGENS: z.string().default('*'),
+  /**
+   * Envio de e-mail (Resend). Sem a chave o servidor não manda nada: fora de
+   * produção o código de recuperação sai no log, para dar para testar sem
+   * contratar provedor. Em produção, sem chave, o pedido falha em vez de
+   * fingir que enviou.
+   */
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_REMETENTE: z.string().default('Family Finance <onboarding@resend.dev>'),
 });
 
 const resultado = ambienteSchema.safeParse(process.env);

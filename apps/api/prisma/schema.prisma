@@ -62,6 +62,7 @@ model User {
   convites       Convite[]     @relation("ConvitesCriados")
   recorrencias   Recorrencia[]
   metas          Meta[]
+  pedidosDeSenha PedidoDeSenha[]
   criadoEm       DateTime      @default(now())
 
   @@index([householdId])
@@ -186,6 +187,24 @@ model Meta {
   criadoEm          DateTime  @default(now())
 
   @@index([householdId])
+}
+
+/// Pedido de troca de senha por código enviado no e-mail.
+///
+/// O código é guardado com hash, como senha: quem ler o banco não consegue
+/// entrar na conta de ninguém. Vale por pouco tempo, uma vez só, e tem limite
+/// de tentativas — é um segredo de 6 dígitos, então força bruta é o risco real.
+model PedidoDeSenha {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codigoHash String
+  expiraEm   DateTime
+  usadoEm    DateTime?
+  tentativas Int       @default(0)
+  criadoEm   DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Convite {

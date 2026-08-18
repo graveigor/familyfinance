@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactElement } from 'react';
+import { api } from '../api';
 import { Botao, CaixaDeErro, Campo, traduzirErro } from '../componentes/ui';
 import { SeletorDeIdioma, useT } from '../i18n';
 import { useSessao } from '../sessao';
@@ -9,8 +10,8 @@ import { useSessao } from '../sessao';
  */
 export function Entrar(): ReactElement {
   const t = useT();
-  const { entrar, registrar } = useSessao();
-  const [modo, setModo] = useState<'entrar' | 'criar'>('entrar');
+  const { entrar, registrar, redefinirSenha } = useSessao();
+  const [modo, setModo] = useState<'entrar' | 'criar' | 'esqueci' | 'codigo'>('entrar');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<{ mensagem: string; campos: Record<string, string> }>({
     mensagem: '',
@@ -21,6 +22,13 @@ export function Entrar(): ReactElement {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [codigoConvite, setCodigoConvite] = useState('');
+  const [codigo, setCodigo] = useState('');
+
+  function trocarModo(novo: typeof modo): void {
+    setModo(novo);
+    setErro({ mensagem: '', campos: {} });
+    setCodigo('');
+  }
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault();
@@ -30,6 +38,12 @@ export function Entrar(): ReactElement {
     try {
       if (modo === 'entrar') {
         await entrar(email, senha);
+      } else if (modo === 'esqueci') {
+        await api.auth.esqueciSenha({ email });
+        setSenha('');
+        setModo('codigo');
+      } else if (modo === 'codigo') {
+        await redefinirSenha({ email, codigo: codigo.trim(), novaSenha: senha });
       } else {
         await registrar({
           nome,
@@ -61,6 +75,18 @@ export function Entrar(): ReactElement {
         <form onSubmit={(e) => void enviar(e)} className="cartao space-y-5 p-6">
           <CaixaDeErro mensagem={erro.mensagem || null} />
 
+          {modo === 'esqueci' && (
+            <p className="text-base text-slate-700">
+              {t('Digite o e-mail da sua conta. Vamos mandar um código de 6 números para você criar uma senha nova.')}
+            </p>
+          )}
+
+          {modo === 'codigo' && (
+            <p className="text-base text-slate-700">
+              {t('Se existe uma conta com esse e-mail, o código chegou lá. Ele vale por 15 minutos.')}
+            </p>
+          )}
+
           {modo === 'criar' && (
             <Campo
               rotulo={t('Seu nome')}
@@ -83,16 +109,31 @@ export function Entrar(): ReactElement {
             required
           />
 
+          {modo === 'codigo' && (
+            <Campo
+              rotulo={t('Código do e-mail')}
+              inputMode="numeric"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              maxLength={6}
+              className="tracking-[0.4em]"
+              erro={erro.campos.codigo}
+              required
+            />
+          )}
+
+          {modo !== 'esqueci' && (
           <Campo
-            rotulo={t('Senha')}
+            rotulo={modo === 'codigo' ? t('Nova senha') : t('Senha')}
             type="password"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
-            dica={modo === 'criar' ? t('Pelo menos 8 caracteres.') : undefined}
-            erro={erro.campos.senha}
+            autoComplete={modo === 'entrar' ? 'current-password' : 'new-password'}
+            dica={modo === 'entrar' ? undefined : t('Pelo menos 8 caracteres.')}
+            erro={erro.campos.senha || erro.campos.novaSenha}
             required
           />
+          )}
 
           {modo === 'criar' && (
             <Campo
@@ -108,16 +149,29 @@ export function Entrar(): ReactElement {
           )}
 
           <Botao type="submit" larguraTotal carregando={enviando}>
-            {modo === 'entrar' ? t('Entrar') : t('Criar minha conta')}
+            {modo === 'entrar'
+              ? t('Entrar')
+              : modo === 'criar'
+                ? t('Criar minha conta')
+                : modo === 'esqueci'
+                  ? t('Enviar código')
+                  : t('Trocar senha e entrar')}
           </Botao>
 
-          <div className="border-t border-slate-200 pt-4 text-center">
+          <div className="flex flex-col items-center gap-1 border-t border-slate-200 pt-4">
+            {modo === 'entrar' && (
+              <button
+                type="button"
+                onClick={() => trocarModo('esqueci')}
+                className="min-h-toque px-2 text-base font-semibold text-marca-700 hover:underline"
+              >
+                {t('Esqueci minha senha')}
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => {
-                setModo(modo === 'entrar' ? 'criar' : 'entrar');
-                setErro({ mensagem: '', campos: {} });
-              }}
+              onClick={() => trocarModo(modo === 'entrar' ? 'criar' : 'entrar')}
               className="min-h-toque px-2 text-base font-semibold text-marca-700 hover:underline"
             >
               {modo === 'entrar' ? t('Ainda não tenho conta') : t('Já tenho conta')}
