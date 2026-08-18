@@ -27,6 +27,9 @@ const EXATAS: Record<string, string> = {
     'We could not finish just now. Please try again in a moment.',
   'Não entendemos os dados enviados.': "We couldn't read the data that was sent.",
   'Entre na sua conta para continuar.': 'Sign in to continue.',
+  'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.':
+    "We couldn't send the email just now. Please try again in a few minutes.",
+  'Código inválido ou expirado. Peça um novo.': 'Invalid or expired code. Ask for a new one.',
 
   // --- Conta ----------------------------------------------------------------
   'E-mail ou senha incorretos.': 'Wrong email or password.',

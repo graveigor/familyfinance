@@ -122,3 +122,33 @@ describe('esqueci minha senha', () => {
     expect(pedido.codigoHash).not.toMatch(/^\d{6}$/);
   });
 });
+
+describe('quando o envio de e-mail falha', () => {
+  it('avisa que o e-mail não saiu, em vez de erro genérico', async () => {
+    await criarConta(app, { email: EMAIL });
+
+    // Simula provedor fora do ar / chave errada.
+    const email = await import('../servicos/email.js');
+    const original = email.enviarEmail;
+    Object.defineProperty(email, 'enviarEmail', {
+      value: async () => {
+        throw new Error('provedor recusou');
+      },
+      configurable: true,
+    });
+
+    try {
+      const resposta = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/esqueci-senha',
+        payload: { email: EMAIL },
+      });
+      expect(resposta.statusCode).toBe(500);
+      expect(resposta.json<{ erro: { mensagem: string } }>().erro.mensagem).toContain(
+        'Não conseguimos enviar o e-mail',
+      );
+    } finally {
+      Object.defineProperty(email, 'enviarEmail', { value: original, configurable: true });
+    }
+  });
+});

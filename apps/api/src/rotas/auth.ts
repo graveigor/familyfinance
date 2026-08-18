@@ -3,6 +3,7 @@ import {
   CATEGORIAS_PADRAO,
   atualizarPerfilSchema,
   erroConflito,
+  erroInterno,
   erroNaoAutenticado,
   erroValidacao,
   esqueciSenhaSchema,
@@ -238,18 +239,28 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
         });
       });
 
-      await enviarEmail({
-        para: usuario.email,
-        assunto: `${codigo} — código para trocar sua senha`,
-        texto: [
-          `Olá, ${usuario.nome.split(' ')[0] ?? usuario.nome}.`,
-          '',
-          `Seu código para trocar a senha no Family Finance é: ${codigo}`,
-          '',
-          `Ele vale por ${VALIDADE_DO_CODIGO_MIN} minutos e só pode ser usado uma vez.`,
-          'Se não foi você que pediu, ignore este e-mail — sua senha continua a mesma.',
-        ].join('\n'),
-      });
+      try {
+        await enviarEmail({
+          para: usuario.email,
+          assunto: `${codigo} — código para trocar sua senha`,
+          texto: [
+            `Olá, ${usuario.nome.split(' ')[0] ?? usuario.nome}.`,
+            '',
+            `Seu código para trocar a senha no Family Finance é: ${codigo}`,
+            '',
+            `Ele vale por ${VALIDADE_DO_CODIGO_MIN} minutos e só pode ser usado uma vez.`,
+            'Se não foi você que pediu, ignore este e-mail — sua senha continua a mesma.',
+          ].join('\n'),
+        });
+      } catch (falha) {
+        // O detalhe (provedor fora do ar, chave ausente) vai para o log de quem
+        // administra; para quem está na tela, o que importa é não ficar
+        // esperando um e-mail que não vem.
+        request.log.error({ falha }, 'Falha ao enviar o código de troca de senha');
+        throw erroInterno(
+          'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.',
+        );
+      }
     }
 
     return reply.status(204).send();

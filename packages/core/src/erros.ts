@@ -90,3 +90,4 @@ export const erroSemPermissao = (mensagem?: string): ErroApp => new ErroApp('SEM
 export const erroNaoAutenticado = (mensagem?: string): ErroApp =>
   new ErroApp('NAO_AUTENTICADO', mensagem);
 export const erroConflito = (mensagem?: string): ErroApp => new ErroApp('CONFLITO', mensagem);
+export const erroInterno = (mensagem?: string): ErroApp => new ErroApp('INTERNO', mensagem);
