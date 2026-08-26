@@ -2,6 +2,7 @@ import { ErroApp } from '@gastos/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { ProvedorDeIdioma } from './i18n';
@@ -38,6 +39,11 @@ createRoot(raiz).render(
               <ProvedorDeTutorial>
                 <App />
               </ProvedorDeTutorial>
+              {/* Contagem de visitas da Vercel: sem cookie e sem dado pessoal,
+                  então não pede aviso de consentimento. Dentro do router para
+                  contar a troca de tela — o app é SPA e não recarrega a página.
+                  Fora da Vercel (dev, outra hospedagem) ela não faz nada. */}
+              <Analytics />
             </BrowserRouter>
           </ProvedorDeAviso>
         </ProvedorDeSessao>
