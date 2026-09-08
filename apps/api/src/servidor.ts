@@ -66,7 +66,18 @@ export async function criarServidor(): Promise<FastifyInstance> {
   configurarErros(app);
   configurarAutenticacao(app);
 
-  app.get('/saude', async () => ({ ok: true, versao: '0.1.0' }));
+  /**
+   * Sinal de vida da API.
+   *
+   * Nos dois caminhos de propósito: publicado, só o que começa com `/api/`
+   * chega até aqui — o `vercel.json` manda todo o resto para o `index.html` do
+   * site, então `/saude` sozinho devolveria a página, e não este JSON. Na
+   * máquina de quem desenvolve a API responde direto, e aí `/saude` é o
+   * endereço curto de sempre.
+   */
+  const saude = async () => ({ ok: true, versao: '0.1.0' });
+  app.get('/saude', saude);
+  app.get('/api/saude', saude);
 
   await app.register(rotasAuth, { prefix: `${BASE}/auth` });
   await app.register(rotasGastos, { prefix: `${BASE}/gastos` });

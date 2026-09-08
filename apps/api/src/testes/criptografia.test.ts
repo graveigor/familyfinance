@@ -256,6 +256,16 @@ describe('nenhuma rota devolve dado cifrado', () => {
   });
 });
 
+describe('sinal de vida', () => {
+  it('responde nos dois caminhos — publicado, só o que começa com /api chega', async () => {
+    for (const url of ['/saude', '/api/saude']) {
+      const resposta = await app.inject({ method: 'GET', url });
+      expect(resposta.statusCode, url).toBe(200);
+      expect(resposta.json<{ ok: boolean }>().ok, url).toBe(true);
+    }
+  });
+});
+
 describe('login com o e-mail cifrado', () => {
   it('entra, e não deixa criar duas contas com o mesmo e-mail', async () => {
     await criarConta(app, { nome: NOME, email: EMAIL, senha: 'senha-forte-123' });

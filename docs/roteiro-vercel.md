@@ -31,9 +31,11 @@ Vercel aberto.
 
 ## Cole isto no Claude do Chrome
 
-> Você está no painel do Vercel. Preciso que você conclua a publicação do meu
-> projeto `app-controlegastos` (repositório `graveigor/app-controlegastos`).
-> O código já está corrigido; falta configurar o painel.
+> Você está no painel do Vercel. Preciso que você conclua a publicação do
+> projeto ligado ao repositório `graveigor/familyfinance`. Confira em
+> **Settings → Git** de qual projeto se trata e me diga o nome antes de mexer
+> em qualquer coisa — o projeto já foi chamado de `app-controlegastos`, e eu
+> preciso saber se é esse mesmo antes de você salvar nada.
 >
 > Faça na ordem e me mostre cada tela antes de salvar.
 >
@@ -82,8 +84,10 @@ Vercel aberto.
 > - Me diga se concluiu ou qual erro apareceu.
 >
 > **5. Testar de verdade**
-> - Abra `https://app-controlegastos-web-eta.vercel.app/saude`. Deve responder
->   `{"ok":true,"versao":"0.1.0"}`.
+> - Abra `https://<endereço do projeto>/api/saude`. Deve responder
+>   `{"ok":true,"versao":"0.1.0"}`. Tem que ser `/api/saude`: publicado, só o
+>   que começa com `/api/` chega na API — `/saude` sozinho devolve a página do
+>   site, e você veria HTML achando que a API está fora do ar.
 > - Abra o site, clique em **Ainda não tenho conta** e crie uma conta de teste
 >   com um e-mail qualquer e uma senha de 8+ caracteres. **Use uma senha
 >   descartável, não uma senha sua de verdade.**
