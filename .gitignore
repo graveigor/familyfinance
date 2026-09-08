@@ -18,9 +18,8 @@ coverage/
 .vscode/
 .idea/
 
-# Ajustes locais do Claude Code: caminhos e comandos desta máquina.
-# `launch.json` é do projeto e continua versionado.
-.claude/settings.local.json
+# Ferramental do Claude Code: é ajuste de máquina, não faz parte do projeto.
+.claude/
 
 # build do app web
 apps/web/dist/
