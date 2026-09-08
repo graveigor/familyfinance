@@ -12,12 +12,22 @@ import type {
   Gasto as GastoDb,
   User as UserDb,
 } from '@prisma/client';
+import { decifrar } from './servicos/criptografia.js';
 
 /**
  * Converte as linhas do banco para o contrato público da API.
  * `data` sai como `aaaa-mm-dd` (dia de calendário, sem hora nem fuso);
  * os demais instantes saem em ISO completo.
+ *
+ * É também onde o nome e o e-mail voltam a ser legíveis: no banco eles estão
+ * cifrados (ver `servicos/criptografia.ts`). Tudo o que sai para o cliente
+ * passa por aqui, então decifrar neste ponto cobre a API inteira.
  */
+
+/** O nome de quem lançou, legível. Usado onde o gasto carrega o autor junto. */
+export function nomeDoUsuario(usuario: Pick<UserDb, 'nome'>): string {
+  return decifrar(usuario.nome);
+}
 
 export function serializarCategoria(categoria: CategoriaDb): Categoria {
   return {
@@ -40,8 +50,8 @@ export function serializarCartao(cartao: CartaoDb): Cartao {
 export function serializarUsuario(usuario: UserDb, moeda: Moeda = 'BRL'): Usuario {
   return {
     id: usuario.id,
-    nome: usuario.nome,
-    email: usuario.email,
+    nome: decifrar(usuario.nome),
+    email: decifrar(usuario.email),
     papel: usuario.papel,
     moeda,
     compartilhaGastos: usuario.compartilhaGastos,
@@ -68,7 +78,7 @@ export function serializarGasto(gasto: GastoComRelacoes): Gasto {
     observacao: gasto.observacao,
     categoria: gasto.categoria ? serializarCategoria(gasto.categoria) : null,
     cartao: gasto.cartao ? serializarCartao(gasto.cartao) : null,
-    usuario: { id: gasto.user.id, nome: gasto.user.nome },
+    usuario: { id: gasto.user.id, nome: nomeDoUsuario(gasto.user) },
     origemImportacaoId: gasto.origemImportacaoId,
     temComprovante: gasto.comprovante !== null,
     recorrenciaId: gasto.recorrenciaId,

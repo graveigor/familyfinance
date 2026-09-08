@@ -14,7 +14,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
-import { serializarCartao, serializarCategoria } from '../serializadores.js';
+import { nomeDoUsuario, serializarCartao, serializarCategoria } from '../serializadores.js';
 import { gerarPendentes, proximoLancamento } from '../servicos/recorrencias.js';
 import { filtroDeRecorrenciasVisiveis } from '../servicos/visibilidade.js';
 
@@ -40,7 +40,7 @@ function serializar(recorrencia: RecorrenciaComRelacoes): Recorrencia & { proxim
     observacao: recorrencia.observacao,
     categoria: recorrencia.categoria ? serializarCategoria(recorrencia.categoria) : null,
     cartao: recorrencia.cartao ? serializarCartao(recorrencia.cartao) : null,
-    usuario: { id: recorrencia.user.id, nome: recorrencia.user.nome },
+    usuario: { id: recorrencia.user.id, nome: nomeDoUsuario(recorrencia.user) },
     ativa: recorrencia.ativa,
     inicioEm: formatarDataISO(recorrencia.inicioEm),
     fimEm: recorrencia.fimEm ? formatarDataISO(recorrencia.fimEm) : null,

@@ -38,11 +38,31 @@ model Household {
 }
 
 model User {
-  id        String @id @default(uuid())
-  nome      String
-  email     String @unique
+  id String @id @default(uuid())
+
+  /// Nome e e-mail ficam cifrados (AES-256-GCM, ver `servicos/criptografia.ts`).
+  /// A chave mora no ambiente, não aqui: um dump deste banco não abre nenhum
+  /// dos dois.
+  nome  String
+  email String
+
+  /// Por onde o login acha a conta. O e-mail cifrado muda a cada escrita (IV
+  /// novo), então não dá para procurar por ele; este HMAC é estável e, sem a
+  /// chave, não volta ao endereço.
+  ///
+  /// A unicidade vive aqui — e não em `email` — justamente porque duas cifras
+  /// do mesmo e-mail são bytes diferentes, e o banco as aceitaria como contas
+  /// distintas.
+  emailIndice String @unique
+
   senhaHash String
-  papel     Papel  @default(MEMBRO)
+
+  /// Quando a senha mudou pela última vez. Todo token emitido antes disso
+  /// deixa de valer — é o que faz trocar a senha derrubar as sessões abertas,
+  /// inclusive a de quem entrou sem permissão. Ver `servicos/tokens.ts`.
+  senhaAlteradaEm DateTime @default(now())
+
+  papel Papel @default(MEMBRO)
 
   /// Quando ligado, os lançamentos desta pessoa ficam visíveis para o grupo.
   /// Desligado por padrão: dinheiro é assunto privado até alguém decidir o
@@ -235,6 +255,9 @@ model Comprovante {
   gasto    Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
   /// Tipo do arquivo (image/jpeg, application/pdf...), para devolver no download.
   tipo     String
+  /// Cifrados (AES-256-GCM). É foto de nota fiscal: mostra onde a pessoa
+  /// esteve, quando e quanto gastou. O tipo fica em claro porque é só o
+  /// cabeçalho do download.
   dados    Bytes
   criadoEm DateTime @default(now())
 }

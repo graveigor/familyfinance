@@ -1,11 +1,31 @@
 # Colocar o Family Finance no ar
 
-O código está pronto e enviado. **Só falta um passo: conectar o banco que você
-já tem.** Não é preciso criar chave, colar segredo nem configurar variável —
-o servidor gera e guarda o que precisa sozinho na primeira vez que sobe.
+O código está pronto e enviado. **Faltam dois passos: conectar o banco que você
+já tem e colar uma chave.**
 
-Cole o bloco abaixo na conversa com o Claude no Chrome, com o painel do Vercel
-aberto.
+As chaves que assinam o login o servidor ainda gera sozinho. A que falta é
+outra: a `CHAVE_CRIPTOGRAFIA`, que cifra nome, e-mail e comprovantes dentro do
+banco. Essa não dá para o servidor guardar sozinho — se ela morasse no banco,
+viajaria junto com os dados que protege num vazamento, e não protegeria de
+nada. Por isso ela mora no painel, e só lá.
+
+**Guarde uma cópia dela fora do Vercel.** Perdida a chave, nome, e-mail e
+comprovantes ficam ilegíveis e ninguém consegue entrar — não há como recuperar.
+
+## Antes de começar: gere a chave
+
+Rode isto no seu terminal e guarde o resultado — você vai colá-lo no painel no
+passo 3. É um segredo: não mande em grupo, não cole em lugar público.
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Se o projeto **já está no ar e já tem contas criadas**, e a variável
+`CHAVE_CRIPTOGRAFIA` já existe no painel, não gere nada: use a que está lá.
+
+Depois cole o bloco abaixo na conversa com o Claude no Chrome, com o painel do
+Vercel aberto.
 
 ---
 
@@ -37,19 +57,28 @@ aberto.
 > - Isso cria a variável `DATABASE_URL` sozinho. Me confirme quando terminar.
 > - Se **não** existir nenhum banco na lista, pare e me avise — eu crio.
 >
-> **3. Conferir as variáveis**
+> **3. Conferir as variáveis e criar a chave de criptografia**
 > - Vá em **Settings → Environment Variables** e me diga **só os nomes** das
 >   variáveis que existem (não me mande os valores).
 > - Precisa existir `DATABASE_URL`. Se o Neon tiver criado também
 >   `DATABASE_URL_UNPOOLED`, ótimo, o projeto usa.
-> - **Não crie nenhuma outra variável** e **não digite valor nenhum**. As
->   chaves de segurança do app são geradas pelo próprio servidor.
+> - Se **já existir** `CHAVE_CRIPTOGRAFIA`, **não toque nela** — trocar essa
+>   chave torna ilegível tudo o que já foi gravado. Pule para o passo 4.
+> - Se **não existir**, crie: nome `CHAVE_CRIPTOGRAFIA`, marcada para
+>   **Production, Preview e Development**. Eu te mando o valor (64 caracteres
+>   hexadecimais) — cole exatamente como vier, sem aspas e sem espaço sobrando.
+> - Fora essas, **não crie nenhuma outra variável**: as chaves que assinam o
+>   login continuam sendo geradas pelo próprio servidor.
 >
 > **4. Publicar**
 > - Vá em **Deployments**, abra o mais recente e clique em **Redeploy**.
 > - **Desmarque** a opção de usar o cache do build anterior.
 > - Acompanhe o log. Deve aparecer `prisma migrate deploy` aplicando as
->   migrações e terminar com `built in ...`.
+>   migrações, depois `4/5 cifrar dados existentes` com uma linha
+>   `Usuários: N de N atualizados.`, e terminar com `built in ...`.
+> - Se o log parar em `Configuração inválida nas variáveis de ambiente do
+>   projeto na Vercel` reclamando de `CHAVE_CRIPTOGRAFIA`, a variável não foi
+>   salva ou tem espaço/aspas sobrando. Volte ao passo 3.
 > - Me diga se concluiu ou qual erro apareceu.
 >
 > **5. Testar de verdade**

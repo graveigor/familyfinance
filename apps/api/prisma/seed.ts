@@ -5,9 +5,15 @@
 import { CATEGORIAS_PADRAO, dataUTC, hoje } from '@gastos/core';
 import prismaPacote from '@prisma/client';
 import { config } from 'dotenv';
+import { cifrar, indiceDeEmail } from '../src/servicos/criptografia.js';
 import { gerarHashSenha } from '../src/servicos/senha.js';
 
 config();
+
+/** Os campos pessoais, cifrados como o servidor grava — ver `rotas/auth.ts`. */
+function pessoa(nome: string, email: string) {
+  return { nome: cifrar(nome), email: cifrar(email), emailIndice: indiceDeEmail(email) };
+}
 
 const { PrismaClient } = prismaPacote;
 const prisma = new PrismaClient();
@@ -17,7 +23,7 @@ const EMAIL_MEMBRO = 'joao@exemplo.com';
 
 async function main(): Promise<void> {
   const existente = await prisma.user.findUnique({
-    where: { email: EMAIL_ADMIN },
+    where: { emailIndice: indiceDeEmail(EMAIL_ADMIN) },
     select: { householdId: true },
   });
   if (existente) {
@@ -36,8 +42,8 @@ async function main(): Promise<void> {
       categorias: { create: CATEGORIAS_PADRAO.map((c) => ({ ...c })) },
       membros: {
         create: [
-          { nome: 'Maria Silva', email: EMAIL_ADMIN, senhaHash, papel: 'ADMIN' },
-          { nome: 'João Silva', email: EMAIL_MEMBRO, senhaHash, papel: 'MEMBRO' },
+          { ...pessoa('Maria Silva', EMAIL_ADMIN), senhaHash, papel: 'ADMIN' },
+          { ...pessoa('João Silva', EMAIL_MEMBRO), senhaHash, papel: 'MEMBRO' },
         ],
       },
     },
@@ -47,7 +53,8 @@ async function main(): Promise<void> {
   const categoria = (nome: string): string | null =>
     household.categorias.find((c) => c.nome === nome)?.id ?? null;
   const membro = (email: string): string =>
-    household.membros.find((m) => m.email === email)?.id ?? household.membros[0]!.id;
+    household.membros.find((m) => m.emailIndice === indiceDeEmail(email))?.id ??
+    household.membros[0]!.id;
 
   const referencia = hoje();
   const ano = referencia.getUTCFullYear();

@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 import { serializarCartao } from '../serializadores.js';
+import { combinarFiltros, filtroDeGastosVisiveis } from '../servicos/visibilidade.js';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -103,16 +104,20 @@ export async function rotasCartoes(app: FastifyInstance): Promise<void> {
     });
     if (!existente) throw erroNaoEncontrado('Esse cartão não existe mais.');
 
-    const gastosAfetados = await prisma.$transaction(async (tx) => {
-      const { count } = await tx.gasto.updateMany({
-        where: { cartaoId: id },
-        data: { cartaoId: null },
-      });
-      await tx.recorrencia.updateMany({ where: { cartaoId: id }, data: { cartaoId: null } });
-      await tx.cartao.delete({ where: { id } });
-      return count;
+    // Só o que esta pessoa enxerga — o número volta para a tela. Ver a mesma
+    // conta em `rotas/categorias.ts`.
+    const gastosVisiveis = await prisma.gasto.count({
+      where: combinarFiltros(filtroDeGastosVisiveis(usuario), { cartaoId: id }),
     });
 
-    return reply.status(200).send({ gastosSemCartao: gastosAfetados });
+    await prisma.$transaction(async (tx) => {
+      // O cartão some para o grupo inteiro: nada pode continuar apontando
+      // para ele, visível ou não.
+      await tx.gasto.updateMany({ where: { cartaoId: id }, data: { cartaoId: null } });
+      await tx.recorrencia.updateMany({ where: { cartaoId: id }, data: { cartaoId: null } });
+      await tx.cartao.delete({ where: { id } });
+    });
+
+    return reply.status(200).send({ gastosSemCartao: gastosVisiveis });
   });
 }

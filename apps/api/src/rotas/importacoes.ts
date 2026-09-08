@@ -17,6 +17,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
+import { nomeDoUsuario } from '../serializadores.js';
 import {
   analisarLinhas,
   chaveDeDuplicata,
@@ -55,7 +56,11 @@ async function montarContexto(
   mesReferencia: string | null,
 ): Promise<ContextoDaAnalise> {
   const [membros, categorias, existentes] = await Promise.all([
-    prisma.user.findMany({ where: { householdId }, select: { id: true, nome: true } }),
+    prisma.user
+      .findMany({ where: { householdId }, select: { id: true, nome: true } })
+      // A planilha traz o nome escrito por gente; o casamento é por nome, então
+      // ele precisa estar legível antes de comparar.
+      .then((pessoas) => pessoas.map((p) => ({ id: p.id, nome: nomeDoUsuario(p) }))),
     prisma.categoria.findMany({ where: { householdId }, select: { id: true, nome: true } }),
     // Duplicata é conferida só contra os próprios lançamentos: avisar que
     // "já existe igual" olhando o gasto de outra pessoa vazaria o dinheiro

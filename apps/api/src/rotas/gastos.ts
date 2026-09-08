@@ -20,7 +20,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
-import { INCLUDE_GASTO, serializarGasto } from '../serializadores.js';
+import { INCLUDE_GASTO, nomeDoUsuario, serializarGasto } from '../serializadores.js';
+import { cifrarBytes, decifrarBytes } from '../servicos/criptografia.js';
 import { gerarArquivo } from '../servicos/planilha.js';
 import {
   TAMANHO_MAXIMO_COMPROVANTE,
@@ -75,6 +76,37 @@ function conferirPermissaoDeEdicao(usuario: UsuarioAutenticado, donoDoGastoId: s
   if (usuario.papel !== 'ADMIN' && usuario.id !== donoDoGastoId) {
     throw erroSemPermissao('Você só pode alterar os gastos que você lançou.');
   }
+}
+
+/**
+ * O gasto que esta pessoa pode alterar — ou 404.
+ *
+ * São duas barreiras, e elas andam juntas: primeiro o filtro de privacidade
+ * (não se mexe no que não se pode ver), depois a permissão de edição.
+ *
+ * Existe porque as quatro rotas que alteram um gasto repetiam este trecho, e
+ * as quatro repetiam o mesmo esquecimento: filtravam só por `householdId`.
+ * Isso deixava qualquer pessoa do grupo alcançar o lançamento de quem não
+ * compartilha — e o `PATCH`, que devolve o gasto serializado, virava uma
+ * maneira de simplesmente ler o que estava escondido. Com a regra num lugar
+ * só, esquecê-la em uma rota deixa de ser possível.
+ *
+ * Repare que o filtro roda ANTES da permissão: administrador que não pode ver
+ * o lançamento recebe 404, igual a `GET /:id` sempre fez. Quem desliga o
+ * compartilhamento fica invisível para todo mundo, inclusive para quem
+ * administra o grupo — que é o que a tela promete.
+ */
+async function gastoQuePodeAlterar(
+  usuario: UsuarioAutenticado,
+  id: string,
+): Promise<{ id: string; userId: string; comprovante: { id: string } | null }> {
+  const gasto = await prisma.gasto.findFirst({
+    where: combinarFiltros(filtroDeGastosVisiveis(usuario), { id }),
+    select: { id: true, userId: true, comprovante: { select: { id: true } } },
+  });
+  if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
+  conferirPermissaoDeEdicao(usuario, gasto.userId);
+  return gasto;
 }
 
 export async function rotasGastos(app: FastifyInstance): Promise<void> {
@@ -168,7 +200,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
         // Reais com duas casas: é o que o Excel soma. Centavos só existem
         // dentro do app.
         Valor: gasto.valorCentavos / 100,
-        Pessoa: gasto.user.nome,
+        Pessoa: nomeDoUsuario(gasto.user),
         Categoria: gasto.categoria?.nome ?? '',
         Cartão: gasto.cartao
           ? `${gasto.cartao.nome} (${ROTULO_TIPO_CARTAO[gasto.cartao.tipo]})`
@@ -261,12 +293,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const { id } = paramsSchema.parse(request.params);
     const dados = atualizarGastoSchema.parse(request.body);
 
-    const existente = await prisma.gasto.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true },
-    });
-    if (!existente) throw erroNaoEncontrado('Esse gasto não existe mais.');
-    conferirPermissaoDeEdicao(usuario, existente.userId);
+    await gastoQuePodeAlterar(usuario, id);
 
     if (dados.categoriaId) await conferirCategoria(usuario.householdId, dados.categoriaId);
     if (dados.cartaoId) await conferirCartao(usuario.householdId, dados.cartaoId);
@@ -294,12 +321,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const { id } = paramsSchema.parse(request.params);
 
-    const existente = await prisma.gasto.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true },
-    });
-    if (!existente) throw erroNaoEncontrado('Esse gasto não existe mais.');
-    conferirPermissaoDeEdicao(usuario, existente.userId);
+    await gastoQuePodeAlterar(usuario, id);
 
     // O comprovante sai junto, por `onDelete: Cascade` no banco.
     await prisma.gasto.delete({ where: { id } });
@@ -313,12 +335,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const { id } = paramsSchema.parse(request.params);
 
-    const gasto = await prisma.gasto.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true },
-    });
-    if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
-    conferirPermissaoDeEdicao(usuario, gasto.userId);
+    await gastoQuePodeAlterar(usuario, id);
 
     const arquivo = await request.file({ limits: { fileSize: TAMANHO_MAXIMO_COMPROVANTE } });
     if (!arquivo) throw erroValidacao('Escolha uma foto ou um PDF do comprovante.');
@@ -332,9 +349,11 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     }
     if (conteudo.length === 0) throw erroValidacao('O arquivo enviado está vazio.');
 
+    // Cifrado antes de encostar no banco: é foto de nota fiscal, mostra onde a
+    // pessoa esteve e quanto gastou.
     // O Prisma tipa `Bytes` como Uint8Array; o Buffer do Node é compatível em
     // memória, mas não no tipo.
-    const bytes = new Uint8Array(conteudo);
+    const bytes = new Uint8Array(cifrarBytes(conteudo));
 
     // `upsert`: trocar o comprovante substitui o anterior, sem sobra.
     await prisma.comprovante.upsert({
@@ -355,9 +374,12 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     const usuario = usuarioDaRequisicao(request);
     const { id } = paramsSchema.parse(request.params);
 
-    // O filtro por household é o que impede baixar comprovante de outra casa.
+    // O mesmo filtro de `GET /:id`, e pelo mesmo motivo: se o lançamento está
+    // escondido, a foto da nota dele também está. Antes aqui só havia
+    // `householdId` — bastava conhecer o id do gasto para baixar o comprovante
+    // de quem não compartilha, sem nunca ter conseguido ver o gasto em si.
     const comprovante = await prisma.comprovante.findFirst({
-      where: { gastoId: id, gasto: { householdId: usuario.householdId } },
+      where: { gastoId: id, gasto: filtroDeGastosVisiveis(usuario) },
       select: { tipo: true, dados: true },
     });
     if (!comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
@@ -365,19 +387,14 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
     return reply
       .header('content-type', comprovante.tipo)
       .header('cache-control', 'private, max-age=3600')
-      .send(Buffer.from(comprovante.dados));
+      .send(decifrarBytes(Buffer.from(comprovante.dados)));
   });
 
   app.delete('/:id/comprovante', async (request, reply) => {
     const usuario = usuarioDaRequisicao(request);
     const { id } = paramsSchema.parse(request.params);
 
-    const gasto = await prisma.gasto.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { id: true, userId: true, comprovante: { select: { id: true } } },
-    });
-    if (!gasto) throw erroNaoEncontrado('Esse gasto não existe mais.');
-    conferirPermissaoDeEdicao(usuario, gasto.userId);
+    const gasto = await gastoQuePodeAlterar(usuario, id);
     if (!gasto.comprovante) throw erroNaoEncontrado('Esse gasto não tem comprovante.');
 
     await prisma.comprovante.delete({ where: { gastoId: id } });

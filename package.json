@@ -23,7 +23,8 @@
     "dev:web": "npm run dev -w @gastos/web",
     "build:web": "npm run build -w @gastos/core && npm run build -w @gastos/web",
     "dev:mobile": "npm run start -w @gastos/mobile",
-    "build:vercel": "echo '::: 1/4 build core :::' && npm run build -w @gastos/core && echo '::: 2/4 build api :::' && npm run build -w @gastos/api && echo '::: 3/4 migrar banco :::' && node apps/api/scripts/migrar.mjs && echo '::: 4/4 build web :::' && npm run build -w @gastos/web && echo '::: build:vercel concluido :::'"
+    "_comentario_build:vercel": "A cifragem é o ÚLTIMO passo de propósito: ela é o ponto sem volta (reverter o deploy não descifra o banco), então tudo o que pode falhar precisa ter falhado antes dela. Com ela no meio, um erro no build do web abortava o deploy com o banco já cifrado e o código velho no ar, procurando e-mail em claro e recusando o login de todo mundo.",
+    "build:vercel": "echo '::: 1/5 build core :::' && npm run build -w @gastos/core && echo '::: 2/5 build api :::' && npm run build -w @gastos/api && echo '::: 3/5 migrar banco :::' && node apps/api/scripts/migrar.mjs && echo '::: 4/5 build web :::' && npm run build -w @gastos/web && echo '::: 5/5 cifrar dados existentes :::' && node apps/api/scripts/cifrar-dados.mjs && echo '::: build:vercel concluido :::'"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

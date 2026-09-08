@@ -30,7 +30,8 @@ async function moedaDoGrupo(householdId: string): Promise<Moeda> {
   });
   return grupo?.moeda === 'USD' ? 'USD' : 'BRL';
 }
-import { serializarUsuario } from '../serializadores.js';
+import { nomeDoUsuario, serializarUsuario } from '../serializadores.js';
+import { deQuemCompartilha } from '../servicos/visibilidade.js';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -150,11 +151,8 @@ async function desligarDoGrupo(
     await ativarGrupo(tx, usuario.id, outra.householdId);
     return;
   }
-  await criarGrupoParaPessoa(
-    tx,
-    usuario.id,
-    `Família de ${usuario.nome.split(' ')[0] ?? usuario.nome}`,
-  );
+  const nome = nomeDoUsuario(usuario);
+  await criarGrupoParaPessoa(tx, usuario.id, `Família de ${nome.split(' ')[0] ?? nome}`);
 }
 
 const INCLUDE_META = { criadoPor: { select: { id: true, nome: true } } } as const;
@@ -168,7 +166,7 @@ function serializarMeta(meta: MetaComAutor): Meta {
     id: meta.id,
     nome: meta.nome,
     valorAlvoCentavos: meta.valorAlvoCentavos,
-    criadoPor: { id: meta.criadoPor.id, nome: meta.criadoPor.nome },
+    criadoPor: { id: meta.criadoPor.id, nome: nomeDoUsuario(meta.criadoPor) },
     criadoEm: meta.criadoEm.toISOString(),
   };
 }
@@ -205,10 +203,14 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     const participacoes = await prisma.participacao.findMany({
       where: { householdId: usuario.householdId },
       include: { user: true },
-      orderBy: { user: { nome: 'asc' } },
     });
+    // A ordenação sai do banco para cá: o nome está cifrado, e ordenar bytes
+    // cifrados devolveria uma lista embaralhada. `localeCompare` ainda põe
+    // acento no lugar certo, o que o `ORDER BY` do Postgres não fazia.
     return {
-      itens: participacoes.map((p) => ({ ...serializarUsuario(p.user, usuario.moeda), papel: p.papel })),
+      itens: participacoes
+        .map((p) => ({ ...serializarUsuario(p.user, usuario.moeda), papel: p.papel }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     };
   });
 
@@ -274,7 +276,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       desligarDoGrupo(tx, participacao.user, usuario.householdId),
     );
 
-    return reply.status(200).send({ removido: participacao.user.nome });
+    return reply.status(200).send({ removido: nomeDoUsuario(participacao.user) });
   });
 
   /**
@@ -346,10 +348,9 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     // usar o mesmo código recebido no grupo do WhatsApp.
     const convite = await prisma.convite.findUnique({
       where: { codigo },
-      include: {
-        household: { select: { nome: true } },
-        criadoPor: { select: { id: true, nome: true } },
-      },
+      // `criadoPorId` já vem na própria linha do convite; carregar o autor
+      // inteiro só trazia um nome cifrado que ninguém usa.
+      include: { household: { select: { nome: true } } },
     });
     if (!convite || convite.expiraEm < new Date()) {
       throw erroValidacao('Esse código não é mais válido. Peça um novo para quem te convidou.', {
@@ -361,14 +362,21 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       // começa a usá-lo. Os lançamentos de cada grupo ficam onde foram feitos.
       await entrarEAtivar(tx, usuario.id, convite.householdId, 'MEMBRO');
       // Quem convidou passa a moderar o grupo: foi quem trouxe gente para ele.
-      await tx.participacao.updateMany({
-        where: { userId: convite.criadoPorId, householdId: convite.householdId },
-        data: { papel: 'ADMIN' },
-      });
-      await tx.user.updateMany({
-        where: { id: convite.criadoPorId, householdId: convite.householdId },
-        data: { papel: 'ADMIN' },
-      });
+      //
+      // Menos quando convidou a si mesmo: qualquer membro pode gerar um código
+      // (os lançamentos são privados, convidar não expõe ninguém), e sem esta
+      // condição bastava gerar um e usá-lo para virar ADMIN sozinho — sem
+      // trazer pessoa nenhuma, que é o que a promoção deveria premiar.
+      if (convite.criadoPorId !== usuario.id) {
+        await tx.participacao.updateMany({
+          where: { userId: convite.criadoPorId, householdId: convite.householdId },
+          data: { papel: 'ADMIN' },
+        });
+        await tx.user.updateMany({
+          where: { id: convite.criadoPorId, householdId: convite.householdId },
+          data: { papel: 'ADMIN' },
+        });
+      }
       return tx.user.findUniqueOrThrow({ where: { id: usuario.id } });
     });
 
@@ -446,7 +454,13 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       include: {
         household: {
           include: {
-            _count: { select: { participacoes: true, gastos: true } },
+            // A contagem também obedece a privacidade: `gastos: true` daria o
+            // total do grupo, e subtrair o próprio total revelaria quantos
+            // lançamentos quem não compartilha fez. Membros pode contar
+            // inteiro — estar no grupo já mostra quem está nele.
+            _count: {
+              select: { participacoes: true, gastos: { where: deQuemCompartilha(usuario.id) } },
+            },
             convites: {
               where: { expiraEm: { gt: new Date() } },
               orderBy: { criadoEm: 'desc' },

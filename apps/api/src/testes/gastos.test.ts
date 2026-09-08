@@ -258,17 +258,37 @@ describe('PATCH e DELETE /gastos/:id', () => {
       codigoConvite: codigo,
     });
 
+    // Sem compartilhar, um não enxerga o lançamento do outro — e não se altera
+    // o que não se vê. Antes esta tentativa dava 403 ("existe, mas não é seu"),
+    // o que já contava ao membro que aquele id era do grupo; e o administrador
+    // conseguia 200 num gasto que nenhuma tela mostrava a ele. Como o PATCH
+    // devolve o gasto inteiro, isso era uma forma de simplesmente lê-lo.
     const gastoDoAdmin = await criarGasto(admin.autorizacao);
-
     const tentativaDoMembro = await app.inject({
       method: 'PATCH',
       url: `/api/v1/gastos/${gastoDoAdmin.id}`,
       headers: membro.autorizacao,
       payload: { valorCentavos: 1 },
     });
-    expect(tentativaDoMembro.statusCode).toBe(403);
+    expect(tentativaDoMembro.statusCode).toBe(404);
 
     const gastoDoMembro = await criarGasto(membro.autorizacao, { descricao: 'Padaria' });
+    const semCompartilhar = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/gastos/${gastoDoMembro.id}`,
+      headers: admin.autorizacao,
+      payload: { descricao: 'Padaria da esquina' },
+    });
+    expect(semCompartilhar.statusCode).toBe(404);
+
+    // Compartilhando, volta a valer "administrador revisa o de todos": o
+    // lançamento aparece para o grupo, e quem administra pode corrigi-lo.
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/auth/eu',
+      headers: membro.autorizacao,
+      payload: { compartilhaGastos: true },
+    });
     const correcaoDoAdmin = await app.inject({
       method: 'PATCH',
       url: `/api/v1/gastos/${gastoDoMembro.id}`,
@@ -276,6 +296,15 @@ describe('PATCH e DELETE /gastos/:id', () => {
       payload: { descricao: 'Padaria da esquina' },
     });
     expect(correcaoDoAdmin.statusCode).toBe(200);
+
+    // E o membro segue sem poder mexer no do administrador, que não compartilha.
+    const aindaNao = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/gastos/${gastoDoAdmin.id}`,
+      headers: membro.autorizacao,
+      payload: { valorCentavos: 1 },
+    });
+    expect(aindaNao.statusCode).toBe(404);
   });
 });
 

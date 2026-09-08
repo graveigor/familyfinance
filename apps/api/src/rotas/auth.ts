@@ -18,9 +18,15 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 import { serializarUsuario } from '../serializadores.js';
+import { cifrar, decifrar, indiceDeEmail } from '../servicos/criptografia.js';
 import { enviarEmail } from '../servicos/email.js';
 import { conferirSenha, gerarHashSenha } from '../servicos/senha.js';
-import { gerarAccessToken, gerarRefreshToken, verificarRefreshToken } from '../servicos/tokens.js';
+import {
+  gerarAccessToken,
+  gerarRefreshToken,
+  tokenAnteriorASenha,
+  verificarRefreshToken,
+} from '../servicos/tokens.js';
 
 /** Moeda de um grupo, para preencher o usuário devolvido pela rota. */
 async function moedaDoGrupo(householdId: string): Promise<Moeda> {
@@ -31,6 +37,22 @@ async function moedaDoGrupo(householdId: string): Promise<Moeda> {
   return grupo?.moeda === 'USD' ? 'USD' : 'BRL';
 }
 
+
+/**
+ * Como uma conta é encontrada pelo e-mail.
+ *
+ * O e-mail fica cifrado no banco e a cifra muda a cada escrita, então procurar
+ * pela coluna não funciona: quem responde por "existe conta com este e-mail?"
+ * é o índice cego (ver `servicos/criptografia.ts`).
+ */
+function porEmail(email: string): { emailIndice: string } {
+  return { emailIndice: indiceDeEmail(email) };
+}
+
+/** Os campos pessoais de uma conta nova, já cifrados. */
+function dadosPessoais(nome: string, email: string) {
+  return { nome: cifrar(nome), email: cifrar(email), emailIndice: indiceDeEmail(email) };
+}
 
 /** Tempo de vida do código e teto de tentativas — segredo curto pede os dois. */
 const VALIDADE_DO_CODIGO_MIN = 15;
@@ -57,7 +79,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
   app.post('/registrar', async (request, reply) => {
     const dados = registrarSchema.parse(request.body);
 
-    const jaExiste = await prisma.user.findUnique({ where: { email: dados.email } });
+    const jaExiste = await prisma.user.findUnique({ where: porEmail(dados.email) });
     if (jaExiste) {
       throw erroConflito('Já existe uma conta com esse e-mail.');
     }
@@ -78,8 +100,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
         const novo = await tx.user.create({
           data: {
-            nome: dados.nome,
-            email: dados.email,
+            ...dadosPessoais(dados.nome, dados.email),
             senhaHash,
             papel: 'MEMBRO',
             householdId: convite.householdId,
@@ -107,8 +128,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
       const dono = await tx.user.create({
         data: {
-          nome: dados.nome,
-          email: dados.email,
+          ...dadosPessoais(dados.nome, dados.email),
           senhaHash,
           papel: 'ADMIN',
           householdId: household.id,
@@ -128,7 +148,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
   app.post('/login', async (request) => {
     const dados = loginSchema.parse(request.body);
-    const usuario = await prisma.user.findUnique({ where: { email: dados.email } });
+    const usuario = await prisma.user.findUnique({ where: porEmail(dados.email) });
 
     // Mensagem igual para e-mail inexistente e senha errada: não entregamos
     // quais e-mails existem. A conferência roda mesmo sem usuário para o tempo
@@ -155,6 +175,12 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
 
     const usuario = await prisma.user.findUnique({ where: { id: conteudo.sub } });
     if (!usuario) throw erroNaoAutenticado();
+
+    // O refresh vale 30 dias — é ele que mantém uma sessão invadida viva por
+    // um mês. Trocar a senha precisa cortá-lo aqui, não só no access token.
+    if (tokenAnteriorASenha(conteudo, usuario.senhaAlteradaEm)) {
+      throw erroNaoAutenticado('Sua senha mudou. Entre novamente para continuar.');
+    }
 
     const sessao: Sessao = {
       ...(await montarSessao(usuario)),
@@ -192,8 +218,13 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
     const dados = atualizarPerfilSchema.parse(request.body);
     const usuario = await prisma.user.findUniqueOrThrow({ where: { id: autenticado.id } });
 
-    const atualizacao: { nome?: string; senhaHash?: string; compartilhaGastos?: boolean } = {};
-    if (dados.nome) atualizacao.nome = dados.nome;
+    const atualizacao: {
+      nome?: string;
+      senhaHash?: string;
+      senhaAlteradaEm?: Date;
+      compartilhaGastos?: boolean;
+    } = {};
+    if (dados.nome) atualizacao.nome = cifrar(dados.nome);
     if (dados.compartilhaGastos !== undefined) {
       atualizacao.compartilhaGastos = dados.compartilhaGastos;
     }
@@ -204,6 +235,8 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
         throw erroValidacao('A senha atual não confere.', { senhaAtual: 'Senha incorreta.' });
       }
       atualizacao.senhaHash = await gerarHashSenha(dados.novaSenha);
+      // Derruba as outras sessões. Ver `tokenAnteriorASenha`.
+      atualizacao.senhaAlteradaEm = new Date();
     }
 
     const atualizado = await prisma.user.update({
@@ -224,43 +257,50 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
    */
   app.post('/esqueci-senha', async (request, reply) => {
     const { email } = esqueciSenhaSchema.parse(request.body);
-    const usuario = await prisma.user.findUnique({ where: { email } });
+    const usuario = await prisma.user.findUnique({ where: porEmail(email) });
 
-    if (usuario) {
-      const codigo = String(randomInt(0, 1_000_000)).padStart(6, '0');
-      const expiraEm = new Date(Date.now() + VALIDADE_DO_CODIGO_MIN * 60_000);
+    if (!usuario) {
+      // Sem conta, a rota respondia na hora; com conta, ela gastava os ~60ms
+      // do scrypt do código. Responder 204 nos dois casos não adiantava nada:
+      // o relógio contava a diferença e entregava quem tem conta no app.
+      // Gastar o mesmo trabalho aqui é o que iguala os dois caminhos — é a
+      // mesma ideia do hash de referência no `/login`.
+      await gerarHashSenha(String(randomInt(0, 1_000_000)).padStart(6, '0'));
+      return reply.status(204).send();
+    }
 
-      await prisma.$transaction(async (tx) => {
-        // Um código por vez: pedir de novo invalida o anterior, então um
-        // e-mail antigo esquecido na caixa de entrada não serve mais.
-        await tx.pedidoDeSenha.deleteMany({ where: { userId: usuario.id, usadoEm: null } });
-        await tx.pedidoDeSenha.create({
-          data: { userId: usuario.id, codigoHash: await gerarHashSenha(codigo), expiraEm },
-        });
+    const codigo = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const expiraEm = new Date(Date.now() + VALIDADE_DO_CODIGO_MIN * 60_000);
+
+    await prisma.$transaction(async (tx) => {
+      // Um código por vez: pedir de novo invalida o anterior, então um
+      // e-mail antigo esquecido na caixa de entrada não serve mais.
+      await tx.pedidoDeSenha.deleteMany({ where: { userId: usuario.id, usadoEm: null } });
+      await tx.pedidoDeSenha.create({
+        data: { userId: usuario.id, codigoHash: await gerarHashSenha(codigo), expiraEm },
       });
+    });
 
-      try {
-        await enviarEmail({
-          para: usuario.email,
-          assunto: `${codigo} — código para trocar sua senha`,
-          texto: [
-            `Olá, ${usuario.nome.split(' ')[0] ?? usuario.nome}.`,
-            '',
-            `Seu código para trocar a senha no Family Finance é: ${codigo}`,
-            '',
-            `Ele vale por ${VALIDADE_DO_CODIGO_MIN} minutos e só pode ser usado uma vez.`,
-            'Se não foi você que pediu, ignore este e-mail — sua senha continua a mesma.',
-          ].join('\n'),
-        });
-      } catch (falha) {
-        // O detalhe (provedor fora do ar, chave ausente) vai para o log de quem
-        // administra; para quem está na tela, o que importa é não ficar
-        // esperando um e-mail que não vem.
-        request.log.error({ falha }, 'Falha ao enviar o código de troca de senha');
-        throw erroInterno(
-          'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.',
-        );
-      }
+    const nome = decifrar(usuario.nome);
+    try {
+      await enviarEmail({
+        para: decifrar(usuario.email),
+        assunto: `${codigo} — código para trocar sua senha`,
+        texto: [
+          `Olá, ${nome.split(' ')[0] ?? nome}.`,
+          '',
+          `Seu código para trocar a senha no Family Finance é: ${codigo}`,
+          '',
+          `Ele vale por ${VALIDADE_DO_CODIGO_MIN} minutos e só pode ser usado uma vez.`,
+          'Se não foi você que pediu, ignore este e-mail — sua senha continua a mesma.',
+        ].join('\n'),
+      });
+    } catch (falha) {
+      // O detalhe (provedor fora do ar, chave ausente) vai para o log de quem
+      // administra; para quem está na tela, o que importa é não ficar
+      // esperando um e-mail que não vem.
+      request.log.error({ falha }, 'Falha ao enviar o código de troca de senha');
+      throw erroInterno('Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.');
     }
 
     return reply.status(204).send();
@@ -270,7 +310,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
   app.post('/redefinir-senha', async (request) => {
     const { email, codigo, novaSenha } = redefinirSenhaSchema.parse(request.body);
 
-    const usuario = await prisma.user.findUnique({ where: { email } });
+    const usuario = await prisma.user.findUnique({ where: porEmail(email) });
     const pedido = usuario
       ? await prisma.pedidoDeSenha.findFirst({
           where: { userId: usuario.id, usadoEm: null, expiraEm: { gt: new Date() } },
@@ -305,7 +345,9 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
     const atualizado = await prisma.$transaction(async (tx) => {
       const pessoa = await tx.user.update({
         where: { id: usuario.id },
-        data: { senhaHash: await gerarHashSenha(novaSenha) },
+        // `senhaAlteradaEm` derruba as sessões abertas: quem pediu o código foi
+        // justamente quem perdeu o acesso à conta. Ver `tokenAnteriorASenha`.
+        data: { senhaHash: await gerarHashSenha(novaSenha), senhaAlteradaEm: new Date() },
       });
       // Some com todos os pedidos: o usado e qualquer outro pendente.
       await tx.pedidoDeSenha.deleteMany({ where: { userId: usuario.id } });

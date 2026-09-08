@@ -46,11 +46,14 @@ npm run dev:mobile                       # app nativo (Expo)
 O `npm run dev:web` já repassa `/api` para o backend — não é preciso configurar
 CORS nem variável de ambiente para desenvolver.
 
-Gere os segredos do JWT com:
+Gere os segredos com:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+Os do JWT são opcionais (o servidor gera os seus). A `CHAVE_CRIPTOGRAFIA` é
+obrigatória — sem ela o servidor não sobe.
 
 Depois do seed, entre com `maria@exemplo.com` / `senha123` (administradora) ou
 `joao@exemplo.com` / `senha123` (membro).
@@ -250,11 +253,16 @@ Erro sempre no mesmo formato, em português e sem jargão:
 ## Regras de negócio já valendo
 
 - Cada household é isolado: nenhuma consulta cruza famílias.
-- Membro edita e apaga só o que lançou; administrador revisa o de todos.
+- Membro edita e apaga só o que lançou; administrador revisa o de todos — mas
+  ninguém altera o que não pode ver: sobre o lançamento de quem não
+  compartilha, quem administra recebe o mesmo 404 que qualquer outra pessoa.
 - Apagar categoria deixa os gastos sem categoria — nunca em cascata.
 - A família não pode ficar sem nenhum administrador.
 - Login responde igual para senha errada e e-mail inexistente.
 - Senha guardada com scrypt (`node:crypto`), nunca em texto puro.
+- Nome, e-mail e comprovantes ficam **cifrados no banco** (AES-256-GCM), com a
+  chave fora dele. Um dump do banco não entrega quem usa o app nem as fotos das
+  notas. O login acha a conta por um HMAC do e-mail, não pelo e-mail.
 
 ## Publicar na internet
 
@@ -285,12 +293,17 @@ e o Fastify continua cuidando do resto.
 Como site e API ficam no mesmo domínio, **não é preciso configurar `VITE_API_URL`
 nem CORS**. O site chama `/api/v1/...` e cai na função ao lado.
 
-Falta só **um banco PostgreSQL**. Nenhuma outra variável precisa ser criada:
+Falta **um banco PostgreSQL** e **uma chave**:
 
 | Variável | De onde vem |
 |---|---|
 | `DATABASE_URL` | O banco. Pelo Marketplace da Vercel, o Neon tem plano gratuito e preenche essa variável sozinho |
+| `CHAVE_CRIPTOGRAFIA` (**obrigatória**) | 64 caracteres hex, gerados pelo comando acima. Cifra nome, e-mail e comprovantes no banco. Guarde uma cópia fora do painel: sem ela, esses dados ficam ilegíveis e ninguém entra |
 | `JWT_SEGREDO` (opcional) | Se não existir, o servidor gera a sua e guarda no banco — publicar não depende de colar chave em painel |
+
+A `CHAVE_CRIPTOGRAFIA` é a única que **não** tem essa cópia de emergência no
+banco, e é de propósito: guardada lá, ela vazaria junto com os dados que
+protege. Trocá-la depois torna ilegível tudo o que já foi gravado.
 
 ### Privacidade dos lançamentos
 

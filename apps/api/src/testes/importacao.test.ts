@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import { prisma } from '../prisma.js';
+import { decifrar } from '../servicos/criptografia.js';
 import { criarConta, limparBanco, novoServidor } from './ajuda.js';
 
 let app: FastifyInstance;
@@ -143,9 +144,11 @@ describe('POST /importacoes/analisar', () => {
       ]),
     );
 
-    const membros = await prisma.user.findMany({ orderBy: { nome: 'asc' } });
-    const joao = membros.find((m) => m.nome === 'João Souza');
-    const maria = membros.find((m) => m.nome === 'Maria Silva');
+    // O nome está cifrado no banco: comparar a coluna crua não casa com nada.
+    const membros = await prisma.user.findMany();
+    const porNome = (nome: string) => membros.find((m) => decifrar(m.nome) === nome);
+    const joao = porNome('João Souza');
+    const maria = porNome('Maria Silva');
 
     // Casa ignorando acento e caixa, e pelo primeiro nome.
     expect(corpo.linhas[0]?.userId).toBe(maria?.id);

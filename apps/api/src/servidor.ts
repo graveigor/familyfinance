@@ -1,7 +1,7 @@
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { ambiente, ehTeste } from './ambiente.js';
+import { ambiente, ehProducao, ehTeste } from './ambiente.js';
 import { configurarAutenticacao } from './plugins/autenticacao.js';
 import { configurarErros } from './plugins/erros.js';
 import { rotasAuth } from './rotas/auth.js';
@@ -22,10 +22,18 @@ export async function criarServidor(): Promise<FastifyInstance> {
     bodyLimit: 5 * 1024 * 1024,
   });
 
-  await app.register(cors, {
-    origin: ambiente.CORS_ORIGENS === '*' ? true : ambiente.CORS_ORIGENS.split(',').map((o) => o.trim()),
-    credentials: true,
-  });
+  // Em produção o site e a API saem do mesmo domínio (ver `vercel.json`), então
+  // não é preciso liberar origem nenhuma. O `*` com `credentials: true` refletia
+  // qualquer origem que perguntasse — hoje isso não dá acesso a nada, porque a
+  // sessão vive no `localStorage` e não em cookie, mas é uma porta aberta sem
+  // ninguém para passar por ela. Fora de produção continua liberado, senão
+  // desenvolver com o app em outra porta vira briga com o navegador.
+  const origensLiberadas =
+    ambiente.CORS_ORIGENS === '*'
+      ? !ehProducao
+      : ambiente.CORS_ORIGENS.split(',').map((o) => o.trim());
+
+  await app.register(cors, { origin: origensLiberadas, credentials: true });
 
   // Envio da planilha. O limite real é conferido na rota, com mensagem própria.
   await app.register(multipart, {

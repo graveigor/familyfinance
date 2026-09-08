@@ -14,7 +14,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
-import { serializarCategoria } from '../serializadores.js';
+import { nomeDoUsuario, serializarCategoria } from '../serializadores.js';
 import { combinarFiltros, filtroDeGastosVisiveis } from '../servicos/visibilidade.js';
 
 export async function rotasResumos(app: FastifyInstance): Promise<void> {
@@ -65,7 +65,7 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
       ]);
 
     const categoriaPorId = new Map(categorias.map((c) => [c.id, c]));
-    const membroPorId = new Map(membros.map((m) => [m.id, m]));
+    const membroPorId = new Map(membros.map((m) => [m.id, { id: m.id, nome: nomeDoUsuario(m) }]));
 
     const porCategoria: TotalPorCategoria[] = porCategoriaBruto
       .map((linha) => {

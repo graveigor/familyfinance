@@ -17,21 +17,30 @@ import type { UsuarioAutenticado } from '../plugins/autenticacao.js';
  * Reparar que o grupo em si (`householdId`) continua sendo a primeira barreira:
  * nada atravessa de um grupo para outro em hipótese alguma.
  */
+/**
+ * "É seu, ou é de quem compartilha" — a condição, sem amarrar a grupo nenhum.
+ *
+ * Fica separada porque nem toda leitura parte do grupo ativo: contar dentro de
+ * uma relação que já traz o grupo (o `_count` de `/household/grupos`) precisa
+ * da regra sem o `householdId`, e escrevê-la de novo lá seria a quarta cópia
+ * do mesmo `OR`.
+ */
+// Sem tipo de retorno declarado de propósito: a condição é a mesma para gasto
+// e para recorrência, e fixá-la em `GastoWhereInput` a impediria de servir às
+// duas. O que o TypeScript infere encaixa nos dois `where`.
+export function deQuemCompartilha(usuarioId: string) {
+  return { OR: [{ userId: usuarioId }, { user: { compartilhaGastos: true } }] };
+}
+
 export function filtroDeGastosVisiveis(usuario: UsuarioAutenticado): Prisma.GastoWhereInput {
-  return {
-    householdId: usuario.householdId,
-    OR: [{ userId: usuario.id }, { user: { compartilhaGastos: true } }],
-  };
+  return { householdId: usuario.householdId, ...deQuemCompartilha(usuario.id) };
 }
 
 /** Mesma regra, para as contas fixas. */
 export function filtroDeRecorrenciasVisiveis(
   usuario: UsuarioAutenticado,
 ): Prisma.RecorrenciaWhereInput {
-  return {
-    householdId: usuario.householdId,
-    OR: [{ userId: usuario.id }, { user: { compartilhaGastos: true } }],
-  };
+  return { householdId: usuario.householdId, ...deQuemCompartilha(usuario.id) };
 }
 
 /**

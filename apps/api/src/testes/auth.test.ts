@@ -2,6 +2,7 @@ import type { Sessao } from '@gastos/core';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../prisma.js';
+import { indiceDeEmail } from '../servicos/criptografia.js';
 import { criarConta, limparBanco, novoServidor } from './ajuda.js';
 
 let app: FastifyInstance;
@@ -70,7 +71,9 @@ describe('POST /auth/registrar', () => {
 
   it('guarda a senha com hash, nunca em texto puro', async () => {
     await criarConta(app, { senha: 'senha-forte-123' });
-    const usuario = await prisma.user.findUniqueOrThrow({ where: { email: 'maria@exemplo.com' } });
+    const usuario = await prisma.user.findUniqueOrThrow({
+      where: { emailIndice: indiceDeEmail('maria@exemplo.com') },
+    });
     expect(usuario.senhaHash).not.toContain('senha-forte-123');
     expect(usuario.senhaHash.startsWith('scrypt$')).toBe(true);
   });

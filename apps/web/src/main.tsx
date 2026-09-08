@@ -42,8 +42,21 @@ createRoot(raiz).render(
               {/* Contagem de visitas da Vercel: sem cookie e sem dado pessoal,
                   então não pede aviso de consentimento. Dentro do router para
                   contar a troca de tela — o app é SPA e não recarrega a página.
-                  Fora da Vercel (dev, outra hospedagem) ela não faz nada. */}
-              <Analytics />
+                  Fora da Vercel (dev, outra hospedagem) ela não faz nada.
+
+                  O `beforeSend` troca o id do gasto por `[id]` antes de a URL
+                  sair daqui. `/gastos/<uuid>/editar` é a única tela que carrega
+                  identificador na barra de endereço, e mandá-lo para fora
+                  deixaria de ser verdade a primeira frase deste comentário. */}
+              <Analytics
+                beforeSend={(evento) => ({
+                  ...evento,
+                  url: evento.url.replace(
+                    /\/gastos\/[0-9a-fA-F-]{36}/,
+                    '/gastos/[id]',
+                  ),
+                })}
+              />
             </BrowserRouter>
           </ProvedorDeAviso>
         </ProvedorDeSessao>

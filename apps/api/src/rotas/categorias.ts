@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 import { serializarCategoria } from '../serializadores.js';
+import { combinarFiltros, filtroDeGastosVisiveis } from '../servicos/visibilidade.js';
 
 const paramsSchema = z.object({ id: zId });
 
@@ -83,15 +84,21 @@ export async function rotasCategorias(app: FastifyInstance): Promise<void> {
     });
     if (!existente) throw erroNaoEncontrado('Essa categoria não existe mais.');
 
-    const gastosAfetados = await prisma.$transaction(async (tx) => {
-      const { count } = await tx.gasto.updateMany({
-        where: { categoriaId: id },
-        data: { categoriaId: null },
-      });
-      await tx.categoria.delete({ where: { id } });
-      return count;
+    // Contado antes de apagar, e só o que esta pessoa enxerga: o número volta
+    // para a tela, e o número cheio contaria os lançamentos de quem não
+    // compartilha. Apagar uma categoria de propósito e ler o total seria uma
+    // forma de perguntar "quantos gastos de Saúde o fulano tem?".
+    const gastosVisiveis = await prisma.gasto.count({
+      where: combinarFiltros(filtroDeGastosVisiveis(usuario), { categoriaId: id }),
     });
 
-    return reply.status(200).send({ gastosSemCategoria: gastosAfetados });
+    await prisma.$transaction(async (tx) => {
+      // O `updateMany` continua alcançando todos: a categoria some para o
+      // grupo inteiro, e nenhum lançamento pode ficar apontando para ela.
+      await tx.gasto.updateMany({ where: { categoriaId: id }, data: { categoriaId: null } });
+      await tx.categoria.delete({ where: { id } });
+    });
+
+    return reply.status(200).send({ gastosSemCategoria: gastosVisiveis });
   });
 }

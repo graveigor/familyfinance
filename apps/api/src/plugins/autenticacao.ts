@@ -1,7 +1,7 @@
 import { erroNaoAutenticado, erroSemPermissao, type Moeda, type Papel } from '@gastos/core';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../prisma.js';
-import { verificarAccessToken } from '../servicos/tokens.js';
+import { tokenAnteriorASenha, verificarAccessToken } from '../servicos/tokens.js';
 
 export interface UsuarioAutenticado {
   id: string;
@@ -46,10 +46,17 @@ export function configurarAutenticacao(app: FastifyInstance): void {
         id: true,
         householdId: true,
         papel: true,
+        senhaAlteradaEm: true,
         household: { select: { moeda: true } },
       },
     });
     if (!usuario) throw erroNaoAutenticado();
+
+    // Trocar a senha derruba as sessões abertas — inclusive a de quem entrou
+    // sem permissão, que é o motivo de alguém trocar a senha às pressas.
+    if (tokenAnteriorASenha(conteudo, usuario.senhaAlteradaEm)) {
+      throw erroNaoAutenticado('Sua senha mudou. Entre novamente para continuar.');
+    }
 
     request.usuario = {
       id: usuario.id,

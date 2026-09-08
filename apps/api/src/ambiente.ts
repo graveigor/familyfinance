@@ -28,6 +28,22 @@ const ambienteSchema = z.object({
     .string()
     .min(16, 'JWT_SEGREDO_REFRESH precisa de pelo menos 16 caracteres')
     .optional(),
+  /**
+   * Chave que cifra os dados pessoais no banco (nome, e-mail, comprovantes).
+   *
+   * Obrigatória, e sem irmã guardada no banco como a do JWT: a graça é
+   * justamente ela não estar lá. 32 bytes em hexadecimal; gere com
+   * `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+   *
+   * Trocar esta chave torna ilegível o que já foi gravado com a anterior.
+   */
+  CHAVE_CRIPTOGRAFIA: z
+    .string({ required_error: 'Defina CHAVE_CRIPTOGRAFIA' })
+    .regex(
+      /^[0-9a-fA-F]{64}$/,
+      'CHAVE_CRIPTOGRAFIA precisa ter 64 caracteres hexadecimais (32 bytes). Gere com: ' +
+        'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"',
+    ),
   /** Vida do access token (curta) e do refresh token (longa). */
   JWT_EXPIRA_EM: z.string().default('15m'),
   JWT_REFRESH_EXPIRA_EM: z.string().default('30d'),
