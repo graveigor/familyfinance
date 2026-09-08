@@ -25,6 +25,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@fastify/multipart": "^10.1.0",
+    "@fastify/rate-limit": "^11.2.0",
     "@gastos/core": "*",
     "@prisma/client": "^6.2.1",
     "dotenv": "^16.4.7",

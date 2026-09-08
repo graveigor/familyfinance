@@ -34,8 +34,8 @@ export const EN: Record<string, string> = {
   'Seu nome': 'Your name',
   'Pelo menos 8 caracteres.': 'At least 8 characters.',
   'Código do grupo (opcional)': 'Group code (optional)',
-  'Recebeu um código como FF-9A3K2? Cole aqui. Se não, criamos um grupo só seu.':
-    'Got a code like FF-9A3K2? Paste it here. If not, we create a group just for you.',
+  'Recebeu um código como FF-9A3K2M7Q? Cole aqui. Se não, criamos um grupo só seu.':
+    'Got a code like FF-9A3K2M7Q? Paste it here. If not, we create a group just for you.',
   'Esqueci minha senha': 'I forgot my password',
   'Digite o e-mail da sua conta. Vamos mandar um código de 6 números para você criar uma senha nova.':
     "Enter your account email. We'll send you a 6-digit code so you can set a new password.",
@@ -441,8 +441,8 @@ export const EN: Record<string, string> = {
     'By default nobody in the group sees what you add — not even the moderator. Turn it on here if you want the group to follow your spending. You can turn it off whenever you want.',
   'Convide quem você quiser':
     'Invite whoever you like',
-  'Gere um código como FF-9A3K2 e mande pelo WhatsApp. Quem receber usa esse código ao criar a conta e entra no seu grupo.':
-    'Generate a code like FF-9A3K2 and send it on WhatsApp. Whoever gets it uses the code when creating their account and joins your group.',
+  'Gere um código como FF-9A3K2M7Q e mande pelo WhatsApp. Quem receber usa esse código ao criar a conta e entra no seu grupo.':
+    'Generate a code like FF-9A3K2M7Q and send it on WhatsApp. Whoever gets it uses the code when creating their account and joins your group.',
   'Aqui aparecem as pessoas do grupo e quem escolheu compartilhar os gastos. O cadeado indica que os lançamentos daquela pessoa são privados.':
     'Here you see the people in the group and who chose to share their expenses. The padlock means that person\'s entries are private.',
   'Metas de todo mundo':

@@ -29,7 +29,7 @@ const PASSOS: PassoDeTutorial[] = [
     alvo: 'familia-codigo',
     titulo: 'Convide quem você quiser',
     texto:
-      'Gere um código como FF-9A3K2 e mande pelo WhatsApp. Quem receber usa esse código ao criar a conta e entra no seu grupo.',
+      'Gere um código como FF-9A3K2M7Q e mande pelo WhatsApp. Quem receber usa esse código ao criar a conta e entra no seu grupo.',
   },
   {
     alvo: 'familia-membros',
@@ -518,7 +518,7 @@ function PainelEntrarNoGrupo({
           rotulo="Código do grupo"
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-          placeholder="FF-9A3K2"
+          placeholder="FF-9A3K2M7Q"
           maxLength={8}
           className="uppercase tracking-widest"
         />

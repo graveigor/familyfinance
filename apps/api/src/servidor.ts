@@ -1,5 +1,6 @@
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ambiente, ehProducao, ehTeste } from './ambiente.js';
 import { configurarAutenticacao } from './plugins/autenticacao.js';
@@ -39,6 +40,27 @@ export async function criarServidor(): Promise<FastifyInstance> {
   await app.register(multipart, {
     // Abaixo do teto de 4,5 MB da função serverless.
     limits: { fileSize: 4 * 1024 * 1024, files: 1 },
+  });
+
+  /**
+   * Freio nas rotas onde adivinhar vale a pena: senha em `/auth/login`, código
+   * de convite em `/auth/registrar` e `/household/entrar`, e o custo de scrypt
+   * de `/auth/esqueci-senha` (cada chamada queima ~60ms de CPU da função).
+   *
+   * Só nelas, e não no app inteiro: quem está lançando gasto e conferindo o
+   * resumo faz muitas requisições legítimas seguidas, e a última coisa que se
+   * quer é o app travar no meio do mês.
+   *
+   * Em função serverless o contador é por instância, então não é um teto
+   * exato — mas corta a força bruta rápida, que é o ataque real.
+   */
+  await app.register(rateLimit, {
+    global: false,
+    max: 10,
+    timeWindow: '1 minute',
+    // Fora de produção o limite atrapalharia os testes e o uso na máquina de
+    // quem desenvolve, que repete login o tempo todo.
+    ...(ehProducao ? {} : { max: 10_000 }),
   });
 
   configurarErros(app);

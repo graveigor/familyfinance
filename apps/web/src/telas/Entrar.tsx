@@ -143,7 +143,7 @@ export function Entrar(): ReactElement {
               maxLength={8}
               autoCapitalize="characters"
               className="uppercase tracking-widest"
-              dica={t('Recebeu um código como FF-9A3K2? Cole aqui. Se não, criamos um grupo só seu.')}
+              dica={t('Recebeu um código como FF-9A3K2M7Q? Cole aqui. Se não, criamos um grupo só seu.')}
               erro={erro.campos.codigoConvite}
             />
           )}

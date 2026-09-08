@@ -4,19 +4,37 @@ import { PAPEIS } from '../tipos.js';
 import { zNome } from './comuns.js';
 
 /**
- * Código de família no formato `FF-9A3K2`. Aceitamos o que a pessoa colar —
+ * Código de família no formato `FF-9A3K2M7`. Aceitamos o que a pessoa colar —
  * com ou sem o `FF-`, com espaços, em minúsculas — e normalizamos aqui, para
  * o código digitado do WhatsApp nunca falhar por formatação.
+ *
+ * Os núcleos de 5 continuam válidos: são os códigos gerados antes de o tamanho
+ * mudar, e eles ainda estão na mão de gente esperando para entrar. Somem
+ * sozinhos quando expirarem.
  */
+/**
+ * Quantos caracteres o servidor sorteia. Oito, e não cinco: com o alfabeto de
+ * 31 letras, cinco davam 28,6 milhões de combinações — pouco para um código
+ * que vale dias, serve para várias pessoas e pode ser tentado sem login. Oito
+ * levam a 852 bilhões, ao custo de três caracteres a mais para digitar.
+ */
+export const TAMANHO_DO_NUCLEO_DO_CONVITE = 8;
+
+const TAMANHOS_DO_NUCLEO = [TAMANHO_DO_NUCLEO_DO_CONVITE, 5];
+
 export const zCodigoConvite = z
   .string({ required_error: 'Informe o código do grupo.' })
   .transform((bruto) => {
     const limpo = bruto.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const nucleo = limpo.startsWith('FF') && limpo.length > 5 ? limpo.slice(2) : limpo;
+    // Tirar o "FF" só quando o que sobra tem cara de núcleo. Sem essa conta,
+    // um núcleo que por acaso comece com FF (e o F está no alfabeto) perderia
+    // as duas primeiras letras e o código válido seria recusado.
+    const semPrefixo = limpo.startsWith('FF') ? limpo.slice(2) : limpo;
+    const nucleo = TAMANHOS_DO_NUCLEO.includes(semPrefixo.length) ? semPrefixo : limpo;
     return `FF-${nucleo}`;
   })
-  .refine((codigo) => /^FF-[A-Z0-9]{5}$/.test(codigo), {
-    message: 'O código tem o formato FF-XXXXX.',
+  .refine((codigo) => /^FF-([A-Z0-9]{8}|[A-Z0-9]{5})$/.test(codigo), {
+    message: 'O código tem o formato FF-XXXXXXXX.',
   });
 
 export const criarConviteSchema = z.object({

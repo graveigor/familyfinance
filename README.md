@@ -263,6 +263,11 @@ Erro sempre no mesmo formato, em português e sem jargão:
 - Nome, e-mail e comprovantes ficam **cifrados no banco** (AES-256-GCM), com a
   chave fora dele. Um dump do banco não entrega quem usa o app nem as fotos das
   notas. O login acha a conta por um HMAC do e-mail, não pelo e-mail.
+- Trocar a senha derruba as sessões abertas, inclusive o refresh de 30 dias.
+- Login, cadastro, entrada em grupo e recuperação de senha têm freio de
+  tentativas (10 por minuto): senha e código de convite são adivinháveis.
+- Ninguém altera nem baixa o comprovante do que não pode ver — o filtro de
+  privacidade vale nas leituras e também nas escritas.
 
 ## Publicar na internet
 

@@ -32,7 +32,9 @@ describe('household', () => {
     const codigo = await convidar(admin.autorizacao);
     // Formato da marca: FF- e 5 caracteres, sem 0/O e 1/I/L para ditar por
     // telefone sem confusão.
-    expect(codigo).toMatch(/^FF-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/);
+    // Oito caracteres: com cinco, os 28,6 milhões de combinações eram poucos
+    // para um código que vale dias e pode ser tentado sem login.
+    expect(codigo).toMatch(/^FF-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/);
 
     const convidado = await criarConta(app, {
       email: 'joao@exemplo.com',

@@ -1,5 +1,6 @@
 import {
   CATEGORIAS_PADRAO,
+  TAMANHO_DO_NUCLEO_DO_CONVITE,
   atualizarHouseholdSchema,
   atualizarMembroSchema,
   criarConviteSchema,
@@ -51,15 +52,18 @@ function serializarGrupo(g: {
 }
 
 /**
- * Código de grupo no formato `FF-9A3K2`: o prefixo é a marca (Family Finance)
- * e os 5 caracteres evitam `0/O` e `1/I/L`, porque o código vai ser ditado por
- * telefone ou digitado do WhatsApp.
+ * Código de grupo no formato `FF-9A3K2M7`: o prefixo é a marca (Family
+ * Finance) e o alfabeto evita `0/O` e `1/I/L`, porque o código vai ser ditado
+ * por telefone ou digitado do WhatsApp.
+ *
+ * O tamanho vem do core, junto com o schema que valida: se os dois
+ * discordassem, o servidor geraria códigos que ele mesmo recusa.
  */
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 function gerarCodigo(): string {
   let nucleo = '';
-  for (let i = 0; i < 5; i += 1) {
+  for (let i = 0; i < TAMANHO_DO_NUCLEO_DO_CONVITE; i += 1) {
     nucleo += ALFABETO[randomInt(ALFABETO.length)];
   }
   return `FF-${nucleo}`;
@@ -340,7 +344,8 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
    * Entrar em outro grupo com um código. Os próprios lançamentos viajam junto;
    * o que era dos outros fica com os outros.
    */
-  app.post('/entrar', async (request: FastifyRequest) => {
+  // Com freio: é a outra porta onde adivinhar um código de convite tem valor.
+  app.post('/entrar', { config: { rateLimit: {} } }, async (request: FastifyRequest) => {
     const usuario = usuarioDaRequisicao(request);
     const { codigo } = entrarComConviteSchema.parse(request.body);
 

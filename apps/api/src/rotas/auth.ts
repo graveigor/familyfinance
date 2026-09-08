@@ -71,12 +71,19 @@ async function montarSessao(usuario: {
   return { accessToken, refreshToken };
 }
 
+/**
+ * Freio para as rotas em que tentar de novo é o ataque: senha e código de
+ * convite adivinhados, e o scrypt do `/esqueci-senha` usado como peso.
+ * Configurado em `servidor.ts`; aqui só se diz onde vale.
+ */
+const COM_FREIO = { config: { rateLimit: {} } };
+
 export async function rotasAuth(app: FastifyInstance): Promise<void> {
   /**
    * Cria a conta. Sem código de convite, o usuário vira ADMIN de um household
    * novo (já com as categorias padrão). Com código, entra na família existente.
    */
-  app.post('/registrar', async (request, reply) => {
+  app.post('/registrar', COM_FREIO, async (request, reply) => {
     const dados = registrarSchema.parse(request.body);
 
     const jaExiste = await prisma.user.findUnique({ where: porEmail(dados.email) });
@@ -146,7 +153,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
     return reply.status(201).send(sessao);
   });
 
-  app.post('/login', async (request) => {
+  app.post('/login', COM_FREIO, async (request) => {
     const dados = loginSchema.parse(request.body);
     const usuario = await prisma.user.findUnique({ where: porEmail(dados.email) });
 
@@ -255,7 +262,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
    * "esse e-mail não está cadastrado" entregaria a quem tenta adivinhar a
    * lista de quem usa o app.
    */
-  app.post('/esqueci-senha', async (request, reply) => {
+  app.post('/esqueci-senha', COM_FREIO, async (request, reply) => {
     const { email } = esqueciSenhaSchema.parse(request.body);
     const usuario = await prisma.user.findUnique({ where: porEmail(email) });
 
@@ -307,7 +314,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
   });
 
   /** Troca a senha com o código e já devolve a sessão: um passo a menos. */
-  app.post('/redefinir-senha', async (request) => {
+  app.post('/redefinir-senha', COM_FREIO, async (request) => {
     const { email, codigo, novaSenha } = redefinirSenhaSchema.parse(request.body);
 
     const usuario = await prisma.user.findUnique({ where: porEmail(email) });

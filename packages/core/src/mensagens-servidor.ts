@@ -49,7 +49,7 @@ const EXATAS: Record<string, string> = {
 
   // --- Grupos e convites ----------------------------------------------------
   'Informe o código do grupo.': 'Enter the group code.',
-  'O código tem o formato FF-XXXXX.': 'The code looks like FF-XXXXX.',
+  'O código tem o formato FF-XXXXXXXX.': 'The code looks like FF-XXXXXXXX.',
   'Esse código não é mais válido. Peça um novo para quem te convidou.':
     'That code is no longer valid. Ask whoever invited you for a new one.',
   'Código inválido ou expirado.': 'Invalid or expired code.',
