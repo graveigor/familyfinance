@@ -4,9 +4,11 @@ build/
 coverage/
 *.tsbuildinfo
 
-# Segredos: .env fica só na máquina. .env.example e .env.test (valores de
-# teste, banco local) vão para o repositório.
+# Segredos: os .env ficam só na máquina. Para o repositório vão apenas os
+# `.example` — o repositório é público, e um arquivo de ambiente versionado
+# carrega o caminho do banco e o usuário de quem o escreveu.
 .env
+.env.test
 .env.local
 .env.production
 .env.*.local
@@ -16,8 +18,18 @@ coverage/
 .vscode/
 .idea/
 
+# Ajustes locais do Claude Code: caminhos e comandos desta máquina.
+# `launch.json` é do projeto e continua versionado.
+.claude/settings.local.json
+
 # build do app web
 apps/web/dist/
 
 # comprovantes enviados pelos usuários — dado de quem usa, não do projeto
 apps/api/arquivos/
+
+# Gravações de tela do app: mostram lançamentos reais de quem aparece nelas.
+# O repositório é público — isto nunca deve subir.
+Vídeo Explicativo/
+*.mov
+*.mp4

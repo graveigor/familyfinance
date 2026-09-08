@@ -34,7 +34,8 @@ e `brew services start postgresql@17`).
 npm install
 createdb controle_gastos
 createdb controle_gastos_test
-cp apps/api/.env.example apps/api/.env   # ajuste DATABASE_URL e os segredos
+cp apps/api/.env.example apps/api/.env             # ajuste DATABASE_URL e os segredos
+cp apps/api/.env.test.example apps/api/.env.test   # banco separado, para `npm test`
 npm run db:migrate
 npm run db:seed                          # dados de exemplo (opcional)
 npm run dev                              # API em http://localhost:3333
@@ -61,7 +62,8 @@ npm test
 ```
 
 Os testes do `core` são puros; os da API sobem o Fastify de verdade e usam o
-banco `controle_gastos_test`, definido em `apps/api/.env.test`.
+banco `controle_gastos_test`, definido em `apps/api/.env.test` (copiado de
+`.env.test.example` no passo de instalação).
 
 ## Instalar no celular e no computador
 
