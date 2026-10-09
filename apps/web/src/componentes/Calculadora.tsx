@@ -29,8 +29,8 @@ export interface EstadoDaCalculadora {
   operacao: Operacao | null;
   /** O próximo dígito começa um número novo (depois de `=` ou de um operador). */
   recomecar: boolean;
-  /** Divisão por zero ou resultado fora de conta. */
-  erro: boolean;
+  /** Por que a última conta não deu resultado, ou `null` quando deu. */
+  erro: Falha | null;
 }
 
 export const INICIAL: EstadoDaCalculadora = {
@@ -38,7 +38,7 @@ export const INICIAL: EstadoDaCalculadora = {
   acumulado: null,
   operacao: null,
   recomecar: true,
-  erro: false,
+  erro: null,
 };
 
 /** Teto de dígitos: acima disso a conta não cabe na tela nem no `double`. */
@@ -46,13 +46,20 @@ const MAXIMO_DE_DIGITOS = 14;
 
 /**
  * Mata o pó do ponto flutuante: `0.1 + 0.2` vale `0.30000000000000004` em
- * JavaScript, e ninguém quer ver isso numa calculadora. Doze casas
- * significativas descartam o lixo sem comer precisão de nenhum valor que caiba
- * na tela.
+ * JavaScript, e ninguém quer ver isso numa calculadora. O lixo mora lá pela
+ * 17ª casa significativa, então cortar antes dele basta.
+ *
+ * A precisão é a MESMA do teto de dígitos, e isso não é coincidência:
+ * arredondar mais curto que a entrada apagaria em silêncio os últimos dígitos
+ * digitados — `12345678901234 + 1` devolvia `12345678901200`. Num app de
+ * dinheiro, número errado com cara de certo é o pior desfecho possível.
  */
 function arredondar(valor: number): number {
-  return Number(valor.toPrecision(12));
+  return Number(valor.toPrecision(MAXIMO_DE_DIGITOS));
 }
+
+/** Por que uma conta não tem resposta. Cada motivo tem o seu recado na tela. */
+export type Falha = 'divisao-por-zero' | 'sem-resultado';
 
 /** Número -> texto canônico (separador `.`, sem zero à direita). */
 export function paraTexto(valor: number): string {
@@ -61,31 +68,43 @@ export function paraTexto(valor: number): string {
   // Acima de 1e21 o JavaScript escreve em notação científica, e é melhor assim:
   // ver `1e+21` é mais honesto que 21 zeros estourando a caixa.
   if (Math.abs(valor) >= 1e21) return String(valor);
+  // Abaixo da décima casa o `toFixed` escreveria "0" (ou "-0") para um número
+  // que não é zero — e a conta seguinte usaria o valor invisível.
+  if (Math.abs(valor) < 1e-10) return valor.toExponential(4);
   const texto = valor.toFixed(10);
   return texto.includes('.') ? texto.replace(/0+$/, '').replace(/\.$/, '') : texto;
 }
 
-function aplicar(esquerda: number, operacao: Operacao, direita: number): number | null {
-  switch (operacao) {
-    case '+':
-      return arredondar(esquerda + direita);
-    case '-':
-      return arredondar(esquerda - direita);
-    case '×':
-      return arredondar(esquerda * direita);
-    case '÷':
-      // Dividir por zero daria `Infinity`, que não é resposta: a calculadora
-      // diz que não dá, em vez de mostrar um símbolo que ninguém entende.
-      return direita === 0 ? null : arredondar(esquerda / direita);
-  }
+function aplicar(esquerda: number, operacao: Operacao, direita: number): number | Falha {
+  // Dividir por zero daria `Infinity`, que não é resposta: a calculadora diz
+  // que não dá, em vez de mostrar um símbolo que ninguém entende.
+  if (operacao === '÷' && direita === 0) return 'divisao-por-zero';
+
+  const bruto =
+    operacao === '+'
+      ? esquerda + direita
+      : operacao === '-'
+        ? esquerda - direita
+        : operacao === '×'
+          ? esquerda * direita
+          : esquerda / direita;
+
+  // A guarda fica aqui, e não em cada caso, porque é por aqui que toda conta
+  // passa. Sem ela, multiplicar números grandes algumas vezes chegava a
+  // `Infinity`, que o `paraTexto` escrevia como "0" — a tela mentia e o
+  // acumulado guardava o infinito.
+  return Number.isFinite(bruto) ? arredondar(bruto) : 'sem-resultado';
 }
 
-/** Resolve a operação pendente, se houver. `null` quando a conta não existe. */
-function resolver(estado: EstadoDaCalculadora): number | null {
+/** Resolve a operação pendente, se houver. */
+function resolver(estado: EstadoDaCalculadora): number | Falha {
   const atual = Number(estado.digitado);
   if (estado.acumulado === null || estado.operacao === null) return atual;
   return aplicar(estado.acumulado, estado.operacao, atual);
 }
+
+const falhou = (resultado: number | Falha): resultado is Falha =>
+  typeof resultado === 'string';
 
 // --- Ações -------------------------------------------------------------------
 // Funções puras: recebem o estado, devolvem o próximo. É o que deixa a conta
@@ -117,21 +136,29 @@ export function escolherOperacao(
 ): EstadoDaCalculadora {
   if (estado.erro) return estado;
 
-  // Trocar de operador sem ter digitado nada só troca o operador — não repete
-  // a conta. É o que a pessoa quer quando erra a tecla.
-  if (estado.recomecar && estado.acumulado !== null) {
+  // Trocar de operador sem ter informado o segundo número só troca o operador
+  // — não repete a conta. É o que a pessoa quer quando erra a tecla.
+  //
+  // "Sem ter informado" é a tela ainda ser o operando da esquerda. Conferir só
+  // o `recomecar` não bastava: o `%` também fecha a entrada, mas deixa na tela
+  // um número novo (`200 + 10 %` mostra 20), e trocar ali descartaria o 20.
+  if (
+    estado.recomecar &&
+    estado.acumulado !== null &&
+    Number(estado.digitado) === estado.acumulado
+  ) {
     return { ...estado, operacao };
   }
 
   const resultado = resolver(estado);
-  if (resultado === null) return { ...INICIAL, erro: true };
+  if (falhou(resultado)) return { ...INICIAL, erro: resultado };
 
   return {
     digitado: paraTexto(resultado),
     acumulado: resultado,
     operacao,
     recomecar: true,
-    erro: false,
+    erro: null,
   };
 }
 
@@ -140,14 +167,14 @@ export function igualar(estado: EstadoDaCalculadora): EstadoDaCalculadora {
   if (estado.operacao === null) return { ...estado, recomecar: true };
 
   const resultado = resolver(estado);
-  if (resultado === null) return { ...INICIAL, erro: true };
+  if (falhou(resultado)) return { ...INICIAL, erro: resultado };
 
   return {
     digitado: paraTexto(resultado),
     acumulado: null,
     operacao: null,
     recomecar: true,
-    erro: false,
+    erro: null,
   };
 }
 
@@ -168,7 +195,9 @@ export function porcentagem(estado: EstadoDaCalculadora): EstadoDaCalculadora {
     ? arredondar((estado.acumulado! * atual) / 100)
     : arredondar(atual / 100);
 
-  return { ...estado, digitado: paraTexto(valor), recomecar: false };
+  // `recomecar` fecha a entrada: sem isso, o dígito seguinte era concatenado ao
+  // resultado e `200 + 10 % 7 =` dava 407.
+  return { ...estado, digitado: paraTexto(valor), recomecar: true };
 }
 
 export function inverterSinal(estado: EstadoDaCalculadora): EstadoDaCalculadora {
@@ -307,6 +336,9 @@ export function Calculadora({
     const aoTeclar = (evento: KeyboardEvent): void => {
       const { key } = evento;
       if (evento.ctrlKey || evento.metaKey || evento.altKey) return;
+      // Com o foco num botão, o Enter é dele. Sequestrar a tecla aqui deixava
+      // "Copiar resultado" e "Fechar" inalcançáveis para quem navega por Tab.
+      if (key === 'Enter' && evento.target instanceof HTMLButtonElement) return;
 
       if (key >= '0' && key <= '9') acionar({ tipo: 'digito', rotulo: key });
       else if (key === ',' || key === '.') acionar({ tipo: 'separador' });
@@ -329,6 +361,12 @@ export function Calculadora({
     return () => document.removeEventListener('keydown', aoTeclar);
   }, [aberta, acionar]);
 
+  // Guardar o último resultado entre aberturas é útil; guardar o erro não — a
+  // pessoa fecharia com "não dá para dividir por zero" e voltaria para ele.
+  useEffect(() => {
+    if (!aberta && estado.erro) setEstado(INICIAL);
+  }, [aberta, estado.erro]);
+
   const copiar = async (): Promise<void> => {
     const texto = formatarParaTela(estado.digitado, idioma);
     try {
@@ -341,8 +379,12 @@ export function Calculadora({
     }
   };
 
+  const RECADO: Record<Falha, string> = {
+    'divisao-por-zero': t('Não dá para dividir por zero'),
+    'sem-resultado': t('Esse número é grande demais'),
+  };
   const naTela = estado.erro
-    ? t('Não dá para dividir por zero')
+    ? RECADO[estado.erro]
     : formatarParaTela(estado.digitado, idioma);
 
   // O que está pendente, para a conta não virar adivinhação a cada toque.
@@ -362,7 +404,7 @@ export function Calculadora({
           larguraTotal
           icone="copiar"
           onClick={copiar}
-          disabled={estado.erro}
+          disabled={estado.erro !== null}
         >
           {t('Copiar resultado')}
         </Botao>

@@ -536,6 +536,7 @@ export const EN: Record<string, string> = {
   'Não foi possível copiar. Anote o valor da tela.':
     "Couldn't copy. Take note of the value on screen.",
   'Não dá para dividir por zero': "Can't divide by zero",
+  'Esse número é grande demais': 'That number is too large',
   // Nomes falados das teclas: `±` e `AC` não dizem nada em voz alta.
   AC: 'AC',
   'Limpar tudo': 'Clear all',

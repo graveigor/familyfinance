@@ -80,19 +80,18 @@ describe('pó do ponto flutuante', () => {
 
 describe('divisão por zero', () => {
   it('diz que não dá, em vez de mostrar infinito', () => {
-    const estado = teclar('5÷0=');
-    expect(estado.erro).toBe(true);
+    expect(teclar('5÷0=').erro).toBe('divisao-por-zero');
   });
 
   it('o próximo dígito começa limpo depois do erro', () => {
     let estado = teclar('5÷0=');
     estado = digitar(estado, '7');
-    expect(estado.erro).toBe(false);
+    expect(estado.erro).toBeNull();
     expect(estado.digitado).toBe('7');
   });
 
   it('apagar também sai do erro', () => {
-    expect(apagar(teclar('5÷0=')).erro).toBe(false);
+    expect(apagar(teclar('5÷0=')).erro).toBeNull();
   });
 });
 
@@ -110,6 +109,19 @@ describe('porcentagem', () => {
 
   it('multiplicando, também é a fração', () => {
     expect(naTela('50×10%=')).toBe('5');
+  });
+
+  it('o dígito depois do % começa um número novo, não gruda', () => {
+    // `%` fechava a entrada pela metade: o dígito seguinte era concatenado ao
+    // resultado. `200 + 10 % 7 =` dava 407.
+    expect(naTela('50%7')).toBe('7');
+    expect(naTela('200+10%7=')).toBe('207');
+  });
+
+  it('encadear operador depois do % continua valendo', () => {
+    expect(naTela('200+10%=')).toBe('220');
+    // 200 + 10% = 220, e 220 × 2 = 440 — é o que o iPhone faz também.
+    expect(naTela('200+10%×2=')).toBe('440');
   });
 });
 
@@ -158,6 +170,45 @@ describe('digitação', () => {
     const muitos = '1234567890123456789';
     // Catorze dígitos é o que cabe na tela e no `double` sem arredondar.
     expect(naTela(muitos).replace(/[-.]/g, '')).toHaveLength(14);
+  });
+
+  it('o número que coube na tela sobrevive à conta', () => {
+    // O teto de dígitos e o arredondamento precisam falar o mesmo número: com
+    // um teto maior que a precisão, os últimos dígitos digitados sumiam na
+    // primeira operação, sem aviso nenhum.
+    expect(naTela('12345678901234+1=')).toBe('12345678901235');
+    expect(naTela('1000000000001+1=')).toBe('1000000000002');
+    expect(naTela('12345678901234+0=')).toBe('12345678901234');
+  });
+});
+
+describe('contas que não têm resposta', () => {
+  it('estouro vira recado, e não um zero mentiroso', () => {
+    // `Infinity` passava pelo `paraTexto` e saía como "0": o pior desfecho
+    // possível num app de dinheiro é um número errado com cara de certo.
+    // Multiplicar por 1e14 umas trinta vezes passa de 1e308 com folga.
+    const gigante = '99999999999999';
+    let estado = teclar(gigante);
+    for (let i = 0; i < 30 && !estado.erro; i += 1) {
+      estado = escolherOperacao(estado, '×');
+      for (const digito of gigante) estado = digitar(estado, digito);
+      estado = igualar(estado);
+    }
+
+    // O que importa é o motivo: é ele que põe o recado na tela, no lugar de
+    // um número. O `digitado` volta a "0" junto com o resto do estado.
+    expect(estado.erro).toBe('sem-resultado');
+  });
+
+  it('nunca escreve "-0"', () => {
+    // `toFixed(10)` de um negativo minúsculo produzia "-0" na tela.
+    expect(naTela('1~÷1000000000000=')).not.toBe('-0');
+  });
+
+  it('valor pequeno demais para dez casas não vira zero', () => {
+    // A tela dizia "0" enquanto o acumulado guardava 1e-12, e a conta
+    // seguinte usava o valor invisível.
+    expect(naTela('1÷1000000000000=')).not.toBe('0');
   });
 
   it('trocar o operador não repete a conta', () => {

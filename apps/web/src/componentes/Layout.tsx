@@ -17,7 +17,9 @@ import { useT } from '../i18n';
  * está na tela; no computador vira uma fileira no topo direito, com a ajuda
  * mantida no canto onde ela sempre esteve.
  *
- * A posição vai em classe, nunca em `style`: estilo inline venceria o `md:`.
+ * A POSIÇÃO vai em classe, nunca em `style`: inline venceria o `md:`. A margem
+ * da área segura abaixo pode ser inline — ela não disputa com a media query,
+ * que troca `bottom`/`top`, e numa caixa ancorada pelo topo não tem efeito.
  */
 function AtalhosFlutuantes({
   acimaDoBotaoAdicionar,
