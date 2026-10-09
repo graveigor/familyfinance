@@ -333,30 +333,16 @@ export function useTutorial(): ContextoTutorial {
 }
 
 /**
- * Botão `(?)` fixo, que reabre o tutorial da página aberta.
+ * Botão `(?)`, que reabre o tutorial da página aberta.
  *
- * No celular fica na coluna do "+", empilhado logo acima dele quando o "+"
- * existe — os dois atalhos no mesmo canto, ao alcance do polegar. Onde não há
- * "+", ocupa o lugar dele. No computador volta para o topo direito.
- *
- * As posições vão em classe, e não em `style`, para o `md:` conseguir
- * sobrescrever: estilo inline venceria a media query.
+ * Não se posiciona: quem decide onde ele fica é a coluna de atalhos do
+ * `Layout`. Antes ele calculava o próprio `bottom` a partir da altura do "+",
+ * e o segundo atalho flutuante teria de repetir a conta com outro número.
  */
-export function BotaoDeAjuda({
-  acimaDoBotaoAdicionar = false,
-}: {
-  acimaDoBotaoAdicionar?: boolean;
-}): ReactElement | null {
+export function BotaoDeAjuda(): ReactElement | null {
   const t = useT();
   const { reabrir, temTutorial } = useTutorial();
   if (!temTutorial) return null;
-
-  // O "+" tem 64px e começa a 6rem do fim; 11.5rem deixa o (?) logo acima dele.
-  // O recuo à direita é maior porque o (?) é menor: assim os dois ficam com o
-  // mesmo centro na vertical.
-  const posicao = acimaDoBotaoAdicionar
-    ? 'bottom-[calc(11.5rem_+_env(safe-area-inset-bottom))] right-[1.875rem]'
-    : 'bottom-[calc(6rem_+_env(safe-area-inset-bottom))] right-[1.875rem]';
 
   return (
     <button
@@ -364,9 +350,9 @@ export function BotaoDeAjuda({
       onClick={reabrir}
       aria-label={t('Ajuda desta tela')}
       title={t('Ajuda desta tela')}
-      className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full border
-        border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm hover:bg-marca-50
-        md:bottom-auto md:right-6 md:top-6 ${posicao}`}
+      className="flex h-11 w-11 items-center justify-center rounded-full border
+        border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm
+        transition-colors hover:bg-marca-50 active:bg-marca-100"
     >
       ?
     </button>

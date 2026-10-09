@@ -528,6 +528,28 @@ export const EN: Record<string, string> = {
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
 
+  // --- Calculadora ----------------------------------------------------------
+  Calculadora: 'Calculator',
+  'Abrir a calculadora': 'Open the calculator',
+  'Copiar resultado': 'Copy result',
+  'Resultado copiado: {valor}': 'Result copied: {valor}',
+  'Não foi possível copiar. Anote o valor da tela.':
+    "Couldn't copy. Take note of the value on screen.",
+  'Não dá para dividir por zero': "Can't divide by zero",
+  // Nomes falados das teclas: `±` e `AC` não dizem nada em voz alta.
+  AC: 'AC',
+  'Limpar tudo': 'Clear all',
+  Apagar: 'Delete',
+  'Apagar o último dígito': 'Delete the last digit',
+  Somar: 'Add',
+  Subtrair: 'Subtract',
+  Multiplicar: 'Multiply',
+  Dividir: 'Divide',
+  Calcular: 'Calculate',
+  'Trocar o sinal': 'Change the sign',
+  Porcentagem: 'Percentage',
+  'Separador decimal': 'Decimal separator',
+
   // --- Peças comuns ---------------------------------------------------------
   Cancelar: 'Cancel',
   Confirmar: 'Confirm',

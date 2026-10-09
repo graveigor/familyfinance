@@ -1,8 +1,45 @@
 import type { ReactElement } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { BotaoDaCalculadora } from './Calculadora';
 import { Icone } from './Icone';
 import { BotaoDeAjuda } from './Tutorial';
 import { useT } from '../i18n';
+
+/**
+ * Os atalhos que acompanham a pessoa em toda tela: ajuda e calculadora.
+ *
+ * Uma pilha com `gap`, e não um `bottom` calculado por botão. Com a conta em
+ * cada um, acertar o segundo atalho já pedia um terceiro número mágico, e o
+ * botão que some (a ajuda não aparece em tela sem tutorial) deixaria um buraco
+ * no meio da coluna. Numa pilha, o que sobra escorrega para o lugar certo.
+ *
+ * No celular a coluna sobe do canto do polegar, logo acima do "+" quando ele
+ * está na tela; no computador vira uma fileira no topo direito, com a ajuda
+ * mantida no canto onde ela sempre esteve.
+ *
+ * A posição vai em classe, nunca em `style`: estilo inline venceria o `md:`.
+ */
+function AtalhosFlutuantes({
+  acimaDoBotaoAdicionar,
+}: {
+  acimaDoBotaoAdicionar: boolean;
+}): ReactElement {
+  // O "+" tem 64px e começa a 6rem da base; 11.5rem põe a coluna acima dele.
+  // O recuo à direita é maior porque estes botões são menores: é o que deixa
+  // os três com o mesmo centro vertical.
+  const base = acimaDoBotaoAdicionar ? 'bottom-[11.5rem]' : 'bottom-24';
+
+  return (
+    <div
+      className={`fixed right-[1.875rem] z-40 flex flex-col-reverse items-center gap-3
+        md:bottom-auto md:right-6 md:top-6 md:flex-row-reverse ${base}`}
+      style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <BotaoDeAjuda />
+      <BotaoDaCalculadora />
+    </div>
+  );
+}
 
 const ITENS = [
   { para: '/', rotulo: 'Início', icone: 'inicio' },
@@ -81,8 +118,7 @@ export function Layout(): ReactElement {
         </main>
       </div>
 
-      {/* `(?)` na mesma coluna do "+": acima dele quando o "+" está na tela. */}
-      <BotaoDeAjuda acimaDoBotaoAdicionar={mostrarBotaoAdicionar} />
+      <AtalhosFlutuantes acimaDoBotaoAdicionar={mostrarBotaoAdicionar} />
 
       {/* Celular: botão flutuante e barra inferior */}
       {mostrarBotaoAdicionar && (

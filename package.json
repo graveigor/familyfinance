@@ -13,7 +13,7 @@
   "scripts": {
     "build": "npm run build -w @gastos/core && npm run build -w @gastos/api",
     "dev": "npm run build -w @gastos/core && npm run dev -w @gastos/api",
-    "test": "npm run build -w @gastos/core && npm run test -w @gastos/core && npm run test -w @gastos/api",
+    "test": "npm run build -w @gastos/core && npm run test -w @gastos/core && npm run test -w @gastos/api && npm run test -w @gastos/web",
     "test:core": "npm run test -w @gastos/core",
     "test:api": "npm run build -w @gastos/core && npm run test -w @gastos/api",
     "typecheck": "npm run typecheck -w @gastos/core && npm run typecheck -w @gastos/api && npm run typecheck -w @gastos/web && npm run typecheck -w @gastos/mobile",

@@ -183,6 +183,28 @@ const DESENHOS: Record<string, JSX.Element> = {
       <path d="M3 9h18M9 9v11M15 9v11" />
     </>
   ),
+  calculadora: (
+    <>
+      <rect x="4" y="2.5" width="16" height="19" rx="2.5" />
+      <rect x="7.5" y="5.5" width="9" height="3.5" rx="1" />
+      {/* As teclas são traços de comprimento zero: com a ponta redonda do traço
+          do `Icone`, cada um vira um ponto. Seis quadradinhos de verdade
+          virariam borrão em 24px. */}
+      <path d="M8.5 13h0M12 13h0M15.5 13h0M8.5 17h0M12 17h0M15.5 17h0" />
+    </>
+  ),
+  retrocesso: (
+    <>
+      <path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" />
+      <path d="M16.5 9.5l-5 5M11.5 9.5l5 5" />
+    </>
+  ),
+  copiar: (
+    <>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M15 5.5A2.5 2.5 0 0 0 12.5 3H5.5A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15" />
+    </>
+  ),
   cartao: (
     <>
       <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
