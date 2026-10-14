@@ -77,6 +77,8 @@ export const EN: Record<string, string> = {
   Pessoa: 'Person',
   'Todas as pessoas': 'Everyone',
   Cartão: 'Card',
+  'Cartão de crédito': 'Credit card',
+  'Cartão de débito': 'Debit card',
   'Todos os cartões': 'All cards',
   'Sem cartão': 'No card',
   'Nenhum cartão': 'No card',
@@ -299,6 +301,7 @@ export const EN: Record<string, string> = {
 
   // --- Categorias padrão (traduzidas só na tela; no banco seguem em português)
   Alimentação: 'Dining out',
+  Assinaturas: 'Subscriptions',
   Casa: 'Home',
   Educação: 'Education',
   Lazer: 'Leisure',
@@ -527,6 +530,13 @@ export const EN: Record<string, string> = {
     'Check before saving',
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
+
+  // --- Parcelamento e contagem de grupos ------------------------------------
+  '{quantidade} grupo · em uso: {nome}': '{quantidade} group · in use: {nome}',
+  '{quantidade} grupos · em uso: {nome}': '{quantidade} groups · in use: {nome}',
+  'Em quantas vezes?': 'How many instalments?',
+  '1 significa à vista.': '1 means paid in full.',
+  'Em {n}x no cartão.': 'In {n} instalments on the card.',
 
   // --- Calculadora ----------------------------------------------------------
   Calculadora: 'Calculator',

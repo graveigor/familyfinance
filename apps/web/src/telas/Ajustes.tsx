@@ -18,7 +18,7 @@ import {
   useCriarCategoria,
   useExcluirCategoria,
 } from '../consultas';
-import { SeletorDeIdioma, useT } from '../i18n';
+import { SeletorDeIdioma, useIdioma, useT } from '../i18n';
 import { useSessao } from '../sessao';
 
 const PASSOS: PassoDeTutorial[] = [
@@ -62,7 +62,7 @@ const PASSOS: PassoDeTutorial[] = [
 
 export function Ajustes(): ReactElement {
   useTutorialDaPagina('ajustes', PASSOS);
-  const t = useT();
+  const { t, tp } = useIdioma();
   const { usuario, sair } = useSessao();
   const navegar = useNavigate();
   const categorias = useCategorias();
@@ -90,10 +90,12 @@ export function Ajustes(): ReactElement {
       icone: 'pessoas',
       titulo: t('Meus grupos'),
       descricao: grupos.data?.length
-        ? t('{total} grupos · em uso: {nome}', {
-            total: grupos.data.length,
-            nome: grupos.data.find((g) => g.ativo)?.nome ?? '—',
-          })
+        ? tp(
+            grupos.data.length,
+            '{quantidade} grupo · em uso: {nome}',
+            '{quantidade} grupos · em uso: {nome}',
+            { nome: grupos.data.find((g) => g.ativo)?.nome ?? '—' },
+          )
         : t('Criar, trocar e compartilhar códigos'),
     },
     {

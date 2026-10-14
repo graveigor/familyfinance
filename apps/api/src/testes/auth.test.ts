@@ -1,4 +1,5 @@
 import type { Sessao } from '@gastos/core';
+import { CATEGORIAS_PADRAO } from '@gastos/core';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../prisma.js';
@@ -18,7 +19,7 @@ afterAll(async () => {
 });
 
 describe('POST /auth/registrar', () => {
-  it('cria o usuário, o household e as 9 categorias padrão', async () => {
+  it('cria o usuário, o household e as categorias padrão', async () => {
     const resposta = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/registrar',
@@ -37,7 +38,7 @@ describe('POST /auth/registrar', () => {
     const categorias = await prisma.categoria.count({
       where: { householdId: sessao.usuario.householdId },
     });
-    expect(categorias).toBe(9);
+    expect(categorias).toBe(CATEGORIAS_PADRAO.length);
   });
 
   it('recusa e-mail repetido com mensagem em português', async () => {

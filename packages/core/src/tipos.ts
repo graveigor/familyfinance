@@ -5,7 +5,7 @@ import type { Moeda } from './dinheiro.js';
 export const PAPEIS = ['ADMIN', 'MEMBRO'] as const;
 export type Papel = (typeof PAPEIS)[number];
 
-export const FORMAS_PAGAMENTO = ['CARTAO', 'DINHEIRO', 'PIX', 'BOLETO', 'OUTRO'] as const;
+export const FORMAS_PAGAMENTO = ['CARTAO', 'DEBITO', 'DINHEIRO', 'PIX', 'BOLETO', 'OUTRO'] as const;
 export type FormaPagamento = (typeof FORMAS_PAGAMENTO)[number];
 
 export const STATUS_IMPORTACAO = ['PENDENTE', 'CONFIRMADA', 'CANCELADA'] as const;
@@ -21,7 +21,8 @@ export const ROTULO_TIPO_CARTAO: Record<TipoCartao, string> = {
 
 /** Rótulo exibido ao usuário para cada forma de pagamento. */
 export const ROTULO_FORMA_PAGAMENTO: Record<FormaPagamento, string> = {
-  CARTAO: 'Cartão',
+  CARTAO: 'Cartão de crédito',
+  DEBITO: 'Cartão de débito',
   DINHEIRO: 'Dinheiro',
   PIX: 'Pix',
   BOLETO: 'Boleto',

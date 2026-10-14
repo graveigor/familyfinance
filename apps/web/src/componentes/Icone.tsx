@@ -183,6 +183,14 @@ const DESENHOS: Record<string, JSX.Element> = {
       <path d="M3 9h18M9 9v11M15 9v11" />
     </>
   ),
+  repetir: (
+    <>
+      <path d="M17 2.5l3.5 3.5L17 9.5" />
+      <path d="M3 11.5V10a4 4 0 0 1 4-4h13.5" />
+      <path d="M7 21.5L3.5 18 7 14.5" />
+      <path d="M21 12.5V14a4 4 0 0 1-4 4H3.5" />
+    </>
+  ),
   calculadora: (
     <>
       <rect x="4" y="2.5" width="16" height="19" rx="2.5" />

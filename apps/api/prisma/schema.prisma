@@ -314,6 +314,7 @@ enum Papel {
 
 enum FormaPagamento {
   CARTAO
+  DEBITO
   DINHEIRO
   PIX
   BOLETO

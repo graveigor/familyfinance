@@ -1,4 +1,5 @@
 import type { Categoria, ListaDeGastos } from '@gastos/core';
+import { CATEGORIAS_PADRAO } from '@gastos/core';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../prisma.js';
@@ -17,7 +18,7 @@ afterAll(async () => {
 });
 
 describe('categorias', () => {
-  it('lista as 9 categorias padrão em ordem alfabética', async () => {
+  it('lista as categorias padrão em ordem alfabética', async () => {
     const { autorizacao } = await criarConta(app);
     const resposta = await app.inject({
       method: 'GET',
@@ -26,7 +27,8 @@ describe('categorias', () => {
     });
 
     const { itens } = resposta.json<{ itens: Categoria[] }>();
-    expect(itens).toHaveLength(9);
+    // Ancorado na própria lista: acrescentar categoria não deixa o teste velho.
+    expect(itens).toHaveLength(CATEGORIAS_PADRAO.length);
     expect(itens[0]?.nome).toBe('Alimentação');
     expect(itens.map((c) => c.nome)).toContain('Mercado');
     expect(itens[0]?.cor).toMatch(/^#[0-9A-F]{6}$/i);

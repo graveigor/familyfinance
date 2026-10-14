@@ -17,5 +17,6 @@ export const CATEGORIAS_PADRAO: readonly CategoriaPadrao[] = [
   { nome: 'Lazer', icone: 'sorriso', cor: '#DB2777' },
   { nome: 'Educação', icone: 'livro', cor: '#0891B2' },
   { nome: 'Vestuário', icone: 'camisa', cor: '#CA8A04' },
+  { nome: 'Assinaturas', icone: 'repetir', cor: '#9333EA' },
   { nome: 'Outros', icone: 'etiqueta', cor: '#64748B' },
 ] as const;

@@ -420,27 +420,39 @@ export function NovoGasto(): ReactElement {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="parcelas" className="rotulo">
-                {t('Foi parcelado?')}
+                {t('Em quantas vezes?')}
               </label>
-              <select
+              {/* Campo numérico, e não uma lista de 64 opções: ninguém rola
+                  até "37x" num seletor. Digitar o número é mais curto, e no
+                  celular abre o teclado numérico. */}
+              <input
                 id="parcelas"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAXIMO_DE_PARCELAS}
+                step={1}
                 value={parcelas}
                 onChange={(e) => {
-                  const novo = Number(e.target.value);
+                  // Entrada de gente: vazio enquanto apaga, e nada fora da
+                  // faixa — o resto do formulário conta com um inteiro válido.
+                  const digitado = Number(e.target.value);
+                  const novo = Number.isFinite(digitado)
+                    ? Math.min(Math.max(Math.trunc(digitado), 1), MAXIMO_DE_PARCELAS)
+                    : 1;
                   setParcelas(novo);
                   // À vista não tem juros de parcelamento: limpa para o resumo
                   // não continuar mostrando uma conta que não vale mais.
                   if (novo === 1) setTemJuros(false);
                 }}
-                className="campo px-2"
-              >
-                <option value={1}>{t('Não, à vista')}</option>
-                {Array.from({ length: MAXIMO_DE_PARCELAS - 1 }, (_, i) => i + 2).map((n) => (
-                  <option key={n} value={n}>
-                    {t('Sim, em {n}x', { n })}
-                  </option>
-                ))}
-              </select>
+                className="campo"
+                aria-describedby="parcelas-dica"
+              />
+              <p id="parcelas-dica" className="mt-1 text-base text-slate-600">
+                {parcelas === 1
+                  ? t('1 significa à vista.')
+                  : t('Em {n}x no cartão.', { n: parcelas })}
+              </p>
             </div>
 
             <div>
