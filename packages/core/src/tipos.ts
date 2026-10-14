@@ -111,6 +111,8 @@ export interface Gasto {
   temComprovante: boolean;
   /** Preenchido quando o gasto nasceu de uma recorrência. */
   recorrenciaId: string | null;
+  /** Quando foi marcado como pago (ISO). Nulo = lançado e ainda em aberto. */
+  pagoEm: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -132,6 +134,19 @@ export interface Recorrencia {
   /** `aaaa-mm` do último mês já lançado. */
   ultimoMesGerado: string | null;
   criadoEm: string;
+}
+
+/**
+ * O lançamento desta conta fixa no mês corrente, quando já nasceu.
+ *
+ * Nulo significa que o dia ainda não chegou — a conta existe, mas não virou gasto.
+ */
+export interface LancamentoDoMes {
+  id: string;
+  /** `aaaa-mm-dd` */
+  data: string;
+  /** ISO, ou nulo se ainda está em aberto. */
+  pagoEm: string | null;
 }
 
 /** Um mês do gráfico de evolução. */

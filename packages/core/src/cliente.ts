@@ -1,5 +1,5 @@
 import { ErroApp, ehCorpoErro, type CodigoErro } from './erros.js';
-import type {
+import type { LancamentoDoMes,
   Cartao,
   Categoria,
   Convite,
@@ -128,7 +128,7 @@ export interface Cliente {
     urlDoComprovante(id: string): string;
   };
   recorrencias: {
-    listar(): Promise<Array<Recorrencia & { proximoEm: string | null }>>;
+    listar(): Promise<Array<Recorrencia & { proximoEm: string | null; lancamentoDoMes: LancamentoDoMes | null }>>;
     criar(dados: CriarRecorrenciaEntrada): Promise<Recorrencia>;
     atualizar(id: string, dados: AtualizarRecorrenciaEntrada): Promise<Recorrencia>;
     excluir(id: string): Promise<{ gastosMantidos: number }>;
@@ -369,7 +369,7 @@ export function criarCliente({
     recorrencias: {
       async listar() {
         const { itens } = await requisitar<{
-          itens: Array<Recorrencia & { proximoEm: string | null }>;
+          itens: Array<Recorrencia & { proximoEm: string | null; lancamentoDoMes: LancamentoDoMes | null }>;
         }>('GET', '/api/v1/recorrencias');
         return itens;
       },

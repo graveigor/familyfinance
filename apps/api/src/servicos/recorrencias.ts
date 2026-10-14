@@ -41,8 +41,16 @@ export interface ResultadoDaGeracao {
 }
 
 /**
- * Cria os gastos que faltam, do mês de início (ou do último gerado) até o mês
- * de referência. Nunca gera mês futuro.
+ * Cria os gastos que faltam, do mês de início (ou do último gerado) até a data
+ * de referência. Nunca gera lançamento com data no futuro.
+ *
+ * O "até a data", e não "até o mês", é o ponto. Antes bastava o mês bater, e
+ * uma conta do dia 31 virava gasto já no dia 1º — com data de 31 — e entrava
+ * no total do mês como se tivesse sido paga. Quem abria o app no começo do mês
+ * via um gasto que ainda não existia e um total que não fechava com o extrato.
+ *
+ * Como `ultimoMesGerado` só avança até o que foi realmente criado, o mês
+ * pulado é tentado de novo na próxima chamada — e nasce no dia certo.
  */
 export async function gerarPendentes(
   householdId: string,
@@ -77,6 +85,11 @@ export async function gerarPendentes(
 
       // Passou da data de término: para por aqui.
       if (recorrencia.fimEm && data > recorrencia.fimEm) break;
+
+      // Ainda não chegou o dia. Os meses sobem em ordem, então daqui para
+      // frente é tudo futuro: parar é o certo, e deixa o mês para a próxima
+      // chamada, já no dia.
+      if (data > referencia) break;
 
       aCriar.push({ data, chave: chaveDoMes(atual.ano, atual.mes) });
       atual = proximoMes(atual.ano, atual.mes);

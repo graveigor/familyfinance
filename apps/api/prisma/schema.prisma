@@ -165,6 +165,14 @@ model Gasto {
   recorrenciaId String?
   recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
 
+  /// Quando a conta foi marcada como paga. Nulo = lançada e ainda em aberto.
+  ///
+  /// Nasceu para as contas fixas, onde "já saiu do papel" e "já saiu da conta"
+  /// são coisas diferentes: o lançamento existe no dia do vencimento, mas o
+  /// pagamento pode atrasar. Vale para qualquer gasto — não há motivo para
+  /// proibir marcar um gasto avulso.
+  pagoEm DateTime?
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

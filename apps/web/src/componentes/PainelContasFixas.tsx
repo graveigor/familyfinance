@@ -11,6 +11,7 @@ import { Icone } from './Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from './ui';
 import {
   useAlternarRecorrencia,
+  useAtualizarGasto,
   useCategorias,
   useCriarRecorrencia,
   useExcluirRecorrencia,
@@ -25,12 +26,13 @@ import { useIdioma } from '../i18n';
  */
 export function PainelContasFixas(): ReactElement {
   const { dinheiro, mascara } = useDinheiro();
-  const { t, idioma } = useIdioma();
+  const { t, tp, idioma } = useIdioma();
   const lista = useRecorrencias();
   const categorias = useCategorias();
   const criar = useCriarRecorrencia();
   const excluir = useExcluirRecorrencia();
   const alternar = useAlternarRecorrencia();
+  const pagar = useAtualizarGasto();
   const aviso = useAviso();
 
   const [digitos, setDigitos] = useState('');
@@ -101,8 +103,21 @@ export function PainelContasFixas(): ReactElement {
         <ul className="divide-y divide-slate-100">
           {lista.data.map((recorrencia) => {
             const proximo = recorrencia.proximoEm ? parseData(recorrencia.proximoEm) : null;
+            const lancamento = recorrencia.lancamentoDoMes;
+            // `parseData` devolve `null` para entrada que não é data; aqui ela
+            // vem do servidor em `aaaa-mm-dd`, mas tratar o nulo é mais barato
+            // que um `!` que o próximo leitor teria de ir conferir.
+            const vencimento = lancamento ? parseData(lancamento.data) : null;
+            const diasDeAtraso = vencimento
+              ? Math.floor((Date.now() - vencimento.getTime()) / (24 * 60 * 60 * 1000))
+              : 0;
+            // "Atrasada" só depois de um dia inteiro: quem paga no próprio dia
+            // do vencimento não merece ver a conta em vermelho.
+            const atrasada = Boolean(lancamento) && !lancamento?.pagoEm && diasDeAtraso >= 1;
+
             return (
-              <li key={recorrencia.id} className="flex items-center gap-3 py-3">
+              <li key={recorrencia.id} className="py-3">
+                <div className="flex items-center gap-3">
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
                   style={{
@@ -156,6 +171,51 @@ export function PainelContasFixas(): ReactElement {
                 >
                   <Icone nome="lixeira" tamanho={20} />
                 </button>
+                </div>
+
+                {recorrencia.ativa && lancamento && (
+                  <div className="mt-2 flex items-center gap-3 pl-14">
+                    <span
+                      className={`flex items-center gap-1.5 text-sm font-semibold ${
+                        lancamento.pagoEm
+                          ? 'text-menta-700'
+                          : atrasada
+                            ? 'text-red-700'
+                            : 'text-amber-700'
+                      }`}
+                    >
+                      <Icone
+                        nome={lancamento.pagoEm ? 'confirmado' : 'aviso'}
+                        tamanho={18}
+                      />
+                      {lancamento.pagoEm
+                        ? t('Paga')
+                        : atrasada
+                          ? tp(
+                              diasDeAtraso,
+                              'Atrasada há {quantidade} dia',
+                              'Atrasada há {quantidade} dias',
+                            )
+                          : t('Em aberto')}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        pagar.mutate({
+                          id: lancamento.id,
+                          dados: { pago: !lancamento.pagoEm },
+                        })
+                      }
+                      className="min-h-toque rounded-xl px-3 text-sm font-semibold text-marca-700
+                        underline-offset-2 hover:bg-marca-50 hover:underline"
+                    >
+                      {lancamento.pagoEm
+                        ? t('Desmarcar pagamento')
+                        : t('Marcar como paga')}
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}

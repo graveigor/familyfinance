@@ -43,6 +43,8 @@ export const atualizarGastoSchema = z
     categoriaId: zId.nullable().optional(),
     cartaoId: zId.nullable().optional(),
     userId: zId.optional(),
+    /** Marcar/desmarcar como pago. A hora quem põe é o servidor. */
+    pago: z.boolean().optional(),
   })
   .refine((dados) => Object.keys(dados).length > 0, {
     message: 'Nada para alterar.',

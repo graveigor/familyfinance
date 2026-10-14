@@ -82,6 +82,7 @@ export function serializarGasto(gasto: GastoComRelacoes): Gasto {
     origemImportacaoId: gasto.origemImportacaoId,
     temComprovante: gasto.comprovante !== null,
     recorrenciaId: gasto.recorrenciaId,
+    pagoEm: gasto.pagoEm?.toISOString() ?? null,
     criadoEm: gasto.criadoEm.toISOString(),
     atualizadoEm: gasto.atualizadoEm.toISOString(),
   };

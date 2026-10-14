@@ -6,8 +6,11 @@ import {
   erroValidacao,
   formatarDataISO,
   hoje,
+  inicioDoMes,
+  inicioDoProximoMes,
   parseData,
   zId,
+  type LancamentoDoMes,
   type Recorrencia,
 } from '@gastos/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -30,8 +33,47 @@ const INCLUDE = {
   user: { select: { id: true, nome: true } },
 } as const;
 
-function serializar(recorrencia: RecorrenciaComRelacoes): Recorrencia & { proximoEm: string | null } {
+/**
+ * O lançamento desta conta fixa no mês de referência, se já nasceu.
+ *
+ * Vem com a lista, e não numa chamada por linha: a tela precisa dele para
+ * separar "ainda não venceu" de "venceu e está em aberto".
+ */
+async function lancamentosDoMes(
+  recorrenciaIds: string[],
+  referencia: Date,
+): Promise<Map<string, LancamentoDoMes>> {
+  if (recorrenciaIds.length === 0) return new Map();
+  const ano = referencia.getUTCFullYear();
+  const mes = referencia.getUTCMonth() + 1;
+
+  const gastos = await prisma.gasto.findMany({
+    where: {
+      recorrenciaId: { in: recorrenciaIds },
+      data: { gte: inicioDoMes(ano, mes), lt: inicioDoProximoMes(ano, mes) },
+    },
+    select: { id: true, data: true, pagoEm: true, recorrenciaId: true },
+  });
+
+  return new Map(
+    gastos.flatMap((g) =>
+      g.recorrenciaId
+        ? [[g.recorrenciaId, {
+            id: g.id,
+            data: formatarDataISO(g.data),
+            pagoEm: g.pagoEm?.toISOString() ?? null,
+          }] as const]
+        : [],
+    ),
+  );
+}
+
+function serializar(
+  recorrencia: RecorrenciaComRelacoes,
+  lancamentoDoMes: LancamentoDoMes | null = null,
+): Recorrencia & { proximoEm: string | null; lancamentoDoMes: LancamentoDoMes | null } {
   return {
+    lancamentoDoMes,
     id: recorrencia.id,
     descricao: recorrencia.descricao,
     valorCentavos: recorrencia.valorCentavos,
@@ -69,7 +111,13 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
       include: INCLUDE,
       orderBy: [{ ativa: 'desc' }, { diaDoMes: 'asc' }],
     });
-    return { itens: itens.map(serializar) };
+    const porRecorrencia = await lancamentosDoMes(
+      itens.map((i) => i.id),
+      hoje(),
+    );
+    return {
+      itens: itens.map((item) => serializar(item, porRecorrencia.get(item.id) ?? null)),
+    };
   });
 
   /**

@@ -531,6 +531,14 @@ export const EN: Record<string, string> = {
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
 
+  // --- Contas fixas: pagamento ----------------------------------------------
+  Paga: 'Paid',
+  'Em aberto': 'Open',
+  'Marcar como paga': 'Mark as paid',
+  'Desmarcar pagamento': 'Undo payment',
+  'Atrasada há {quantidade} dia': '{quantidade} day overdue',
+  'Atrasada há {quantidade} dias': '{quantidade} days overdue',
+
   // --- Parcelamento e contagem de grupos ------------------------------------
   '{quantidade} grupo · em uso: {nome}': '{quantidade} group · in use: {nome}',
   '{quantidade} grupos · em uso: {nome}': '{quantidade} groups · in use: {nome}',

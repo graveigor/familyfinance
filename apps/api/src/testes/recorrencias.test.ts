@@ -48,16 +48,59 @@ describe('diaValidoNoMes', () => {
 });
 
 describe('gastos recorrentes', () => {
-  it('cria o lançamento do mês atual assim que a conta fixa é cadastrada', async () => {
-    const { autorizacao } = await criarConta(app);
-    await criarRecorrencia(autorizacao, { inicioEm: undefined });
+  it('cria o lançamento do mês assim que o dia da conta fixa chega', async () => {
+    const { autorizacao, sessao } = await criarConta(app);
+    await criarRecorrencia(autorizacao, { inicioEm: '2026-01-01', diaDoMes: 10 });
+    await prisma.gasto.deleteMany();
+    await prisma.recorrencia.updateMany({ data: { ultimoMesGerado: null } });
+
+    // Data fixa, não `new Date()`: com o dia de hoje, este caso passaria ou
+    // falharia conforme a data em que a suíte rodasse.
+    await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 1, 10));
 
     const gastos = await prisma.gasto.findMany();
-    expect(gastos.length).toBeGreaterThanOrEqual(1);
+    expect(gastos).toHaveLength(1);
     expect(gastos[0]?.descricao).toBe('Aluguel');
     expect(gastos[0]?.valorCentavos).toBe(180000);
     // Fica ligado à recorrência que o criou.
     expect(gastos[0]?.recorrenciaId).toBeTruthy();
+  });
+
+  it('não lança a conta fixa antes do dia dela', async () => {
+    // O incômodo que isto conserta: no dia 1º, a conta do dia 15 já aparecia
+    // como gasto e somava no total do mês, como se tivesse sido paga.
+    const { autorizacao, sessao } = await criarConta(app);
+    await criarRecorrencia(autorizacao, { inicioEm: '2026-03-01', diaDoMes: 15 });
+    await prisma.gasto.deleteMany();
+    await prisma.recorrencia.updateMany({ data: { ultimoMesGerado: null } });
+
+    const antesDoDia = await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 3, 1));
+    expect(antesDoDia.gastosCriados, 'dia 1º: a conta do dia 15 não existe ainda').toBe(0);
+    expect(await prisma.gasto.count()).toBe(0);
+
+    // E no dia, nasce — sem precisar de nada manual.
+    const noDia = await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 3, 15));
+    expect(noDia.gastosCriados).toBe(1);
+    const [gasto] = await prisma.gasto.findMany();
+    expect(gasto?.data.toISOString().slice(0, 10)).toBe('2026-03-15');
+  });
+
+  it('o mês pulado por ser futuro é retomado depois, sem buraco', async () => {
+    const { autorizacao, sessao } = await criarConta(app);
+    await criarRecorrencia(autorizacao, { inicioEm: '2026-01-01', diaDoMes: 20 });
+    await prisma.gasto.deleteMany();
+    await prisma.recorrencia.updateMany({ data: { ultimoMesGerado: null } });
+
+    // Em 10/02 saiu só janeiro: o dia 20 de fevereiro ainda não chegou.
+    await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 2, 10));
+    expect(await prisma.gasto.count(), 'só janeiro').toBe(1);
+
+    // Em 05/03, fevereiro já passou: ele entra, e março ainda não.
+    await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 3, 5));
+    const datas = (await prisma.gasto.findMany({ orderBy: { data: 'asc' } })).map((g) =>
+      g.data.toISOString().slice(0, 10),
+    );
+    expect(datas).toEqual(['2026-01-20', '2026-02-20']);
   });
 
   it('gera os meses que faltaram, um por mês, e nunca o mês futuro', async () => {
@@ -107,7 +150,17 @@ describe('gastos recorrentes', () => {
     await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 3, 1));
 
     const gastos = await prisma.gasto.findMany({ orderBy: { data: 'asc' } });
+    // Março NÃO entra: rodando em 1º de março, o dia 31 ainda não chegou.
+    // Esta lista tinha "2026-03-31" e era justamente o lançamento antecipado.
     expect(gastos.map((g) => g.data.toISOString().slice(0, 10))).toEqual([
+      '2026-01-31',
+      '2026-02-28',
+    ]);
+
+    // Chegado o fim do mês, março entra no dia certo.
+    await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 3, 31));
+    const comMarco = await prisma.gasto.findMany({ orderBy: { data: 'asc' } });
+    expect(comMarco.map((g) => g.data.toISOString().slice(0, 10))).toEqual([
       '2026-01-31',
       '2026-02-28',
       '2026-03-31',
@@ -161,6 +214,63 @@ describe('gastos recorrentes', () => {
     // Os gastos continuam lá, só perdem o vínculo.
     expect(await prisma.gasto.count()).toBe(antes);
     expect(await prisma.recorrencia.count()).toBe(0);
+  });
+
+  it('marca a conta como paga e desmarca', async () => {
+    const { autorizacao, sessao } = await criarConta(app);
+    await criarRecorrencia(autorizacao, { inicioEm: '2026-01-01', diaDoMes: 10 });
+    await gerarPendentes(sessao.usuario.householdId, dataUTC(2026, 1, 10));
+
+    const [gasto] = await prisma.gasto.findMany();
+    expect(gasto?.pagoEm, 'nasce em aberto: ninguém conferiu ainda').toBeNull();
+
+    const pagar = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/gastos/${gasto!.id}`,
+      headers: autorizacao,
+      payload: { pago: true },
+    });
+    expect(pagar.statusCode).toBe(200);
+    expect(pagar.json<{ pagoEm: string | null }>().pagoEm).not.toBeNull();
+
+    const desmarcar = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/gastos/${gasto!.id}`,
+      headers: autorizacao,
+      payload: { pago: false },
+    });
+    expect(desmarcar.json<{ pagoEm: string | null }>().pagoEm).toBeNull();
+  });
+
+  it('não dá para marcar como pago o gasto que não se pode ver', async () => {
+    // Reaproveita o PATCH de propósito: ele já passa pelo filtro de
+    // visibilidade, então a porta nova nasce protegida.
+    const dona = await criarConta(app, { email: 'dona@exemplo.com', nome: 'Ana Lima' });
+    const convite = await app.inject({
+      method: 'POST',
+      url: '/api/v1/household/convites',
+      headers: dona.autorizacao,
+      payload: {},
+    });
+    const outra = await criarConta(app, {
+      email: 'outra@exemplo.com',
+      nome: 'Bruno Dias',
+      codigoConvite: convite.json<{ codigo: string }>().codigo,
+    });
+
+    await criarRecorrencia(outra.autorizacao, { inicioEm: '2026-01-01', diaDoMes: 10 });
+    await gerarPendentes(outra.sessao.usuario.householdId, dataUTC(2026, 1, 10));
+    const [gastoDoBruno] = await prisma.gasto.findMany();
+
+    const tentativa = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/gastos/${gastoDoBruno!.id}`,
+      headers: dona.autorizacao,
+      payload: { pago: true },
+    });
+    expect(tentativa.statusCode).toBe(404);
+    const conferir = await prisma.gasto.findUniqueOrThrow({ where: { id: gastoDoBruno!.id } });
+    expect(conferir.pagoEm).toBeNull();
   });
 
   it('não mostra conta fixa de outra família', async () => {

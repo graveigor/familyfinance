@@ -310,6 +310,7 @@ export async function rotasGastos(app: FastifyInstance): Promise<void> {
         ...(dados.categoriaId !== undefined ? { categoriaId: dados.categoriaId } : {}),
         ...(dados.cartaoId !== undefined ? { cartaoId: dados.cartaoId } : {}),
         ...(dados.userId !== undefined ? { userId: dados.userId } : {}),
+        ...(dados.pago !== undefined ? { pagoEm: dados.pago ? new Date() : null } : {}),
       },
       include: INCLUDE_GASTO,
     });

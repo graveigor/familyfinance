@@ -1,4 +1,5 @@
 import type {
+  LancamentoDoMes,
   AtualizarCartaoEntrada,
   AtualizarGastoEntrada,
   Cartao,
@@ -37,9 +38,13 @@ export const chaves = {
   recorrencias: ['recorrencias'] as const,
 };
 
-/** Tudo que depende de gasto: lista, resumo e sugestões de descrição. */
+/**
+ * Tudo que depende de gasto: lista, resumo, sugestões de descrição — e as
+ * contas fixas, que mostram o estado do lançamento do mês.
+ */
 async function invalidarGastos(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: chaves.recorrencias }),
     queryClient.invalidateQueries({ queryKey: chaves.gastos }),
     queryClient.invalidateQueries({ queryKey: ['resumos'] }),
   ]);
@@ -133,7 +138,7 @@ export function useEvolucao(meses = 6): UseQueryResult<Evolucao, Error> {
 }
 
 export function useRecorrencias(): UseQueryResult<
-  Array<Recorrencia & { proximoEm: string | null }>,
+  Array<Recorrencia & { proximoEm: string | null; lancamentoDoMes: LancamentoDoMes | null }>,
   Error
 > {
   return useQuery({
