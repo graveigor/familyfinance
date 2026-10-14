@@ -1,4 +1,4 @@
-import { dataUTC, fimDoMes, formatarDataISO } from '@gastos/core';
+import { dataUTC, diaValidoNoMes, formatarDataISO } from '@gastos/core';
 import { prisma } from '../prisma.js';
 
 /**
@@ -29,11 +29,11 @@ function proximoMes(ano: number, mes: number): { ano: number; mes: number } {
 /**
  * Dia do lançamento no mês. "Todo dia 31" em fevereiro vira o dia 28 (ou 29):
  * pular o mês seria pior — a conta existe de qualquer jeito.
+ *
+ * Mora no core: a fatura do cartão faz o mesmo encaixe, e duas cópias da
+ * mesma regra é uma a mais do que precisa existir.
  */
-export function diaValidoNoMes(ano: number, mes: number, diaDesejado: number): number {
-  const ultimoDia = fimDoMes(ano, mes).getUTCDate();
-  return Math.min(diaDesejado, ultimoDia);
-}
+export { diaValidoNoMes };
 
 export interface ResultadoDaGeracao {
   gastosCriados: number;

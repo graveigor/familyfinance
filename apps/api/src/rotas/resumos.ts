@@ -1,12 +1,20 @@
 import {
+  dataUTC,
+  diaValidoNoMes,
   evolucaoSchema,
+  formatarDataISO,
+  hoje,
   inicioDoMes,
   inicioDoProximoMes,
   mesAnterior,
   nomeCurtoDoMes,
+  previsaoSchema,
   resumoMensalSchema,
+  somarCentavos,
   type Evolucao,
+  type ItemPrevisto,
   type PontoDeEvolucao,
+  type Previsao,
   type ResumoMensal,
   type TotalPorCategoria,
   type TotalPorPessoa,
@@ -15,7 +23,16 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 import { nomeDoUsuario, serializarCategoria } from '../serializadores.js';
-import { combinarFiltros, filtroDeGastosVisiveis } from '../servicos/visibilidade.js';
+import {
+  combinarFiltros,
+  filtroDeGastosVisiveis,
+  filtroDeRecorrenciasVisiveis,
+} from '../servicos/visibilidade.js';
+
+/** O mês seguinte a `{ano, mes}`. */
+function proximoMes(ano: number, mes: number): { ano: number; mes: number } {
+  return mes === 12 ? { ano: ano + 1, mes: 1 } : { ano, mes: mes + 1 };
+}
 
 export async function rotasResumos(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', app.autenticar);
@@ -109,6 +126,90 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
    * Evolução mês a mês, para o gráfico de barras. Uma consulta só agrupando
    * por mês — puxar gasto por gasto para somar no servidor seria desperdício.
    */
+  /**
+   * O que já está comprometido num mês que ainda não começou.
+   *
+   * Duas origens que somam de formas diferentes: as PARCELAS já existem como
+   * lançamento no mês futuro (o parcelamento cria uma linha por mês), enquanto
+   * as CONTAS FIXAS ainda não existem — desde que elas passaram a nascer só no
+   * dia, somar "os gastos do mês que vem" deixaria de fora justamente o
+   * aluguel. Por isso as duas são calculadas separado e aparecem separadas.
+   */
+  app.get('/previsao', async (request: FastifyRequest): Promise<Previsao> => {
+    const usuario = usuarioDaRequisicao(request);
+    const pedido = previsaoSchema.parse(request.query);
+
+    const agora = hoje();
+    const padrao = proximoMes(agora.getUTCFullYear(), agora.getUTCMonth() + 1);
+    const ano = pedido.ano ?? padrao.ano;
+    const mes = pedido.mes ?? padrao.mes;
+
+    const periodo = { gte: inicioDoMes(ano, mes), lt: inicioDoProximoMes(ano, mes) };
+    const visivel = filtroDeGastosVisiveis(usuario);
+
+    const [lancados, recorrencias] = await Promise.all([
+      prisma.gasto.findMany({
+        where: combinarFiltros(visivel, { data: periodo }),
+        select: { descricao: true, valorCentavos: true, data: true },
+        orderBy: { data: 'asc' },
+      }),
+      prisma.recorrencia.findMany({
+        where: {
+          ...filtroDeRecorrenciasVisiveis(usuario),
+          ativa: true,
+          inicioEm: { lt: inicioDoProximoMes(ano, mes) },
+        },
+        select: { descricao: true, valorCentavos: true, diaDoMes: true, fimEm: true, id: true },
+      }),
+    ]);
+
+    // Uma conta fixa cujo lançamento daquele mês JÁ existe não pode ser contada
+    // duas vezes — acontece quando se pede a previsão de um mês que já começou.
+    const jaLancadas = new Set(
+      (
+        await prisma.gasto.findMany({
+          where: combinarFiltros(visivel, { data: periodo, recorrenciaId: { not: null } }),
+          select: { recorrenciaId: true },
+        })
+      ).flatMap((g) => (g.recorrenciaId ? [g.recorrenciaId] : [])),
+    );
+
+    const itens: ItemPrevisto[] = lancados.map((g) => ({
+      descricao: g.descricao,
+      valorCentavos: g.valorCentavos,
+      data: formatarDataISO(g.data),
+      origem: 'parcela' as const,
+    }));
+
+    let contasFixasCentavos = 0;
+    for (const recorrencia of recorrencias) {
+      if (jaLancadas.has(recorrencia.id)) continue;
+      const dia = diaValidoNoMes(ano, mes, recorrencia.diaDoMes);
+      const data = dataUTC(ano, mes, dia);
+      if (recorrencia.fimEm && data > recorrencia.fimEm) continue;
+
+      contasFixasCentavos += recorrencia.valorCentavos;
+      itens.push({
+        descricao: recorrencia.descricao,
+        valorCentavos: recorrencia.valorCentavos,
+        data: formatarDataISO(data),
+        origem: 'conta-fixa' as const,
+      });
+    }
+
+    const lancadosCentavos = somarCentavos(lancados.map((g) => g.valorCentavos));
+    itens.sort((a, b) => a.data.localeCompare(b.data));
+
+    return {
+      ano,
+      mes,
+      totalCentavos: lancadosCentavos + contasFixasCentavos,
+      lancadosCentavos,
+      contasFixasCentavos,
+      itens,
+    };
+  });
+
   app.get('/evolucao', async (request: FastifyRequest): Promise<Evolucao> => {
     const usuario = usuarioDaRequisicao(request);
     const { meses } = evolucaoSchema.parse(request.query);

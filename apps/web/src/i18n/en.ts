@@ -531,6 +531,17 @@ export const EN: Record<string, string> = {
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
 
+  // --- Fatura do cartão -----------------------------------------------------
+  'Fecha dia': 'Closes on day',
+  'Vence dia': 'Due on day',
+  Opcional: 'Optional',
+
+  // --- Previsão do próximo mês ----------------------------------------------
+  '{mes} já tem': '{mes} already has',
+  'Comprometido antes de o mês começar.': 'Committed before the month even starts.',
+  Parcelas: 'Instalments',
+  'Previsão para {mes} de {ano}': 'Forecast for {mes} {ano}',
+
   // --- Contas fixas: pagamento ----------------------------------------------
   Paga: 'Paid',
   'Em aberto': 'Open',

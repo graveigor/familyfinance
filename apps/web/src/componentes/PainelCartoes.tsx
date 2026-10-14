@@ -23,13 +23,23 @@ export function PainelCartoes(): ReactElement {
   const [nome, setNome] = useState('');
   const [tipo, setTipo] = useState<TipoCartao>('CREDITO');
   const [cor, setCor] = useState(CORES[0] ?? '#334155');
+  const [diaFechamento, setDiaFechamento] = useState('');
+  const [diaVencimento, setDiaVencimento] = useState('');
   const [aExcluir, setAExcluir] = useState<Cartao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   async function adicionar(): Promise<void> {
     setErro(null);
     try {
-      await criar.mutateAsync({ nome: nome.trim(), tipo, cor });
+      await criar.mutateAsync({
+        nome: nome.trim(),
+        tipo,
+        cor,
+        // Vazio é vazio: sem os dias, o app só não mostra a previsão da
+        // fatura. Mandar 0 ou 1 seria inventar um fechamento que não existe.
+        diaFechamento: diaFechamento ? Number(diaFechamento) : null,
+        diaVencimento: diaVencimento ? Number(diaVencimento) : null,
+      });
       setNome('');
       aviso.mostrar(t('Cartão adicionado.'));
     } catch (falha) {
@@ -129,6 +139,33 @@ export function PainelCartoes(): ReactElement {
             ))}
           </div>
         </div>
+
+        {tipo === 'CREDITO' && (
+          <div className="grid grid-cols-2 gap-3">
+            <Campo
+              rotulo={t('Fecha dia')}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={31}
+              value={diaFechamento}
+              onChange={(e) => setDiaFechamento(e.target.value)}
+              placeholder="28"
+              dica={t('Opcional')}
+            />
+            <Campo
+              rotulo={t('Vence dia')}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={31}
+              value={diaVencimento}
+              onChange={(e) => setDiaVencimento(e.target.value)}
+              placeholder="5"
+              dica={t('Opcional')}
+            />
+          </div>
+        )}
 
         <div>
           <p className="rotulo">{t('Cor')}</p>

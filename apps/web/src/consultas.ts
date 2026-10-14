@@ -1,4 +1,5 @@
 import type {
+  Previsao,
   LancamentoDoMes,
   AtualizarCartaoEntrada,
   AtualizarGastoEntrada,
@@ -26,6 +27,7 @@ import { api } from './api';
 
 /** Chaves centralizadas: invalidar o que mudou fica óbvio e sem string solta. */
 export const chaves = {
+  previsao: ['resumos', 'previsao'] as const,
   gastos: ['gastos'] as const,
   listaDeGastos: (filtros: Partial<ListarGastosEntrada>) => ['gastos', 'lista', filtros] as const,
   sugestoes: (termo: string) => ['gastos', 'sugestoes', termo] as const,
@@ -135,6 +137,11 @@ export function useEvolucao(meses = 6): UseQueryResult<Evolucao, Error> {
     queryKey: chaves.evolucao(meses),
     queryFn: () => api.resumos.evolucao(meses),
   });
+}
+
+/** O que já está comprometido no mês que vem. */
+export function usePrevisao(): UseQueryResult<Previsao, Error> {
+  return useQuery({ queryKey: chaves.previsao, queryFn: () => api.resumos.previsao() });
 }
 
 export function useRecorrencias(): UseQueryResult<

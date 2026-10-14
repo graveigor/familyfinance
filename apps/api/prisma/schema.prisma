@@ -126,6 +126,15 @@ model Cartao {
   nome         String
   tipo         TipoCartao    @default(CREDITO)
   cor          String        @default("#334155")
+
+  /// Dia em que a fatura fecha e dia em que ela vence (1–31).
+  ///
+  /// Opcionais: cartão de débito não tem fatura, e os cartões cadastrados
+  /// antes disso existir não têm como adivinhar. Sem os dois, o app continua
+  /// funcionando — só não mostra a previsão da fatura.
+  diaFechamento Int?
+  diaVencimento Int?
+
   householdId  String
   household    Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   gastos       Gasto[]

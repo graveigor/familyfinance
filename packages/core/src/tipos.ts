@@ -87,6 +87,10 @@ export interface Cartao {
   nome: string;
   tipo: TipoCartao;
   cor: string;
+  /** Dia em que a fatura fecha. Nulo quando não foi informado. */
+  diaFechamento: number | null;
+  /** Dia em que a fatura vence. Nulo quando não foi informado. */
+  diaVencimento: number | null;
 }
 
 /** Dados mínimos de quem gastou, embutidos no gasto para evitar outra chamada. */
@@ -199,6 +203,32 @@ export interface TotalPorPessoa {
   usuario: AutorDoGasto;
   totalCentavos: number;
   quantidade: number;
+}
+
+/**
+ * O que já está comprometido num mês que ainda não começou.
+ *
+ * Duas origens, e elas somam de formas diferentes: as parcelas já existem como
+ * lançamento no mês futuro, enquanto as contas fixas ainda não — elas só viram
+ * gasto no dia. Por isso a previsão não é "somar os gastos do mês que vem".
+ */
+export interface Previsao {
+  ano: number;
+  mes: number;
+  totalCentavos: number;
+  /** Parcelas e lançamentos já marcados para aquele mês. */
+  lancadosCentavos: number;
+  /** Contas fixas que ainda vão nascer naquele mês. */
+  contasFixasCentavos: number;
+  itens: ItemPrevisto[];
+}
+
+export interface ItemPrevisto {
+  descricao: string;
+  valorCentavos: number;
+  /** `aaaa-mm-dd` */
+  data: string;
+  origem: 'parcela' | 'conta-fixa';
 }
 
 export interface ResumoMensal {

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { TIPOS_CARTAO } from '../tipos.js';
 import { zCor } from './comuns.js';
+// O mesmo dia 1–31 das contas fixas: a fatura encurta em fevereiro igual.
+import { zDiaDoMes } from './recorrencia.js';
 
 /**
  * O apelido é livre de propósito: "Itaú", "Nubank da Ana", "Vale-refeição".
@@ -21,6 +23,8 @@ export const criarCartaoSchema = z.object({
   nome: zNomeCartao,
   tipo: zTipoCartao.default('CREDITO'),
   cor: zCor.default('#334155'),
+  diaFechamento: zDiaDoMes.nullable().optional(),
+  diaVencimento: zDiaDoMes.nullable().optional(),
 });
 
 export const atualizarCartaoSchema = z
@@ -28,6 +32,8 @@ export const atualizarCartaoSchema = z
     nome: zNomeCartao.optional(),
     tipo: zTipoCartao.optional(),
     cor: zCor.optional(),
+    diaFechamento: zDiaDoMes.nullable().optional(),
+    diaVencimento: zDiaDoMes.nullable().optional(),
   })
   .refine((dados) => Object.keys(dados).length > 0, { message: 'Nada para alterar.' });
 

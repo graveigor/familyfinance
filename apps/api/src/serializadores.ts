@@ -44,6 +44,8 @@ export function serializarCartao(cartao: CartaoDb): Cartao {
     nome: cartao.nome,
     tipo: cartao.tipo,
     cor: cartao.cor,
+    diaFechamento: cartao.diaFechamento,
+    diaVencimento: cartao.diaVencimento,
   };
 }
 

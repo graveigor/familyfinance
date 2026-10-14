@@ -1,5 +1,5 @@
 import { ErroApp, ehCorpoErro, type CodigoErro } from './erros.js';
-import type { LancamentoDoMes,
+import type { Previsao, LancamentoDoMes,
   Cartao,
   Categoria,
   Convite,
@@ -193,6 +193,8 @@ export interface Cliente {
   resumos: {
     mensal(ano: number, mes: number): Promise<ResumoMensal>;
     evolucao(meses?: number): Promise<Evolucao>;
+    /** Sem ano/mês, o servidor assume o mês que vem. */
+    previsao(ano?: number, mes?: number): Promise<Previsao>;
   };
 }
 
@@ -465,6 +467,10 @@ export function criarCliente({
         requisitar('GET', '/api/v1/resumos/mensal', { parametros: { ano, mes } }),
       evolucao: (meses = 6) =>
         requisitar('GET', '/api/v1/resumos/evolucao', { parametros: { meses } }),
+      previsao: (ano, mes) =>
+        requisitar('GET', '/api/v1/resumos/previsao', {
+          parametros: ano && mes ? { ano, mes } : {},
+        }),
     },
   };
 }

@@ -3,6 +3,7 @@ export * from './cliente.js';
 export * from './datas.js';
 export * from './dinheiro.js';
 export * from './erros.js';
+export * from './faturas.js';
 export * from './importacao.js';
 export * from './mensagens-servidor.js';
 export * from './textos.js';

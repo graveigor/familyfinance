@@ -12,7 +12,7 @@ import { GraficoDeEvolucao } from '../componentes/GraficoDeEvolucao';
 import { Icone } from '../componentes/Icone';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { CaixaDeErro, Carregando, Vazio, traduzirErro } from '../componentes/ui';
-import { useEvolucao, useResumoMensal } from '../consultas';
+import { useEvolucao, usePrevisao, useResumoMensal } from '../consultas';
 import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma, useT } from '../i18n';
 
@@ -198,6 +198,8 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
         </div>
       </section>
 
+      <BlocoDePrevisao />
+
       <section className="cartao p-5" aria-labelledby="titulo-pessoas" data-tutorial="resumo-pessoas">
         <h2 id="titulo-pessoas" className="mb-4 text-base font-semibold text-slate-800">
           {t('Por pessoa')}
@@ -272,5 +274,57 @@ function Rosca({ resumo }: { resumo: ResumoMensal }): ReactElement {
         );
       })}
     </svg>
+  );
+}
+
+/**
+ * O que o mês que vem já custa, antes de ele começar.
+ *
+ * Separa as duas origens porque elas são coisas diferentes para quem lê:
+ * parcela é dívida que já foi assumida e não dá para desfazer; conta fixa é
+ * compromisso que se repete e que dá para cancelar. Somar tudo num número só
+ * esconderia essa diferença.
+ */
+function BlocoDePrevisao(): ReactElement | null {
+  const { t, idioma } = useIdioma();
+  const { dinheiro } = useDinheiro();
+  const previsao = usePrevisao();
+
+  // Sem nada comprometido não há o que mostrar — um cartão zerado só ocupa
+  // espaço e faz a pessoa procurar significado onde não tem.
+  if (!previsao.data || previsao.data.totalCentavos === 0) return null;
+
+  const { ano, mes, totalCentavos, lancadosCentavos, contasFixasCentavos } = previsao.data;
+
+  return (
+    <section className="cartao p-5" aria-labelledby="titulo-previsao">
+      <h2 id="titulo-previsao" className="text-base font-semibold text-slate-800">
+        {t('{mes} já tem', { mes: nomeDoMes(mes, idioma) })}
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        {t('Comprometido antes de o mês começar.')}
+      </p>
+
+      <p className="mt-3 text-3xl font-bold tabular-nums text-slate-900">
+        {dinheiro(totalCentavos)}
+      </p>
+
+      <dl className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-slate-50 p-3">
+          <dt className="text-sm text-slate-600">{t('Parcelas')}</dt>
+          <dd className="text-base font-semibold tabular-nums text-slate-900">
+            {dinheiro(lancadosCentavos)}
+          </dd>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-3">
+          <dt className="text-sm text-slate-600">{t('Contas fixas')}</dt>
+          <dd className="text-base font-semibold tabular-nums text-slate-900">
+            {dinheiro(contasFixasCentavos)}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="sr-only">{t('Previsão para {mes} de {ano}', { mes, ano })}</p>
+    </section>
   );
 }
