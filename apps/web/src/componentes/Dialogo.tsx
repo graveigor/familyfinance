@@ -5,6 +5,54 @@ import { Icone } from './Icone';
 import { useT } from '../i18n';
 
 /**
+ * A trava de rolagem é do documento, e não de cada painel — por isso ela é
+ * contada num lugar só.
+ *
+ * Antes cada painel guardava o `overflow` de antes e o devolvia ao fechar. Com
+ * dois abertos ao mesmo tempo (um `Confirmar` por cima de um `Dialogo`, o que
+ * acontece em Gastos, Família e Ajustes), os dois guardavam a MESMA variável
+ * global em momentos diferentes: o segundo guardava "hidden", que era o valor
+ * posto pelo primeiro. Fechando na ordem trocada, o último devolvia "hidden" e
+ * a página nunca mais rolava — e só o F5 resolvia, porque recarregar zera o
+ * estilo.
+ *
+ * Com um contador, o primeiro a abrir tranca e o último a fechar destranca. A
+ * ordem deixa de importar, que é o ponto: ordem de desmontagem não é coisa que
+ * dê para garantir no React.
+ */
+interface EstiloComOverflow {
+  overflow: string;
+}
+
+let painesAbertos = 0;
+let overflowAntesDoPrimeiro = '';
+
+/** Tranca a rolagem e devolve a função que destranca. Exportada para teste. */
+export function travarRolagem(estilo: EstiloComOverflow): () => void {
+  if (painesAbertos === 0) {
+    overflowAntesDoPrimeiro = estilo.overflow;
+    estilo.overflow = 'hidden';
+  }
+  painesAbertos += 1;
+
+  let jaDestravou = false;
+  return () => {
+    // O StrictMode monta e desmonta uma vez a mais no desenvolvimento; sem esta
+    // guarda o contador ficaria negativo e a trava cairia cedo demais.
+    if (jaDestravou) return;
+    jaDestravou = true;
+    painesAbertos -= 1;
+    if (painesAbertos === 0) estilo.overflow = overflowAntesDoPrimeiro;
+  };
+}
+
+/** Só para os testes, que precisam começar do zero em cada caso. */
+export function zerarTravaDeRolagem(): void {
+  painesAbertos = 0;
+  overflowAntesDoPrimeiro = '';
+}
+
+/**
  * Painel que sobe pela base no celular e aparece centralizado no computador.
  * Fecha no Esc e no clique fora — nunca prende o usuário.
  */
@@ -24,21 +72,27 @@ export function Dialogo({
   const t = useT();
   const painel = useRef<HTMLDivElement>(null);
 
+  // `aoFechar` costuma ser uma função nova a cada renderização (uma arrow
+  // escrita na própria chamada). Ela ficava nas dependências do efeito abaixo,
+  // que então re-rodava a cada tecla digitada — e levava junto o `focus()`,
+  // tirando o cursor do campo que a pessoa estava preenchendo. Numa ref, o
+  // efeito depende só de abrir e fechar.
+  const aoFecharRef = useRef(aoFechar);
+  aoFecharRef.current = aoFechar;
+
   useEffect(() => {
     if (!aberto) return;
     const aoTeclar = (evento: KeyboardEvent): void => {
-      if (evento.key === 'Escape') aoFechar();
+      if (evento.key === 'Escape') aoFecharRef.current();
     };
     document.addEventListener('keydown', aoTeclar);
-    // Trava o rolar do fundo enquanto o painel está aberto.
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const destravarRolagem = travarRolagem(document.body.style);
     painel.current?.focus();
     return () => {
       document.removeEventListener('keydown', aoTeclar);
-      document.body.style.overflow = overflowAnterior;
+      destravarRolagem();
     };
-  }, [aberto, aoFechar]);
+  }, [aberto]);
 
   if (!aberto) return null;
 
