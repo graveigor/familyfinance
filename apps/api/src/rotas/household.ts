@@ -1,5 +1,5 @@
 import {
-  CATEGORIAS_PADRAO,
+  CATEGORIAS_DE_GRUPO_NOVO,
   TAMANHO_DO_NUCLEO_DO_CONVITE,
   atualizarHouseholdSchema,
   atualizarMembroSchema,
@@ -118,7 +118,7 @@ async function criarGrupoParaPessoa(
 ): Promise<{ id: string }> {
   const grupo = await tx.household.create({ data: { nome, moeda, criadoPorId: usuarioId } });
   await tx.categoria.createMany({
-    data: CATEGORIAS_PADRAO.map((categoria) => ({ ...categoria, householdId: grupo.id })),
+    data: CATEGORIAS_DE_GRUPO_NOVO.map((categoria) => ({ ...categoria, householdId: grupo.id })),
   });
   await entrarEAtivar(tx, usuarioId, grupo.id, 'ADMIN');
   return { id: grupo.id };

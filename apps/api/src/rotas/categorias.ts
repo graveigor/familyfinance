@@ -1,6 +1,7 @@
 import {
   atualizarCategoriaSchema,
   criarCategoriaSchema,
+  listarCategoriasSchema,
   erroConflito,
   erroNaoEncontrado,
   zId,
@@ -20,8 +21,11 @@ export async function rotasCategorias(app: FastifyInstance): Promise<void> {
 
   app.get('/', async (request: FastifyRequest) => {
     const usuario = usuarioDaRequisicao(request);
+    // Sem `tipo` vêm as duas: é o que a tela de ajustes mostra. Os formulários
+    // de gasto e de receita pedem o seu, para "Salário" não aparecer num gasto.
+    const { tipo } = listarCategoriasSchema.parse(request.query);
     const categorias = await prisma.categoria.findMany({
-      where: { householdId: usuario.householdId },
+      where: { householdId: usuario.householdId, ...(tipo ? { tipo } : {}) },
       orderBy: { nome: 'asc' },
     });
     return { itens: categorias.map(serializarCategoria) };
@@ -32,7 +36,11 @@ export async function rotasCategorias(app: FastifyInstance): Promise<void> {
     const dados = criarCategoriaSchema.parse(request.body);
 
     const repetida = await prisma.categoria.findFirst({
-      where: { householdId: usuario.householdId, nome: { equals: dados.nome, mode: 'insensitive' } },
+      where: {
+        householdId: usuario.householdId,
+        tipo: dados.tipo,
+        nome: { equals: dados.nome, mode: 'insensitive' },
+      },
       select: { id: true },
     });
     if (repetida) throw erroConflito(`Já existe uma categoria chamada "${dados.nome}".`);

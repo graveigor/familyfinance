@@ -16,5 +16,6 @@ export * from './schemas/comuns.js';
 export * from './schemas/gasto.js';
 export * from './schemas/household.js';
 export * from './schemas/importacao.js';
+export * from './schemas/receita.js';
 export * from './schemas/recorrencia.js';
 export * from './schemas/resumo.js';

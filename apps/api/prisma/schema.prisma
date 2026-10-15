@@ -29,6 +29,7 @@ model Household {
   participacoes Participacao[]
   membros       User[]
   gastos       Gasto[]
+  receitas     Receita[]
   categorias   Categoria[]
   cartoes      Cartao[]
   convites     Convite[]
@@ -79,6 +80,7 @@ model User {
   participacoes  Participacao[]
   gruposCriados  Household[]   @relation("GruposCriados")
   gastos         Gasto[]
+  receitas       Receita[]
   convites       Convite[]     @relation("ConvitesCriados")
   recorrencias   Recorrencia[]
   metas          Meta[]
@@ -103,17 +105,24 @@ model Participacao {
 }
 
 model Categoria {
-  id           String        @id @default(uuid())
-  nome         String
-  icone        String
-  cor          String
+  id    String @id @default(uuid())
+  nome  String
+  icone String
+  cor   String
+
+  /// Para que serve esta categoria. "Salário" não pode aparecer no seletor de
+  /// um gasto, nem "Mercado" no de uma receita.
+  tipo TipoDeLancamento @default(DESPESA)
+
   householdId  String
   household    Household     @relation(fields: [householdId], references: [id])
   gastos       Gasto[]
+  receitas     Receita[]
   recorrencias Recorrencia[]
 
   // Duas categorias com o mesmo nome na mesma casa só confundem o usuário.
-  @@unique([householdId, nome])
+  // O tipo entra na chave: "Outros" existe dos dois lados sem conflito.
+  @@unique([householdId, nome, tipo])
 }
 
 /// Meio de pagamento com nome próprio: "Itaú", "Bradesco", "Vale-refeição".
@@ -283,7 +292,14 @@ model Comprovante {
 /// Nada é criado automaticamente em segundo plano: os lançamentos do mês são
 /// gerados quando alguém abre o app, de forma idempotente.
 model Recorrencia {
-  id              String         @id @default(uuid())
+  id String @id @default(uuid())
+
+  /// Se este compromisso mensal gera um gasto ou uma receita. O motor de
+  /// geração é o mesmo — idempotência, encaixe do dia 31, regra de não
+  /// lançar no futuro — e repetir tudo isso para o salário seria uma segunda
+  /// cópia das partes difíceis.
+  tipo TipoDeLancamento @default(DESPESA)
+
   descricao       String
   valorCentavos   Int
   /// Dia do mês (1-31). Quando o mês não tem esse dia, cai no último.
@@ -307,8 +323,49 @@ model Recorrencia {
   criadoEm        DateTime       @default(now())
   atualizadoEm    DateTime       @updatedAt
   gastos          Gasto[]
+  receitas        Receita[]
 
   @@index([householdId, ativa])
+}
+
+/// O que entra: salário, freela, aluguel recebido, presente.
+///
+/// Tabela própria, e não uma coluna de sinal no `Gasto`. Todo `aggregate` e
+/// `groupBy` de resumo soma `Gasto` sem filtrar nada: um campo de tipo faria
+/// receita entrar em silêncio no "total de gastos" de cada tela, que é
+/// exatamente a classe de erro que a auditoria de 2026-09 encontrou. Em tabela
+/// separada, as consultas que já existem continuam certas por construção.
+model Receita {
+  id            String   @id @default(uuid())
+  descricao     String
+  valorCentavos Int
+  data          DateTime @db.Date
+  observacao    String?
+
+  categoriaId String?
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+
+  /// Quando nasceu de uma receita fixa (salário), guarda a origem.
+  recorrenciaId String?
+  recorrencia   Recorrencia? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([householdId, data])
+  @@index([householdId, userId])
+  @@index([categoriaId])
+}
+
+enum TipoDeLancamento {
+  DESPESA
+  RECEITA
 }
 
 /// Ajustes do servidor guardados no banco.

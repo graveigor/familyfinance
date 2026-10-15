@@ -1,5 +1,5 @@
 import type { Categoria, ListaDeGastos } from '@gastos/core';
-import { CATEGORIAS_PADRAO } from '@gastos/core';
+import { CATEGORIAS_DE_GRUPO_NOVO } from '@gastos/core';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../prisma.js';
@@ -28,7 +28,7 @@ describe('categorias', () => {
 
     const { itens } = resposta.json<{ itens: Categoria[] }>();
     // Ancorado na própria lista: acrescentar categoria não deixa o teste velho.
-    expect(itens).toHaveLength(CATEGORIAS_PADRAO.length);
+    expect(itens).toHaveLength(CATEGORIAS_DE_GRUPO_NOVO.length);
     expect(itens[0]?.nome).toBe('Alimentação');
     expect(itens.map((c) => c.nome)).toContain('Mercado');
     expect(itens[0]?.cor).toMatch(/^#[0-9A-F]{6}$/i);

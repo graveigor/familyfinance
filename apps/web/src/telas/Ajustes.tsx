@@ -325,7 +325,10 @@ function PainelCategorias({ categorias }: { categorias: Categoria[] }): ReactEle
   async function adicionar(): Promise<void> {
     setErro(null);
     try {
-      await criar.mutateAsync({ nome: nome.trim(), icone, cor });
+      await criar.mutateAsync({
+        // A tela de categorias de Ajustes administra as de despesa.
+        tipo: 'DESPESA',
+        nome: nome.trim(), icone, cor });
       setNome('');
       aviso.mostrar(t('Categoria criada.'));
     } catch (falha) {

@@ -5,6 +5,10 @@ import type { Moeda } from './dinheiro.js';
 export const PAPEIS = ['ADMIN', 'MEMBRO'] as const;
 export type Papel = (typeof PAPEIS)[number];
 
+/** Um lançamento é o que sai (despesa) ou o que entra (receita). */
+export const TIPOS_DE_LANCAMENTO = ['DESPESA', 'RECEITA'] as const;
+export type TipoDeLancamento = (typeof TIPOS_DE_LANCAMENTO)[number];
+
 export const FORMAS_PAGAMENTO = ['CARTAO', 'DEBITO', 'DINHEIRO', 'PIX', 'BOLETO', 'OUTRO'] as const;
 export type FormaPagamento = (typeof FORMAS_PAGAMENTO)[number];
 
@@ -76,6 +80,8 @@ export interface Categoria {
   nome: string;
   icone: string;
   cor: string;
+  /** Se serve para gasto ou para receita. */
+  tipo: TipoDeLancamento;
 }
 
 /**
@@ -123,6 +129,8 @@ export interface Gasto {
 
 export interface Recorrencia {
   id: string;
+  /** Se este compromisso mensal gera gasto ou receita. */
+  tipo: TipoDeLancamento;
   descricao: string;
   valorCentavos: number;
   diaDoMes: number;
@@ -212,6 +220,28 @@ export interface TotalPorPessoa {
  * lançamento no mês futuro, enquanto as contas fixas ainda não — elas só viram
  * gasto no dia. Por isso a previsão não é "somar os gastos do mês que vem".
  */
+/** O que entra: salário, freela, aluguel recebido. */
+export interface Receita {
+  id: string;
+  descricao: string;
+  valorCentavos: number;
+  /** `aaaa-mm-dd` */
+  data: string;
+  observacao: string | null;
+  categoria: Categoria | null;
+  usuario: AutorDoGasto;
+  /** Preenchido quando nasceu de uma receita fixa. */
+  recorrenciaId: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface ListaDeReceitas {
+  itens: Receita[];
+  totalCentavos: number;
+  paginacao: { pagina: number; porPagina: number; totalItens: number; totalPaginas: number };
+}
+
 export interface Previsao {
   ano: number;
   mes: number;
@@ -234,7 +264,12 @@ export interface ItemPrevisto {
 export interface ResumoMensal {
   ano: number;
   mes: number;
+  /** Soma das despesas do mês. O nome ficou por compatibilidade de contrato. */
   totalCentavos: number;
+  /** Soma das receitas do mês. */
+  receitasCentavos: number;
+  /** Receitas menos despesas. Negativo quando faltou. */
+  saldoCentavos: number;
   quantidade: number;
   porCategoria: TotalPorCategoria[];
   porPessoa: TotalPorPessoa[];

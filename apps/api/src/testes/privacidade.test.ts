@@ -1,5 +1,5 @@
 import type { ListaDeGastos, Meta, ResumoMensal, Usuario } from '@gastos/core';
-import { CATEGORIAS_PADRAO } from '@gastos/core';
+import { CATEGORIAS_DE_GRUPO_NOVO } from '@gastos/core';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../prisma.js';
@@ -226,7 +226,7 @@ describe('grupos', () => {
 
     // O grupo novo nasce com as categorias padrão.
     const categorias = await prisma.categoria.count({ where: { householdId: novo.householdId } });
-    expect(categorias).toBe(CATEGORIAS_PADRAO.length);
+    expect(categorias).toBe(CATEGORIAS_DE_GRUPO_NOVO.length);
   });
 
   it('entrar em outro grupo leva os próprios lançamentos junto', async () => {

@@ -52,6 +52,9 @@ export function PainelContasFixas(): ReactElement {
     setErro({ mensagem: '', campos: {} });
     try {
       await criar.mutateAsync({
+        // Este painel é o das contas fixas, ou seja, do que SAI. A receita fixa
+        // (salário) usa o mesmo motor, mas tem a sua própria tela.
+        tipo: 'DESPESA',
         descricao: descricao.trim(),
         valorCentavos: centavos,
         diaDoMes: Number(diaDoMes),

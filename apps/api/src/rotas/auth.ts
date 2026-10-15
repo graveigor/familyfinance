@@ -1,6 +1,6 @@
 import {
   type Moeda,
-  CATEGORIAS_PADRAO,
+  CATEGORIAS_DE_GRUPO_NOVO,
   atualizarPerfilSchema,
   erroConflito,
   erroInterno,
@@ -129,7 +129,7 @@ export async function rotasAuth(app: FastifyInstance): Promise<void> {
       const household = await tx.household.create({
         data: {
           nome: dados.nomeHousehold ?? `Família de ${dados.nome.split(' ')[0] ?? dados.nome}`,
-          categorias: { create: CATEGORIAS_PADRAO.map((c) => ({ ...c })) },
+          categorias: { create: CATEGORIAS_DE_GRUPO_NOVO.map((c) => ({ ...c })) },
         },
       });
 

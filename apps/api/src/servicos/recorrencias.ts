@@ -2,7 +2,12 @@ import { dataUTC, diaValidoNoMes, formatarDataISO } from '@gastos/core';
 import { prisma } from '../prisma.js';
 
 /**
- * Geração dos lançamentos de gastos recorrentes.
+ * Geração dos lançamentos recorrentes — gastos E receitas.
+ *
+ * O motor é um só de propósito: idempotência por `ultimoMesGerado`, encaixe do
+ * dia 31 em fevereiro e a regra de não lançar no futuro são as partes difíceis,
+ * e o salário precisa exatamente delas. Um segundo motor para receita seria
+ * uma segunda cópia dessas três coisas, divergindo no primeiro conserto.
  *
  * Não existe tarefa agendada rodando em segundo plano: os meses pendentes são
  * criados quando alguém abre o app. Duas coisas tornam isso seguro:
@@ -37,6 +42,7 @@ export { diaValidoNoMes };
 
 export interface ResultadoDaGeracao {
   gastosCriados: number;
+  receitasCriadas: number;
   recorrenciasProcessadas: number;
 }
 
@@ -64,6 +70,7 @@ export async function gerarPendentes(
   });
 
   let gastosCriados = 0;
+  let receitasCriadas = 0;
 
   for (const recorrencia of recorrencias) {
     // De onde continuar: o mês seguinte ao último gerado, ou o mês de início.
@@ -98,31 +105,41 @@ export async function gerarPendentes(
     if (aCriar.length === 0) continue;
 
     const ultimaChave = aCriar[aCriar.length - 1]?.chave;
+    // O comum aos dois: salário não tem forma de pagamento nem cartão.
+    const comum = aCriar.map((item) => ({
+      descricao: recorrencia.descricao,
+      valorCentavos: recorrencia.valorCentavos,
+      data: item.data,
+      observacao: recorrencia.observacao,
+      categoriaId: recorrencia.categoriaId,
+      userId: recorrencia.userId,
+      householdId: recorrencia.householdId,
+      recorrenciaId: recorrencia.id,
+    }));
+
     await prisma.$transaction(async (tx) => {
-      await tx.gasto.createMany({
-        data: aCriar.map((item) => ({
-          descricao: recorrencia.descricao,
-          valorCentavos: recorrencia.valorCentavos,
-          data: item.data,
-          formaPagamento: recorrencia.formaPagamento,
-          observacao: recorrencia.observacao,
-          categoriaId: recorrencia.categoriaId,
-          cartaoId: recorrencia.cartaoId,
-          userId: recorrencia.userId,
-          householdId: recorrencia.householdId,
-          recorrenciaId: recorrencia.id,
-        })),
-      });
+      if (recorrencia.tipo === 'RECEITA') {
+        await tx.receita.createMany({ data: comum });
+      } else {
+        await tx.gasto.createMany({
+          data: comum.map((item) => ({
+            ...item,
+            formaPagamento: recorrencia.formaPagamento,
+            cartaoId: recorrencia.cartaoId,
+          })),
+        });
+      }
       await tx.recorrencia.update({
         where: { id: recorrencia.id },
         data: { ultimoMesGerado: ultimaChave },
       });
     });
 
-    gastosCriados += aCriar.length;
+    if (recorrencia.tipo === 'RECEITA') receitasCriadas += aCriar.length;
+    else gastosCriados += aCriar.length;
   }
 
-  return { gastosCriados, recorrenciasProcessadas: recorrencias.length };
+  return { gastosCriados, receitasCriadas, recorrenciasProcessadas: recorrencias.length };
 }
 
 /** Data do próximo lançamento, para mostrar na tela. `null` se já terminou. */

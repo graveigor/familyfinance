@@ -2,7 +2,7 @@
  * Dados de demonstração para desenvolver a interface sem digitar tudo à mão.
  * Nunca rode em produção: apaga e recria o household de exemplo.
  */
-import { CATEGORIAS_PADRAO, dataUTC, hoje } from '@gastos/core';
+import { CATEGORIAS_DE_GRUPO_NOVO, dataUTC, hoje } from '@gastos/core';
 import prismaPacote from '@prisma/client';
 import { config } from 'dotenv';
 import { cifrar, indiceDeEmail } from '../src/servicos/criptografia.js';
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   const household = await prisma.household.create({
     data: {
       nome: 'Família Exemplo',
-      categorias: { create: CATEGORIAS_PADRAO.map((c) => ({ ...c })) },
+      categorias: { create: CATEGORIAS_DE_GRUPO_NOVO.map((c) => ({ ...c })) },
       membros: {
         create: [
           { ...pessoa('Maria Silva', EMAIL_ADMIN), senhaHash, papel: 'ADMIN' },

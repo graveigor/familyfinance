@@ -25,7 +25,9 @@ import { prisma } from '../prisma.js';
 import { nomeDoUsuario, serializarCategoria } from '../serializadores.js';
 import {
   combinarFiltros,
+  combinarFiltrosDeReceita,
   filtroDeGastosVisiveis,
+  filtroDeReceitasVisiveis,
   filtroDeRecorrenciasVisiveis,
 } from '../servicos/visibilidade.js';
 
@@ -55,8 +57,15 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
     const visivel = filtroDeGastosVisiveis(usuario);
     const where = combinarFiltros(visivel, { data: periodo });
 
-    const [totalGeral, porCategoriaBruto, porPessoaBruto, totalAnterior, categorias, membros] =
-      await Promise.all([
+    const [
+      totalGeral,
+      porCategoriaBruto,
+      porPessoaBruto,
+      totalAnterior,
+      categorias,
+      membros,
+      somaDeReceitas,
+    ] = await Promise.all([
         prisma.gasto.aggregate({ where, _sum: { valorCentavos: true }, _count: true }),
         prisma.gasto.groupBy({
           by: ['categoriaId'],
@@ -79,7 +88,15 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
           where: { householdId: usuario.householdId },
           select: { id: true, nome: true },
         }),
+        // Receita passa pelo mesmo filtro de privacidade: quem não compartilha
+        // não entra no saldo dos outros, igual ao gasto.
+        prisma.receita.aggregate({
+          where: combinarFiltrosDeReceita(filtroDeReceitasVisiveis(usuario), { data: periodo }),
+          _sum: { valorCentavos: true },
+        }),
       ]);
+
+    const receitasCentavos = somaDeReceitas._sum.valorCentavos ?? 0;
 
     const categoriaPorId = new Map(categorias.map((c) => [c.id, c]));
     const membroPorId = new Map(membros.map((m) => [m.id, { id: m.id, nome: nomeDoUsuario(m) }]));
@@ -110,6 +127,10 @@ export async function rotasResumos(app: FastifyInstance): Promise<void> {
       ano,
       mes,
       totalCentavos,
+      receitasCentavos,
+      // Negativo quer dizer que faltou — é o número que a tela pinta de
+      // vermelho, e o motivo de receita existir neste app.
+      saldoCentavos: receitasCentavos - totalCentavos,
       quantidade: totalGeral._count,
       porCategoria,
       porPessoa,

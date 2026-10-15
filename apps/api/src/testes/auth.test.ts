@@ -1,5 +1,5 @@
 import type { Sessao } from '@gastos/core';
-import { CATEGORIAS_PADRAO } from '@gastos/core';
+import { CATEGORIAS_DE_GRUPO_NOVO } from '@gastos/core';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../prisma.js';
@@ -38,7 +38,7 @@ describe('POST /auth/registrar', () => {
     const categorias = await prisma.categoria.count({
       where: { householdId: sessao.usuario.householdId },
     });
-    expect(categorias).toBe(CATEGORIAS_PADRAO.length);
+    expect(categorias).toBe(CATEGORIAS_DE_GRUPO_NOVO.length);
   });
 
   it('recusa e-mail repetido com mensagem em português', async () => {

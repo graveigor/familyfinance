@@ -6,6 +6,7 @@ import {
   erroValidacao,
   formatarDataISO,
   hoje,
+  listarCategoriasSchema,
   inicioDoMes,
   inicioDoProximoMes,
   parseData,
@@ -75,6 +76,7 @@ function serializar(
   return {
     lancamentoDoMes,
     id: recorrencia.id,
+    tipo: recorrencia.tipo,
     descricao: recorrencia.descricao,
     valorCentavos: recorrencia.valorCentavos,
     diaDoMes: recorrencia.diaDoMes,
@@ -104,10 +106,12 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
 
   app.get('/', async (request: FastifyRequest) => {
     const usuario = usuarioDaRequisicao(request);
+    // Sem `tipo` vêm as duas; as telas pedem o seu lado.
+    const { tipo } = listarCategoriasSchema.parse(request.query);
     const itens = await prisma.recorrencia.findMany({
       // Mesma privacidade dos gastos: conta fixa de quem não compartilha não
       // aparece para os outros.
-      where: filtroDeRecorrenciasVisiveis(usuario),
+      where: { ...filtroDeRecorrenciasVisiveis(usuario), ...(tipo ? { tipo } : {}) },
       include: INCLUDE,
       orderBy: [{ ativa: 'desc' }, { diaDoMes: 'asc' }],
     });
@@ -144,8 +148,10 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
       }
     }
     if (dados.categoriaId) {
+      // Do mesmo lado da recorrência: "Salário" numa conta fixa de despesa é
+      // engano de quem montou o formulário, não id inventado.
       const categoria = await prisma.categoria.findFirst({
-        where: { id: dados.categoriaId, householdId: usuario.householdId },
+        where: { id: dados.categoriaId, householdId: usuario.householdId, tipo: dados.tipo },
         select: { id: true },
       });
       if (!categoria) {
@@ -170,6 +176,7 @@ export async function rotasRecorrencias(app: FastifyInstance): Promise<void> {
 
     const recorrencia = await prisma.recorrencia.create({
       data: {
+        tipo: dados.tipo,
         descricao: dados.descricao,
         valorCentavos: dados.valorCentavos,
         diaDoMes: dados.diaDoMes,

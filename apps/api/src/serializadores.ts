@@ -4,12 +4,14 @@ import {
   type Categoria,
   type Moeda,
   type Gasto,
+  type Receita,
   type Usuario,
 } from '@gastos/core';
 import type {
   Cartao as CartaoDb,
   Categoria as CategoriaDb,
   Gasto as GastoDb,
+  Receita as ReceitaDb,
   User as UserDb,
 } from '@prisma/client';
 import { decifrar } from './servicos/criptografia.js';
@@ -35,6 +37,7 @@ export function serializarCategoria(categoria: CategoriaDb): Categoria {
     nome: categoria.nome,
     icone: categoria.icone,
     cor: categoria.cor,
+    tipo: categoria.tipo,
   };
 }
 
@@ -98,4 +101,30 @@ export const INCLUDE_GASTO = {
   // `select` em vez de `true`: sem isso o Prisma traria os bytes do
   // comprovante em cada gasto listado.
   comprovante: { select: { id: true } },
+} as const;
+
+export type ReceitaComRelacoes = ReceitaDb & {
+  categoria: CategoriaDb | null;
+  user: Pick<UserDb, 'id' | 'nome'>;
+};
+
+export function serializarReceita(receita: ReceitaComRelacoes): Receita {
+  return {
+    id: receita.id,
+    descricao: receita.descricao,
+    valorCentavos: receita.valorCentavos,
+    data: formatarDataISO(receita.data),
+    observacao: receita.observacao,
+    categoria: receita.categoria ? serializarCategoria(receita.categoria) : null,
+    usuario: { id: receita.user.id, nome: nomeDoUsuario(receita.user) },
+    recorrenciaId: receita.recorrenciaId,
+    criadoEm: receita.criadoEm.toISOString(),
+    atualizadoEm: receita.atualizadoEm.toISOString(),
+  };
+}
+
+/** Relações que toda resposta de receita carrega. */
+export const INCLUDE_RECEITA = {
+  categoria: true,
+  user: { select: { id: true, nome: true } },
 } as const;

@@ -1,5 +1,5 @@
 import { ErroApp, ehCorpoErro, type CodigoErro } from './erros.js';
-import type { Previsao, LancamentoDoMes,
+import type { ListaDeReceitas, Receita, TipoDeLancamento, Previsao, LancamentoDoMes,
   Cartao,
   Categoria,
   Convite,
@@ -34,6 +34,11 @@ import type {
   ExportarGastosEntrada,
   ListarGastosEntrada,
 } from './schemas/gasto.js';
+import type {
+  AtualizarReceitaEntrada,
+  CriarReceitaEntrada,
+  ListarReceitasEntrada,
+} from './schemas/receita.js';
 import type {
   ConfirmarImportacaoEntrada,
   RemapearEntrada,
@@ -154,8 +159,16 @@ export interface Cliente {
       }>
     >;
   };
+  receitas: {
+    listar(filtros?: Partial<ListarReceitasEntrada>): Promise<ListaDeReceitas>;
+    obter(id: string): Promise<Receita>;
+    criar(dados: CriarReceitaEntrada): Promise<Receita>;
+    atualizar(id: string, dados: AtualizarReceitaEntrada): Promise<Receita>;
+    excluir(id: string): Promise<void>;
+  };
   categorias: {
-    listar(): Promise<Categoria[]>;
+    /** Sem `tipo`, vêm as duas. */
+    listar(tipo?: TipoDeLancamento): Promise<Categoria[]>;
     criar(dados: CriarCategoriaEntrada): Promise<Categoria>;
     atualizar(id: string, dados: AtualizarCategoriaEntrada): Promise<Categoria>;
     excluir(id: string): Promise<{ gastosSemCategoria: number }>;
@@ -407,9 +420,19 @@ export function criarCliente({
       },
     },
 
+    receitas: {
+      listar: (filtros = {}) =>
+        requisitar('GET', '/api/v1/receitas', { parametros: filtros as Parametros }),
+      obter: (id) => requisitar('GET', `/api/v1/receitas/${id}`),
+      criar: (dados) => requisitar('POST', '/api/v1/receitas', { corpo: dados }),
+      atualizar: (id, dados) => requisitar('PATCH', `/api/v1/receitas/${id}`, { corpo: dados }),
+      excluir: (id) => requisitar('DELETE', `/api/v1/receitas/${id}`),
+    },
     categorias: {
-      async listar() {
-        const { itens } = await requisitar<{ itens: Categoria[] }>('GET', '/api/v1/categorias');
+      async listar(tipo) {
+        const { itens } = await requisitar<{ itens: Categoria[] }>('GET', '/api/v1/categorias', {
+          parametros: tipo ? { tipo } : {},
+        });
         return itens;
       },
       criar: (dados) => requisitar('POST', '/api/v1/categorias', { corpo: dados }),

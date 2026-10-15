@@ -27,19 +27,13 @@ import {
   TAMANHO_MAXIMO_COMPROVANTE,
   conferirTipo,
 } from '../servicos/comprovantes.js';
+import { paraData } from '../servicos/datas.js';
 import {
   combinarFiltros,
   filtroDeGastosVisiveis,
 } from '../servicos/visibilidade.js';
 
 const paramsSchema = z.object({ id: zId });
-
-/** Converte `aaaa-mm-dd` em Date de meia-noite UTC (a coluna é `date`). */
-function paraData(texto: string): Date {
-  const data = parseData(texto);
-  if (!data) throw erroValidacao('Essa data não existe no calendário.', { data: 'Data inválida.' });
-  return data;
-}
 
 async function conferirCategoria(householdId: string, categoriaId: string): Promise<void> {
   const categoria = await prisma.categoria.findFirst({

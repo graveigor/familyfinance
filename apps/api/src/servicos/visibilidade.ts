@@ -36,6 +36,25 @@ export function filtroDeGastosVisiveis(usuario: UsuarioAutenticado): Prisma.Gast
   return { householdId: usuario.householdId, ...deQuemCompartilha(usuario.id) };
 }
 
+/**
+ * Mesma regra, para as receitas.
+ *
+ * Salário é tão privado quanto gasto — seria estranho o grupo ver quanto cada
+ * um ganha sem ver quanto cada um gasta. Quem liga "compartilhar" abre os dois.
+ */
+export function filtroDeReceitasVisiveis(
+  usuario: UsuarioAutenticado,
+): Prisma.ReceitaWhereInput {
+  return { householdId: usuario.householdId, ...deQuemCompartilha(usuario.id) };
+}
+
+/** Junta o filtro de privacidade com os da tela, sem um sobrescrever o `OR` do outro. */
+export function combinarFiltrosDeReceita(
+  ...filtros: Array<Prisma.ReceitaWhereInput | undefined>
+): Prisma.ReceitaWhereInput {
+  return { AND: filtros.filter((filtro): filtro is Prisma.ReceitaWhereInput => Boolean(filtro)) };
+}
+
 /** Mesma regra, para as contas fixas. */
 export function filtroDeRecorrenciasVisiveis(
   usuario: UsuarioAutenticado,

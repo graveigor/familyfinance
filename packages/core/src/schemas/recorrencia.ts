@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zTipoDeLancamento } from './categoria.js';
 import { zDataISO, zId, zTextoOpcional, zValorCentavos } from './comuns.js';
 import { zDescricao, zFormaPagamento } from './gasto.js';
 
@@ -14,6 +15,8 @@ export const zDiaDoMes = z.coerce
   .max(31, 'O dia precisa ser entre 1 e 31.');
 
 export const criarRecorrenciaSchema = z.object({
+  /** Gasto fixo (aluguel) ou receita fixa (salário). */
+  tipo: zTipoDeLancamento.default('DESPESA'),
   descricao: zDescricao,
   valorCentavos: zValorCentavos,
   diaDoMes: zDiaDoMes,
