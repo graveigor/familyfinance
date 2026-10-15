@@ -13,7 +13,7 @@ import { GraficoDeEvolucao } from '../componentes/GraficoDeEvolucao';
 import { Icone } from '../componentes/Icone';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
 import { CaixaDeErro, Carregando, Vazio, traduzirErro } from '../componentes/ui';
-import { useEvolucao, usePrevisao, useResumoMensal } from '../consultas';
+import { useEvolucao, useOrcamentos, usePrevisao, useResumoMensal } from '../consultas';
 import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma, useT } from '../i18n';
 
@@ -223,6 +223,8 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
         </section>
       )}
 
+      <BlocoDeOrcamento ano={resumo.ano} mes={resumo.mes} />
+
       <section className="cartao p-5" aria-labelledby="titulo-categorias" data-tutorial="resumo-categorias">
         <h2 id="titulo-categorias" className="mb-4 text-base font-semibold text-slate-800">
           {t('Por categoria')}
@@ -397,4 +399,87 @@ function BlocoDePrevisao(): ReactElement | null {
 /** Primeira letra maiúscula, para nome de mês abrindo frase. */
 function comInicialMaiuscula(texto: string): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/** Cores da barra por situação. Verde não é "bom", é "ainda cabe". */
+const CORES_DO_ORCAMENTO = {
+  tranquilo: { barra: 'bg-menta-600', texto: 'text-menta-700', fundo: 'bg-menta-50' },
+  atencao: { barra: 'bg-amber-500', texto: 'text-amber-700', fundo: 'bg-amber-50' },
+  estourado: { barra: 'bg-red-600', texto: 'text-red-700', fundo: 'bg-red-50' },
+} as const;
+
+/**
+ * Quanto de cada teto já foi gasto.
+ *
+ * O gasto que aparece aqui é o DA PESSOA, e não o do grupo que o bloco "Por
+ * categoria" logo abaixo soma — o teto é pessoal, e comparar o seu limite com
+ * o gasto da família daria uma barra sem sentido. O servidor já devolve assim.
+ */
+function BlocoDeOrcamento({ ano, mes }: { ano: number; mes: number }): ReactElement | null {
+  const { t } = useIdioma();
+  const { dinheiro } = useDinheiro();
+  const orcamentos = useOrcamentos(ano, mes);
+
+  // Sem teto definido não há bloco: um cartão vazio pedindo para configurar
+  // algo é ruído em cima de uma tela que já responde o que foi perguntado.
+  if (!orcamentos.data || orcamentos.data.length === 0) return null;
+
+  return (
+    <section className="cartao p-5" aria-labelledby="titulo-orcamento">
+      <h2 id="titulo-orcamento" className="mb-1 text-base font-semibold text-slate-800">
+        {t('Seus limites')}
+      </h2>
+      <p className="mb-4 text-sm text-slate-600">{t('Só você vê os seus limites.')}</p>
+
+      <ul className="space-y-4">
+        {orcamentos.data.map((item) => {
+          const cores = CORES_DO_ORCAMENTO[item.situacao];
+          return (
+            <li key={item.categoria.id}>
+              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                <span className="truncate text-base font-medium text-slate-800">
+                  {t(item.categoria.nome)}
+                </span>
+                <span className="shrink-0 text-base tabular-nums text-slate-900">
+                  <span className="font-semibold">{dinheiro(item.gastoCentavos)}</span>
+                  <span className="text-sm font-normal text-slate-600">
+                    {' '}
+                    {t('de {limite}', { limite: dinheiro(item.limiteCentavos) })}
+                  </span>
+                </span>
+              </div>
+
+              <div
+                className={`h-3 w-full overflow-hidden rounded-full ${cores.fundo}`}
+                role="img"
+                aria-label={t('{categoria}: {percentual}% do limite', {
+                  categoria: t(item.categoria.nome),
+                  percentual: item.percentual,
+                })}
+              >
+                {/* A barra para em 100% mesmo estourando: passar da caixa não
+                    informa mais nada, e quem diz que estourou é o texto. */}
+                <div
+                  className={`h-full rounded-full ${cores.barra}`}
+                  style={{ width: `${Math.min(100, item.percentual)}%` }}
+                />
+              </div>
+
+              {item.situacao !== 'tranquilo' && (
+                <p className={`mt-1 text-sm font-semibold ${cores.texto}`}>
+                  {item.situacao === 'estourado'
+                    ? t('Passou {valor} do limite', {
+                        valor: dinheiro(item.gastoCentavos - item.limiteCentavos),
+                      })
+                    : t('Falta {valor} para o limite', {
+                        valor: dinheiro(item.limiteCentavos - item.gastoCentavos),
+                      })}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }

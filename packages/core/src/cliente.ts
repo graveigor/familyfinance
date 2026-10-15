@@ -1,5 +1,5 @@
 import { ErroApp, ehCorpoErro, type CodigoErro } from './erros.js';
-import type { ListaDeReceitas, Receita, TipoDeLancamento, Previsao, LancamentoDoMes,
+import type { OrcamentoDaCategoria, ListaDeReceitas, Receita, TipoDeLancamento, Previsao, LancamentoDoMes,
   Cartao,
   Categoria,
   Convite,
@@ -34,6 +34,7 @@ import type {
   ExportarGastosEntrada,
   ListarGastosEntrada,
 } from './schemas/gasto.js';
+import type { DefinirOrcamentoEntrada } from './schemas/orcamento.js';
 import type {
   AtualizarReceitaEntrada,
   CriarReceitaEntrada,
@@ -158,6 +159,12 @@ export interface Cliente {
         criadoEm: string;
       }>
     >;
+  };
+  orcamentos: {
+    /** Sem ano/mês, o servidor usa o mês corrente. */
+    listar(ano?: number, mes?: number): Promise<OrcamentoDaCategoria[]>;
+    definir(dados: DefinirOrcamentoEntrada): Promise<OrcamentoDaCategoria>;
+    remover(categoriaId: string): Promise<void>;
   };
   receitas: {
     listar(filtros?: Partial<ListarReceitasEntrada>): Promise<ListaDeReceitas>;
@@ -420,6 +427,18 @@ export function criarCliente({
       },
     },
 
+    orcamentos: {
+      async listar(ano, mes) {
+        const { itens } = await requisitar<{ itens: OrcamentoDaCategoria[] }>(
+          'GET',
+          '/api/v1/orcamentos',
+          { parametros: ano && mes ? { ano, mes } : {} },
+        );
+        return itens;
+      },
+      definir: (dados) => requisitar('PUT', '/api/v1/orcamentos', { corpo: dados }),
+      remover: (categoriaId) => requisitar('DELETE', `/api/v1/orcamentos/${categoriaId}`),
+    },
     receitas: {
       listar: (filtros = {}) =>
         requisitar('GET', '/api/v1/receitas', { parametros: filtros as Parametros }),

@@ -85,6 +85,7 @@ model User {
   recorrencias   Recorrencia[]
   metas          Meta[]
   pedidosDeSenha PedidoDeSenha[]
+  orcamentos     Orcamento[]
   criadoEm       DateTime      @default(now())
 
   @@index([householdId])
@@ -119,6 +120,7 @@ model Categoria {
   gastos       Gasto[]
   receitas     Receita[]
   recorrencias Recorrencia[]
+  orcamentos   Orcamento[]
 
   // Duas categorias com o mesmo nome na mesma casa só confundem o usuário.
   // O tipo entra na chave: "Outros" existe dos dois lados sem conflito.
@@ -361,6 +363,33 @@ model Receita {
   @@index([householdId, data])
   @@index([householdId, userId])
   @@index([categoriaId])
+}
+
+/// Teto mensal que uma pessoa se dá numa categoria ("Mercado até R$ 800").
+///
+/// É de UMA pessoa, não do grupo: orçamento é meta pessoal, e ver o teto do
+/// outro não ajuda ninguém a cumprir o seu. Por isso não passa pelo filtro de
+/// "quem compartilha" — nem quem compartilha os gastos mostra o seu orçamento.
+///
+/// O limite é mensal e vale para todo mês, em vez de uma linha por mês: quem
+/// define "Mercado até R$ 800" não quer redigitar isso em janeiro.
+model Orcamento {
+  id String @id @default(uuid())
+
+  limiteCentavos Int
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // Um teto por pessoa por categoria.
+  @@unique([userId, categoriaId])
+  @@index([userId])
 }
 
 enum TipoDeLancamento {

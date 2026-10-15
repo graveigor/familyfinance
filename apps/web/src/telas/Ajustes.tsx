@@ -4,6 +4,7 @@ import { useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { CartaoInstalar } from '../componentes/InstalarApp';
+import { PainelOrcamento } from '../componentes/PainelOrcamento';
 import { PainelCartoes } from '../componentes/PainelCartoes';
 import { PainelGrupos } from '../componentes/PainelGrupos';
 import { PainelContasFixas } from '../componentes/PainelContasFixas';
@@ -77,6 +78,7 @@ export function Ajustes(): ReactElement {
     | 'grupos'
     | 'categorias'
     | 'cartoes'
+    | 'orcamento'
     | 'contas-fixas'
     | 'instalar'
     | 'exportar'
@@ -113,6 +115,12 @@ export function Ajustes(): ReactElement {
       descricao: cartoes.data?.length
         ? cartoes.data.map((c) => c.nome).join(', ')
         : t('Separe os gastos por cartão'),
+    },
+    {
+      chave: 'orcamento',
+      icone: 'alvo',
+      titulo: t('Limites por categoria'),
+      descricao: t('Quanto você quer gastar em cada uma'),
     },
     {
       chave: 'contas-fixas',
@@ -213,6 +221,14 @@ export function Ajustes(): ReactElement {
 
       <Dialogo aberto={painel === 'cartoes'} aoFechar={() => setPainel(null)} titulo={t('Cartões')}>
         <PainelCartoes />
+      </Dialogo>
+
+      <Dialogo
+        aberto={painel === 'orcamento'}
+        aoFechar={() => setPainel(null)}
+        titulo={t('Limites por categoria')}
+      >
+        <PainelOrcamento />
       </Dialogo>
 
       <Dialogo aberto={painel === 'contas-fixas'} aoFechar={() => setPainel(null)} titulo={t('Contas fixas')}>

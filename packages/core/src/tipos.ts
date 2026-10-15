@@ -220,6 +220,23 @@ export interface TotalPorPessoa {
  * lançamento no mês futuro, enquanto as contas fixas ainda não — elas só viram
  * gasto no dia. Por isso a previsão não é "somar os gastos do mês que vem".
  */
+/**
+ * Um teto mensal e quanto dele já foi usado.
+ *
+ * `gastoCentavos` é o gasto DA PESSOA naquela categoria, não o do grupo: o
+ * teto é pessoal, e comparar o seu limite com o gasto somado da família daria
+ * uma barra que não quer dizer nada.
+ */
+export interface OrcamentoDaCategoria {
+  categoria: Categoria;
+  limiteCentavos: number;
+  gastoCentavos: number;
+  /** 0–100 para a barra; passa de 100 quando estourou. */
+  percentual: number;
+  /** `tranquilo` até 80%, `atencao` de 80 a 100, `estourado` acima. */
+  situacao: 'tranquilo' | 'atencao' | 'estourado';
+}
+
 /** O que entra: salário, freela, aluguel recebido. */
 export interface Receita {
   id: string;

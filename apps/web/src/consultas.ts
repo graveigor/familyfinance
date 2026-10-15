@@ -1,4 +1,6 @@
 import type {
+  DefinirOrcamentoEntrada,
+  OrcamentoDaCategoria,
   CriarReceitaEntrada,
   ListaDeReceitas,
   ListarReceitasEntrada,
@@ -33,6 +35,7 @@ import { api } from './api';
 export const chaves = {
   previsao: ['resumos', 'previsao'] as const,
   receitas: ['receitas'] as const,
+  orcamentos: (ano: number, mes: number) => ['orcamentos', ano, mes] as const,
   listaDeReceitas: (filtros: Partial<ListarReceitasEntrada>) =>
     ['receitas', 'lista', filtros] as const,
   gastos: ['gastos'] as const,
@@ -62,6 +65,7 @@ async function invalidarReceitas(queryClient: ReturnType<typeof useQueryClient>)
 async function invalidarGastos(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: chaves.recorrencias }),
+    queryClient.invalidateQueries({ queryKey: ['orcamentos'] }),
     queryClient.invalidateQueries({ queryKey: chaves.gastos }),
     queryClient.invalidateQueries({ queryKey: ['resumos'] }),
   ]);
@@ -159,6 +163,36 @@ export function useEvolucao(meses = 6): UseQueryResult<Evolucao, Error> {
 /** O que já está comprometido no mês que vem. */
 export function usePrevisao(): UseQueryResult<Previsao, Error> {
   return useQuery({ queryKey: chaves.previsao, queryFn: () => api.resumos.previsao() });
+}
+
+export function useOrcamentos(
+  ano: number,
+  mes: number,
+): UseQueryResult<OrcamentoDaCategoria[], Error> {
+  return useQuery({
+    queryKey: chaves.orcamentos(ano, mes),
+    queryFn: () => api.orcamentos.listar(ano, mes),
+  });
+}
+
+export function useDefinirOrcamento(): UseMutationResult<
+  unknown,
+  Error,
+  DefinirOrcamentoEntrada
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dados: DefinirOrcamentoEntrada) => api.orcamentos.definir(dados),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orcamentos'] }),
+  });
+}
+
+export function useRemoverOrcamento(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (categoriaId: string) => api.orcamentos.remover(categoriaId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['orcamentos'] }),
+  });
 }
 
 export function useReceitas(

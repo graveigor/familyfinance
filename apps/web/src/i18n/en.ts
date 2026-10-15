@@ -531,6 +531,32 @@ export const EN: Record<string, string> = {
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
 
+  // --- Orçamento por categoria ----------------------------------------------
+  'Limites por categoria': 'Category limits',
+  'Quanto você quer gastar em cada uma': 'How much you want to spend on each',
+  'Um teto por mês em cada categoria. Só você vê os seus limites.':
+    'A monthly cap for each category. Only you can see your limits.',
+  'Nenhum limite definido ainda.': 'No limits set yet.',
+  'Novo limite': 'New limit',
+  'Escolha uma categoria': 'Pick a category',
+  'Todas as categorias já têm limite.': 'Every category already has a limit.',
+  'Limite por mês': 'Monthly limit',
+  'Salvar limite': 'Save limit',
+  'Limite salvo': 'Limit saved',
+  'Limite removido': 'Limit removed',
+  'Remover limite de {nome}': 'Remove the limit on {nome}',
+  '{gasto} de {limite} neste mês': '{gasto} of {limite} this month',
+  'O aviso acende quando o gasto chega a 80% do limite.':
+    'The warning turns on when spending reaches 80% of the limit.',
+  'O limite compara com o SEU gasto, não com o da família.':
+    'The limit compares against YOUR spending, not the household total.',
+  'Seus limites': 'Your limits',
+  'Só você vê os seus limites.': 'Only you can see your limits.',
+  'de {limite}': 'of {limite}',
+  '{categoria}: {percentual}% do limite': '{categoria}: {percentual}% of the limit',
+  'Passou {valor} do limite': '{valor} over the limit',
+  'Falta {valor} para o limite': '{valor} left before the limit',
+
   // --- Receitas (o que entra) -----------------------------------------------
   Entradas: 'Income',
   'Salário, freela, aluguel recebido — o que entra.':
