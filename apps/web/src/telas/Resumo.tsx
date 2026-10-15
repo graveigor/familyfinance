@@ -8,6 +8,7 @@ import {
   type ResumoMensal,
 } from '@gastos/core';
 import { useState, type ReactElement } from 'react';
+import { Link } from 'react-router-dom';
 import { GraficoDeEvolucao } from '../componentes/GraficoDeEvolucao';
 import { Icone } from '../componentes/Icone';
 import { useTutorialDaPagina, type PassoDeTutorial } from '../componentes/Tutorial';
@@ -164,6 +165,64 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
         </p>
       </section>
 
+      {/* Entrou, saiu, sobrou. Só aparece quando há receita registrada: sem ela,
+          "sobrou -R$ 500" seria uma afirmação falsa sobre a vida de alguém que
+          simplesmente não usa esta parte do app. */}
+      {resumo.receitasCentavos > 0 && (
+        <section className="cartao p-5" aria-labelledby="titulo-saldo">
+          <h2 id="titulo-saldo" className="mb-4 text-base font-semibold text-slate-800">
+            {t('Entrou e saiu')}
+          </h2>
+
+          <dl className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-menta-50 p-3">
+              <dt className="text-sm text-menta-700">{t('Entrou')}</dt>
+              <dd className="text-valor tabular-nums text-menta-700">
+                {dinheiro(resumo.receitasCentavos)}
+              </dd>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <dt className="text-sm text-slate-600">{t('Saiu')}</dt>
+              <dd className="text-valor tabular-nums text-slate-900">
+                {dinheiro(resumo.totalCentavos)}
+              </dd>
+            </div>
+          </dl>
+
+          <div
+            className={`mt-3 rounded-xl p-4 text-center ${
+              resumo.saldoCentavos < 0 ? 'bg-red-50' : 'bg-menta-50'
+            }`}
+          >
+            <p
+              className={`text-sm font-semibold ${
+                resumo.saldoCentavos < 0 ? 'text-red-700' : 'text-menta-700'
+              }`}
+            >
+              {resumo.saldoCentavos < 0 ? t('Faltou') : t('Sobrou')}
+            </p>
+            <p
+              className={`text-3xl font-bold tabular-nums ${
+                resumo.saldoCentavos < 0 ? 'text-red-700' : 'text-menta-700'
+              }`}
+            >
+              {/* Sem o sinal de menos: "Faltou" já diz a direção, e
+                  "Faltou -R$ 500" lê como negativo duas vezes. */}
+              {dinheiro(Math.abs(resumo.saldoCentavos))}
+            </p>
+          </div>
+
+          <Link
+            to="/receitas"
+            className="mt-3 flex min-h-toque items-center justify-center gap-2 rounded-xl
+              border-2 border-slate-300 text-base font-semibold text-slate-800 hover:bg-slate-50"
+          >
+            <Icone nome="cima" tamanho={20} />
+            {t('Registrar entrada')}
+          </Link>
+        </section>
+      )}
+
       <section className="cartao p-5" aria-labelledby="titulo-categorias" data-tutorial="resumo-categorias">
         <h2 id="titulo-categorias" className="mb-4 text-base font-semibold text-slate-800">
           {t('Por categoria')}
@@ -298,8 +357,11 @@ function BlocoDePrevisao(): ReactElement | null {
 
   return (
     <section className="cartao p-5" aria-labelledby="titulo-previsao">
+      {/* `nomeDoMes` devolve minúsculo (é assim que se escreve mês em
+          português), mas abrindo título fica estranho. A maiúscula é de
+          apresentação, então mora aqui e não no core. */}
       <h2 id="titulo-previsao" className="text-base font-semibold text-slate-800">
-        {t('{mes} já tem', { mes: nomeDoMes(mes, idioma) })}
+        {t('{mes} já tem', { mes: comInicialMaiuscula(nomeDoMes(mes, idioma)) })}
       </h2>
       <p className="mt-1 text-sm text-slate-600">
         {t('Comprometido antes de o mês começar.')}
@@ -324,7 +386,15 @@ function BlocoDePrevisao(): ReactElement | null {
         </div>
       </dl>
 
-      <p className="sr-only">{t('Previsão para {mes} de {ano}', { mes, ano })}</p>
+      {/* Para quem ouve a tela: "11 de 2026" não é como ninguém diz um mês. */}
+      <p className="sr-only">
+        {t('Previsão para {mes} de {ano}', { mes: nomeDoMes(mes, idioma), ano })}
+      </p>
     </section>
   );
+}
+
+/** Primeira letra maiúscula, para nome de mês abrindo frase. */
+function comInicialMaiuscula(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }

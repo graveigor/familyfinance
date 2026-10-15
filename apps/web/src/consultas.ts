@@ -1,4 +1,8 @@
 import type {
+  CriarReceitaEntrada,
+  ListaDeReceitas,
+  ListarReceitasEntrada,
+  TipoDeLancamento,
   Previsao,
   LancamentoDoMes,
   AtualizarCartaoEntrada,
@@ -28,6 +32,9 @@ import { api } from './api';
 /** Chaves centralizadas: invalidar o que mudou fica óbvio e sem string solta. */
 export const chaves = {
   previsao: ['resumos', 'previsao'] as const,
+  receitas: ['receitas'] as const,
+  listaDeReceitas: (filtros: Partial<ListarReceitasEntrada>) =>
+    ['receitas', 'lista', filtros] as const,
   gastos: ['gastos'] as const,
   listaDeGastos: (filtros: Partial<ListarGastosEntrada>) => ['gastos', 'lista', filtros] as const,
   sugestoes: (termo: string) => ['gastos', 'sugestoes', termo] as const,
@@ -39,6 +46,14 @@ export const chaves = {
   evolucao: (meses: number) => ['resumos', 'evolucao', meses] as const,
   recorrencias: ['recorrencias'] as const,
 };
+
+/** Tudo que depende de receita: a lista, o saldo do resumo e a previsão. */
+async function invalidarReceitas(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: chaves.receitas }),
+    queryClient.invalidateQueries({ queryKey: ['resumos'] }),
+  ]);
+}
 
 /**
  * Tudo que depende de gasto: lista, resumo, sugestões de descrição — e as
@@ -64,10 +79,12 @@ export function useGastos(
   });
 }
 
-export function useCategorias(): UseQueryResult<Categoria[], Error> {
+export function useCategorias(tipo?: TipoDeLancamento): UseQueryResult<Categoria[], Error> {
   return useQuery({
-    queryKey: chaves.categorias,
-    queryFn: () => api.categorias.listar(),
+    // O tipo entra na chave: sem isso a tela de receita leria do cache a lista
+    // de despesa, e o seletor viria com "Mercado".
+    queryKey: tipo ? [...chaves.categorias, tipo] : chaves.categorias,
+    queryFn: () => api.categorias.listar(tipo),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -142,6 +159,31 @@ export function useEvolucao(meses = 6): UseQueryResult<Evolucao, Error> {
 /** O que já está comprometido no mês que vem. */
 export function usePrevisao(): UseQueryResult<Previsao, Error> {
   return useQuery({ queryKey: chaves.previsao, queryFn: () => api.resumos.previsao() });
+}
+
+export function useReceitas(
+  filtros: Partial<ListarReceitasEntrada> = {},
+): UseQueryResult<ListaDeReceitas, Error> {
+  return useQuery({
+    queryKey: chaves.listaDeReceitas(filtros),
+    queryFn: () => api.receitas.listar(filtros),
+  });
+}
+
+export function useCriarReceita(): UseMutationResult<unknown, Error, CriarReceitaEntrada> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dados: CriarReceitaEntrada) => api.receitas.criar(dados),
+    onSuccess: () => invalidarReceitas(queryClient),
+  });
+}
+
+export function useExcluirReceita(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.receitas.excluir(id),
+    onSuccess: () => invalidarReceitas(queryClient),
+  });
 }
 
 export function useRecorrencias(): UseQueryResult<

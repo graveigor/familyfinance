@@ -531,6 +531,41 @@ export const EN: Record<string, string> = {
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
 
+  // --- Receitas (o que entra) -----------------------------------------------
+  Entradas: 'Income',
+  'Salário, freela, aluguel recebido — o que entra.':
+    'Salary, freelance work, rent received — what comes in.',
+  'Total das entradas': 'Total income',
+  'Nova entrada': 'New income',
+  'Quanto entrou': 'How much came in',
+  'De onde veio': 'Where it came from',
+  'Salário, freela do site, aluguel...': 'Salary, website freelance, rent...',
+  Quando: 'When',
+  'Quem recebeu?': 'Who received it?',
+  'Salvar entrada': 'Save income',
+  'Suas entradas': 'Your income',
+  'Nenhuma entrada ainda': 'No income yet',
+  'Registre o salário ou um freela para o saldo do mês fazer sentido.':
+    'Add your salary or a freelance job so the monthly balance makes sense.',
+  'Entrada registrada': 'Income saved',
+  'Entrada excluída': 'Income deleted',
+  'A entrada sai do saldo do mês. Não dá para desfazer.':
+    "The income leaves the month's balance. This can't be undone.",
+  'Digite só os números: o app põe a vírgula sozinho, como no lançamento de gasto.':
+    'Type digits only: the app places the decimal point for you, just like for an expense.',
+  'Tudo o que entrou aparece aqui, da mais recente para a mais antiga. Só você vê as suas, como acontece com os gastos.':
+    'Everything that came in shows up here, newest first. Only you see yours, just like with expenses.',
+  'Registrar entrada': 'Add income',
+
+  // --- Entrou, saiu, sobrou -------------------------------------------------
+  'Entrou e saiu': 'In and out',
+  Entrou: 'In',
+  Saiu: 'Out',
+  Faltou: 'Short by',
+  Sobrou: 'Left over',
+  'Faltou {valor} para o que entrou': '{valor} more than what came in',
+  'Sobrou {valor} do que entrou': '{valor} left from what came in',
+
   // --- Fatura do cartão -----------------------------------------------------
   'Fecha dia': 'Closes on day',
   'Vence dia': 'Due on day',

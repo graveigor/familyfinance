@@ -11,6 +11,7 @@ import { Gastos } from './telas/Gastos';
 import { Importar } from './telas/Importar';
 import { Inicio } from './telas/Inicio';
 import { NovoGasto } from './telas/NovoGasto';
+import { Receitas } from './telas/Receitas';
 import { Resumo } from './telas/Resumo';
 import { useSessao } from './sessao';
 
@@ -45,6 +46,7 @@ export function App(): ReactElement {
         <Route path="/novo" element={<NovoGasto />} />
         <Route path="/gastos/:id/editar" element={<NovoGasto />} />
         <Route path="/importar" element={<Importar />} />
+        <Route path="/receitas" element={<Receitas />} />
         <Route path="/resumo" element={<Resumo />} />
         <Route path="/familia" element={<Familia />} />
         <Route path="/ajustes" element={<Ajustes />} />

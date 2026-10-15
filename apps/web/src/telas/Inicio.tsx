@@ -100,6 +100,24 @@ export function Inicio(): ReactElement {
                 '{quantidade} gastos registrados',
               )}
             </p>
+
+            {/* Uma linha só, e só quando há receita: o número grande do mês
+                continua sendo o gasto, que é o que esta tela responde. */}
+            {resumo.data.receitasCentavos > 0 && (
+              <p
+                className={`mt-4 border-t border-slate-100 pt-3 text-base font-semibold ${
+                  resumo.data.saldoCentavos < 0 ? 'text-red-700' : 'text-menta-700'
+                }`}
+              >
+                {resumo.data.saldoCentavos < 0
+                  ? t('Faltou {valor} para o que entrou', {
+                      valor: dinheiro(Math.abs(resumo.data.saldoCentavos)),
+                    })
+                  : t('Sobrou {valor} do que entrou', {
+                      valor: dinheiro(resumo.data.saldoCentavos),
+                    })}
+              </p>
+            )}
           </>
         )}
       </section>
