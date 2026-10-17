@@ -19,7 +19,7 @@ import {
 } from '../consultas';
 import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
-import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+import { useTutorialDoPainel, type PassoDeTutorial } from './Tutorial';
 
 const PASSOS: PassoDeTutorial[] = [
   {
@@ -47,7 +47,7 @@ const PASSOS: PassoDeTutorial[] = [
  * O lançamento do mês é criado quando alguém abre o app — nada roda escondido.
  */
 export function PainelContasFixas(): ReactElement {
-  useTutorialDaPagina('contas-fixas', PASSOS);
+  useTutorialDoPainel('contas-fixas', PASSOS);
   const { dinheiro, mascara } = useDinheiro();
   const { t, tp, idioma } = useIdioma();
   const lista = useRecorrencias();

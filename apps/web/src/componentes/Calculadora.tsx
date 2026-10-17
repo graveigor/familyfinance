@@ -4,7 +4,7 @@ import { Dialogo } from './Dialogo';
 import { Icone } from './Icone';
 import { Botao, useAviso } from './ui';
 import { useIdioma, useT } from '../i18n';
-import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+import { useTutorialDoPainel, type PassoDeTutorial } from './Tutorial';
 
 const PASSOS: PassoDeTutorial[] = [
   {
@@ -33,7 +33,7 @@ const PASSOS: PassoDeTutorial[] = [
  * fechado, então este componente só vive junto com o painel.
  */
 function TutorialDaCalculadora(): null {
-  useTutorialDaPagina('calculadora', PASSOS);
+  useTutorialDoPainel('calculadora', PASSOS);
   return null;
 }
 

@@ -10,7 +10,7 @@ import {
 } from '../consultas';
 import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
-import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+import { useTutorialDoPainel, type PassoDeTutorial } from './Tutorial';
 
 /**
  * Explicação que roda na primeira vez que alguém abre o orçamento. Fica aqui,
@@ -46,7 +46,7 @@ const PASSOS: PassoDeTutorial[] = [
  * oposta.
  */
 export function PainelOrcamento(): ReactElement {
-  useTutorialDaPagina('orcamento', PASSOS);
+  useTutorialDoPainel('orcamento', PASSOS);
   const { t } = useIdioma();
   const { mascara } = useDinheiro();
   const aviso = useAviso();

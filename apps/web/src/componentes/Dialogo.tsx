@@ -63,12 +63,19 @@ export function Dialogo({
   titulo,
   children,
   rodape,
+  semAjuda = false,
 }: {
   aberto: boolean;
   aoFechar: () => void;
   titulo: string;
   children: ReactNode;
   rodape?: ReactNode;
+  /**
+   * Esconde o `(?)` mesmo que haja tutorial de painel por cima. É o caso do
+   * `Confirmar`: ele abre POR CIMA de um painel, e o botão dele reabriria o
+   * tutorial do painel de baixo, destacando o que está escondido.
+   */
+  semAjuda?: boolean;
 }): ReactElement | null {
   const t = useT();
   const painel = useRef<HTMLDivElement>(null);
@@ -122,7 +129,7 @@ export function Dialogo({
             {/* O `(?)` flutuante da tela fica ATRÁS deste painel e não aceita
                 toque, então sem este aqui a explicação do painel seria coisa de
                 uma vez só: rodaria na primeira abertura e nunca mais. */}
-            <AjudaDoPainel />
+            {!semAjuda && <AjudaDoPainel />}
             <button
               type="button"
               onClick={aoFechar}
@@ -174,6 +181,7 @@ export function Confirmar({
       aberto={aberto}
       aoFechar={aoCancelar}
       titulo={titulo}
+      semAjuda
       rodape={
         <>
           <Botao variante="secundario" larguraTotal onClick={aoCancelar}>

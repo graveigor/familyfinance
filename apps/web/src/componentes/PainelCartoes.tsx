@@ -5,7 +5,7 @@ import { Icone } from './Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from './ui';
 import { useCartoes, useCriarCartao, useExcluirCartao } from '../consultas';
 import { useT } from '../i18n';
-import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+import { useTutorialDoPainel, type PassoDeTutorial } from './Tutorial';
 
 const PASSOS: PassoDeTutorial[] = [
   {
@@ -30,7 +30,7 @@ const CORES = ['#334155', '#EA580C', '#DC2626', '#7C3AED', '#0891B2', '#16A34A']
  * etiqueta a mais, para dois cartões do mesmo banco não se confundirem.
  */
 export function PainelCartoes(): ReactElement {
-  useTutorialDaPagina('cartoes', PASSOS);
+  useTutorialDoPainel('cartoes', PASSOS);
   const t = useT();
   const lista = useCartoes();
   const criar = useCriarCartao();

@@ -50,10 +50,20 @@ interface ContextoTutorial {
    * Devolve a função que dá baixa na inscrição — quem inscreveu por último e
    * sai da tela devolve a vez a quem estava embaixo.
    */
-  registrar(pagina: string, passos: PassoDeTutorial[]): () => void;
+  registrar(pagina: string, passos: PassoDeTutorial[], ehPainel?: boolean): () => void;
   /** Reabre o tutorial de quem está por cima (botão de ajuda). */
   reabrir(): void;
   temTutorial: boolean;
+  /**
+   * Quem está por cima é um painel, e não a tela atrás dele.
+   *
+   * É o que decide se o `(?)` do cabeçalho do painel aparece. Sem essa
+   * distinção, um painel SEM tutorial próprio — Categorias, Perfil, Exportar —
+   * mostrava o botão assim mesmo e ele reabria o passo a passo da PÁGINA, cujo
+   * destaque está atrás do painel: a pessoa via o tutorial de outra coisa,
+   * apontando para um lugar que ela não enxerga.
+   */
+  ajudaEhDoPainel: boolean;
 }
 
 const Contexto = createContext<ContextoTutorial | null>(null);
@@ -80,6 +90,7 @@ function marcarComoVisto(pagina: string): void {
 interface Inscricao {
   pagina: string;
   passos: PassoDeTutorial[];
+  ehPainel: boolean;
 }
 
 export function ProvedorDeTutorial({ children }: { children: ReactNode }): ReactElement {
@@ -90,8 +101,9 @@ export function ProvedorDeTutorial({ children }: { children: ReactNode }): React
   const pagina = dona?.pagina ?? null;
   const passos = useMemo(() => dona?.passos ?? [], [dona]);
 
-  const registrar = useCallback((novaPagina: string, novosPassos: PassoDeTutorial[]) => {
-    const inscricao: Inscricao = { pagina: novaPagina, passos: novosPassos };
+  const registrar = useCallback(
+    (novaPagina: string, novosPassos: PassoDeTutorial[], ehPainel = false) => {
+    const inscricao: Inscricao = { pagina: novaPagina, passos: novosPassos, ehPainel };
     setPilha((atual) => [...atual, inscricao]);
 
     // A inscrição é imediata; só ABRIR sozinho é que espera um quadro, para os
@@ -114,7 +126,9 @@ export function ProvedorDeTutorial({ children }: { children: ReactNode }): React
       // elemento que não está mais lá.
       setIndice(null);
     };
-  }, []);
+    },
+    [],
+  );
 
   // Se nenhum passo tem alvo na tela, ainda assim abre o primeiro: o botão de
   // ajuda precisa responder a um toque, nem que seja com o texto centralizado.
@@ -126,8 +140,13 @@ export function ProvedorDeTutorial({ children }: { children: ReactNode }): React
   }, [pagina]);
 
   const valor = useMemo<ContextoTutorial>(
-    () => ({ registrar, reabrir, temTutorial: passos.length > 0 }),
-    [registrar, reabrir, passos.length],
+    () => ({
+      registrar,
+      reabrir,
+      temTutorial: passos.length > 0,
+      ajudaEhDoPainel: dona?.ehPainel ?? false,
+    }),
+    [registrar, reabrir, passos.length, dona],
   );
 
   return (
@@ -380,7 +399,11 @@ function Passo({
  * Os passos precisam ser estáveis entre renderizações — declare fora do
  * componente ou memorize.
  */
-export function useTutorialDaPagina(pagina: string, passos: PassoDeTutorial[]): void {
+export function useTutorialDaPagina(
+  pagina: string,
+  passos: PassoDeTutorial[],
+  ehPainel = false,
+): void {
   // Só o `registrar`, e NÃO o contexto inteiro: `temTutorial` muda justamente
   // quando alguém se inscreve, então depender do objeto faria este efeito dar
   // baixa e se reinscrever a cada inscrição — um laço sem fim. `registrar` tem
@@ -389,9 +412,20 @@ export function useTutorialDaPagina(pagina: string, passos: PassoDeTutorial[]): 
 
   useEffect(() => {
     if (!registrar) return;
-    return registrar(pagina, passos);
+    return registrar(pagina, passos, ehPainel);
     // `passos` vem de constante de módulo, então não remonta a cada render.
-  }, [pagina, passos, registrar]);
+  }, [pagina, passos, ehPainel, registrar]);
+}
+
+/**
+ * Igual ao de página, mas para o conteúdo de um painel.
+ *
+ * A diferença não é cosmética: só a inscrição de painel faz aparecer o `(?)`
+ * do cabeçalho do `Dialogo`. Painel sem tutorial próprio fica sem o botão, em
+ * vez de oferecer a explicação da tela que está escondida atrás dele.
+ */
+export function useTutorialDoPainel(nome: string, passos: PassoDeTutorial[]): void {
+  useTutorialDaPagina(nome, passos, true);
 }
 
 export function useTutorial(): ContextoTutorial {
@@ -441,7 +475,10 @@ export function BotaoDeAjuda(): ReactElement | null {
 export function AjudaDoPainel(): ReactElement | null {
   const t = useT();
   const contexto = useContext(Contexto);
-  if (!contexto?.temTutorial) return null;
+  // `ajudaEhDoPainel`, e não `temTutorial`: a página atrás quase sempre tem
+  // tutorial, e oferecê-lo aqui manda a pessoa para um destaque que ela não
+  // consegue ver.
+  if (!contexto?.ajudaEhDoPainel) return null;
 
   return (
     <button
