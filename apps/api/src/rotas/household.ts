@@ -20,7 +20,7 @@ import {
 import { randomInt } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { usuarioDaRequisicao } from '../plugins/autenticacao.js';
+import { usuarioDaRequisicao, type UsuarioAutenticado } from '../plugins/autenticacao.js';
 import { prisma } from '../prisma.js';
 
 /** Moeda de um grupo, para preencher o usuário devolvido pela rota. */
@@ -171,7 +171,29 @@ function serializarMeta(meta: MetaComAutor): Meta {
     nome: meta.nome,
     valorAlvoCentavos: meta.valorAlvoCentavos,
     criadoPor: { id: meta.criadoPor.id, nome: nomeDoUsuario(meta.criadoPor) },
+    // Sem grupo = de uma pessoa só. Ver o comentário em `model Meta`.
+    pessoal: meta.householdId === null,
     criadoEm: meta.criadoEm.toISOString(),
+  };
+}
+
+/**
+ * As metas que esta pessoa enxerga: as do grupo em uso, que a família inteira
+ * vê, e as dela, que não são de grupo nenhum e seguem com ela mesmo quando
+ * troca de grupo. É o mesmo filtro na leitura e na remoção — quem não vê a
+ * meta recebe "não existe mais" antes de qualquer conversa sobre permissão.
+ *
+ * O `not: null` na primeira perna não é enfeite: hoje `User.householdId` é
+ * obrigatório, mas se um dia virar opcional, `householdId: usuario.householdId`
+ * viraria `householdId: null` e devolveria a meta PESSOAL de todo mundo. O
+ * TypeScript não acusaria — o Prisma aceita null nesse filtro.
+ */
+function filtroDeMetasVisiveis(usuario: UsuarioAutenticado) {
+  return {
+    OR: [
+      { householdId: { not: null, equals: usuario.householdId } },
+      { householdId: null, criadoPorId: usuario.id },
+    ],
   };
 }
 
@@ -570,14 +592,17 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     return reply.status(200).send(serializarUsuario(atual, await moedaDoGrupo(atual.householdId)));
   });
 
-  // --- Metas conjuntas ------------------------------------------------------
+  // --- Metas, do grupo e pessoais --------------------------------------------
 
   app.get('/metas', async (request: FastifyRequest) => {
     const usuario = usuarioDaRequisicao(request);
     const metas = await prisma.meta.findMany({
-      where: { householdId: usuario.householdId },
+      where: filtroDeMetasVisiveis(usuario),
       include: INCLUDE_META,
-      orderBy: { criadoEm: 'asc' },
+      // Pessoal primeiro: é o que a pessoa veio ver na própria tela. O `nulls`
+      // é explícito porque no Postgres um `asc` comum joga nulo para o fim —
+      // ou seja, faria justamente o contrário.
+      orderBy: [{ householdId: { sort: 'asc', nulls: 'first' } }, { criadoEm: 'asc' }],
     });
     return { itens: metas.map(serializarMeta) };
   });
@@ -590,7 +615,7 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
       data: {
         nome: dados.nome,
         valorAlvoCentavos: dados.valorAlvoCentavos ?? null,
-        householdId: usuario.householdId,
+        householdId: dados.pessoal ? null : usuario.householdId,
         criadoPorId: usuario.id,
       },
       include: INCLUDE_META,
@@ -599,18 +624,27 @@ export async function rotasHousehold(app: FastifyInstance): Promise<void> {
     return reply.status(201).send(serializarMeta(meta));
   });
 
-  /** Quem criou a meta (ou administra o grupo) pode removê-la. */
+  /**
+   * Quem criou a meta pode removê-la. Na meta do grupo, quem administra
+   * também; na pessoal não existe esse "também".
+   */
   app.delete('/metas/:id', async (request, reply) => {
     const usuario = usuarioDaRequisicao(request);
     const { id } = paramsSchema.parse(request.params);
 
     const meta = await prisma.meta.findFirst({
-      where: { id, householdId: usuario.householdId },
-      select: { id: true, criadoPorId: true },
+      where: { ...filtroDeMetasVisiveis(usuario), id },
+      select: { id: true, criadoPorId: true, householdId: true },
     });
     if (!meta) throw erroNaoEncontrado('Essa meta não existe mais.');
-    if (meta.criadoPorId !== usuario.id && usuario.papel !== 'ADMIN') {
-      throw erroValidacao('Só quem criou a meta (ou administra o grupo) pode removê-la.');
+
+    // Na meta do grupo, quem administra também pode remover. Na pessoal não
+    // existe esse "também": ela é de uma pessoa só, e administrar o grupo não
+    // dá poder sobre o que é de alguém.
+    const ehDona = meta.criadoPorId === usuario.id;
+    const podeModerar = meta.householdId !== null && usuario.papel === 'ADMIN';
+    if (!ehDona && !podeModerar) {
+      throw erroSemPermissao('Só quem criou a meta (ou administra o grupo) pode removê-la.');
     }
 
     await prisma.meta.delete({ where: { id } });

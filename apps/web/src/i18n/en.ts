@@ -213,7 +213,6 @@ export const EN: Record<string, string> = {
   'Você deixa de ver este grupo. O que você lançou nele fica lá — voltando com um código, está tudo no lugar. O que é das outras pessoas não é afetado.':
     'You lose access to this group. What you added stays there — come back with a code and it will all be in place. Other people are not affected.',
   'Você saiu do grupo.': 'You left the group.',
-  'Metas do grupo': 'Group goals',
   'Nova meta': 'New goal',
   'Nenhuma meta ainda. "Viagem de férias", "Reserva de emergência" — o grupo inteiro vê.':
     'No goals yet. "Holiday trip", "Emergency fund" — the whole group can see them.',
@@ -448,10 +447,10 @@ export const EN: Record<string, string> = {
     'Generate a code like FF-9A3K2M7Q and send it on WhatsApp. Whoever gets it uses the code when creating their account and joins your group.',
   'Aqui aparecem as pessoas do grupo e quem escolheu compartilhar os gastos. O cadeado indica que os lançamentos daquela pessoa são privados.':
     'Here you see the people in the group and who chose to share their expenses. The padlock means that person\'s entries are private.',
-  'Metas de todo mundo':
-    'Everyone\'s goals',
-  'Metas conjuntas, como "Viagem de férias", aparecem para o grupo inteiro. É o único valor que todos veem junto.':
-    'Shared goals, like "Holiday trip", are visible to the whole group. It is the only amount everyone sees together.',
+  'Metas do grupo e suas':
+    'The group\'s goals and yours',
+  'Uma meta como "Viagem de férias" aparece para o grupo inteiro — é o único valor que todos veem junto. Se a meta for só sua, escolha "Só eu" ao criar: ela fica com o cadeado e ninguém mais vê.':
+    'A goal like "Holiday trip" is visible to the whole group — it is the only amount everyone sees together. If the goal is just yours, pick "Only me" when creating it: it gets the padlock and nobody else sees it.',
   'Seus grupos':
     'Your groups',
   'Você pode participar de vários grupos, cada um com os próprios gastos. Aqui você cria, troca o que está em uso, compartilha o código e apaga os que não usa mais.':
@@ -530,6 +529,20 @@ export const EN: Record<string, string> = {
     'Check before saving',
   'Desmarque o que não quiser trazer e corrija o que estiver estranho. Linhas com erro ficam de fora sozinhas.':
     'Untick anything you do not want to bring in and fix whatever looks odd. Rows with errors are left out automatically.',
+
+  // --- Metas (do grupo e pessoais) ------------------------------------------
+  Metas: 'Goals',
+  'Nenhuma meta ainda. "Viagem de férias", "Reserva de emergência" — do grupo ou só sua.':
+    'No goals yet. "Holiday trip", "Emergency fund" — shared or just yours.',
+  'Quem vê esta meta': 'Who sees this goal',
+  'O grupo': 'The group',
+  'Só eu': 'Only me',
+  'Aparece para todo o grupo, mesmo para quem mantém os gastos privados.':
+    'Shows up for the whole group, even for those who keep their spending private.',
+  'Ninguém do grupo vê esta meta, e ela segue com você se trocar de grupo.':
+    "Nobody in the group sees this goal, and it follows you if you switch groups.",
+  'Meta criada só para você.': 'Goal created just for you.',
+  'A meta some. Nenhum gasto é afetado.': 'The goal is removed. No expense is affected.',
 
   // --- Orçamento por categoria ----------------------------------------------
   'Limites por categoria': 'Category limits',

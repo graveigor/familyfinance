@@ -58,9 +58,11 @@ export const atualizarMembroSchema = z.object({
   papel: z.enum(PAPEIS, { errorMap: () => ({ message: 'Escolha um papel válido.' }) }),
 });
 
-/** Meta conjunta do grupo, exibida no Hub da Família. */
+/** Meta exibida no Hub da Família, do grupo ou pessoal. */
 export const criarMetaSchema = z.object({
   nome: zNome,
+  /** Meta só sua, que ninguém do grupo vê. Padrão: meta da família. */
+  pessoal: z.boolean().default(false),
   /** Alvo em centavos; opcional — "Viagem de férias" pode não ter valor ainda. */
   valorAlvoCentavos: z.coerce
     .number()

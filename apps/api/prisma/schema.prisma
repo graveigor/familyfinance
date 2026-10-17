@@ -221,20 +221,31 @@ model Importacao {
   @@index([householdId, criadoEm])
 }
 
-/// Meta conjunta do grupo ("Viagem de férias"), exibida no Hub da Família.
-/// É o único dado financeiro visível a todos: os lançamentos de cada pessoa
-/// são privados.
+/// Meta exibida no Hub da Família. Pode ser do grupo ("Viagem de férias"),
+/// e aí é o único dado financeiro que todos veem — os lançamentos de cada
+/// pessoa continuam privados —, ou pessoal, e aí só quem criou enxerga.
 model Meta {
-  id                String    @id @default(uuid())
+  id                String @id @default(uuid())
   nome              String
   valorAlvoCentavos Int?
-  householdId       String
-  household         Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  criadoPorId       String
-  criadoPor         User      @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
-  criadoEm          DateTime  @default(now())
+
+  /// Nulo = meta PESSOAL, só de quem criou.
+  ///
+  /// Nulo em vez de uma coluna "pessoal" separada porque a meta pessoal não
+  /// pertence a grupo nenhum: amarrada a um, ela sumiria da tela quando a
+  /// pessoa trocasse de grupo — e "comprar uma bike" não deixa de ser meta
+  /// dela por causa disso. Apagar o grupo leva junto as metas DELE; as
+  /// pessoais seguem.
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  criadoPorId String
+  criadoPor   User   @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
+
+  criadoEm DateTime @default(now())
 
   @@index([householdId])
+  @@index([criadoPorId])
 }
 
 /// Pedido de troca de senha por código enviado no e-mail.

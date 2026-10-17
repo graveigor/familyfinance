@@ -39,9 +39,9 @@ const PASSOS: PassoDeTutorial[] = [
   },
   {
     alvo: 'familia-metas',
-    titulo: 'Metas de todo mundo',
+    titulo: 'Metas do grupo e suas',
     texto:
-      'Metas conjuntas, como "Viagem de férias", aparecem para o grupo inteiro. É o único valor que todos veem junto.',
+      'Uma meta como "Viagem de férias" aparece para o grupo inteiro — é o único valor que todos veem junto. Se a meta for só sua, escolha "Só eu" ao criar: ela fica com o cadeado e ninguém mais vê.',
   },
 ];
 
@@ -280,10 +280,10 @@ export function Familia(): ReactElement {
         )}
       </section>
 
-      {/* Metas conjuntas */}
+      {/* Metas do grupo e pessoais */}
       <section data-tutorial="familia-metas" className="cartao overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <h2 className="text-base font-semibold text-slate-900">{t('Metas do grupo')}</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t('Metas')}</h2>
           <button
             type="button"
             onClick={() => setPainel('nova-meta')}
@@ -297,18 +297,31 @@ export function Familia(): ReactElement {
           <Carregando />
         ) : (metas.data?.length ?? 0) === 0 ? (
           <p className="px-4 py-6 text-base text-slate-600">
-            {t('Nenhuma meta ainda. "Viagem de férias", "Reserva de emergência" — o grupo inteiro vê.')}
+            {t('Nenhuma meta ainda. "Viagem de férias", "Reserva de emergência" — do grupo ou só sua.')}
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {metas.data?.map((meta) => (
               <li key={meta.id} className="flex items-center gap-3 px-4 py-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-menta-50 text-menta-700">
-                  <Icone nome="alvo" tamanho={22} />
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                    meta.pessoal ? 'bg-marca-50 text-marca-700' : 'bg-menta-50 text-menta-700'
+                  }`}
+                >
+                  <Icone nome={meta.pessoal ? 'cadeado' : 'alvo'} tamanho={22} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-medium text-slate-900">
-                    {meta.nome}
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-base font-medium text-slate-900">
+                      {meta.nome}
+                    </span>
+                    {/* A etiqueta é curta de propósito: a diferença entre "o
+                        grupo vê" e "só eu vejo" precisa caber num relance. */}
+                    {meta.pessoal && (
+                      <span className="shrink-0 rounded-full bg-marca-50 px-2 py-0.5 text-sm font-semibold text-marca-700">
+                        {t('Só eu')}
+                      </span>
+                    )}
                   </span>
                   <span className="block truncate text-sm text-slate-600">
                     {meta.valorAlvoCentavos !== null
@@ -374,7 +387,11 @@ export function Familia(): ReactElement {
       <Confirmar
         aberto={metaAExcluir !== null}
         titulo={t('Remover "{nome}"?', { nome: metaAExcluir?.nome ?? '' })}
-        descricao={t('A meta some para todo o grupo. Nenhum gasto é afetado.')}
+        descricao={
+          metaAExcluir?.pessoal
+            ? t('A meta some. Nenhum gasto é afetado.')
+            : t('A meta some para todo o grupo. Nenhum gasto é afetado.')
+        }
         rotuloConfirmar={t('Remover')}
         aoCancelar={() => setMetaAExcluir(null)}
         aoConfirmar={() => {
@@ -544,10 +561,12 @@ function PainelNovaMeta({
   aoFechar: () => void;
   aoConcluir: () => void;
 }): ReactElement {
+  const { t } = useIdioma();
   const { mascara } = useDinheiro();
   const queryClient = useQueryClient();
   const aviso = useAviso();
   const [nome, setNome] = useState('');
+  const [pessoal, setPessoal] = useState(false);
   const [digitos, setDigitos] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -560,11 +579,13 @@ function PainelNovaMeta({
     try {
       await api.household.criarMeta({
         nome: nome.trim(),
+        pessoal,
         ...(centavos > 0 ? { valorAlvoCentavos: centavos } : {}),
       });
       await queryClient.invalidateQueries({ queryKey: ['metas'] });
-      aviso.mostrar('Meta criada para o grupo.');
+      aviso.mostrar(pessoal ? t('Meta criada só para você.') : t('Meta criada para o grupo.'));
       setNome('');
+      setPessoal(false);
       setDigitos('');
       aoConcluir();
     } catch (falha) {
@@ -575,25 +596,54 @@ function PainelNovaMeta({
   }
 
   return (
-    <Dialogo aberto={aberto} aoFechar={aoFechar} titulo="Nova meta do grupo">
+    <Dialogo aberto={aberto} aoFechar={aoFechar} titulo={t('Nova meta')}>
       <div className="space-y-4">
         <CaixaDeErro mensagem={erro} />
-        <p className="text-base text-slate-700">
-          Metas aparecem para todo o grupo, mesmo para quem mantém os gastos privados.
-        </p>
+
+        {/* Quem vê vem PRIMEIRO, antes do nome: é a decisão que muda o
+            significado de tudo o que se digita depois. */}
+        <div>
+          <p className="rotulo">{t('Quem vê esta meta')}</p>
+          <div className="flex gap-2">
+            {[
+              { valor: false, rotulo: t('O grupo') },
+              { valor: true, rotulo: t('Só eu') },
+            ].map((opcao) => (
+              <button
+                key={String(opcao.valor)}
+                type="button"
+                aria-pressed={pessoal === opcao.valor}
+                onClick={() => setPessoal(opcao.valor)}
+                className={`min-h-toque flex-1 rounded-xl border-2 px-4 text-base font-semibold ${
+                  pessoal === opcao.valor
+                    ? 'border-marca-600 bg-marca-50 text-marca-900'
+                    : 'border-slate-200 bg-white text-slate-700'
+                }`}
+              >
+                {opcao.rotulo}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            {pessoal
+              ? t('Ninguém do grupo vê esta meta, e ela segue com você se trocar de grupo.')
+              : t('Aparece para todo o grupo, mesmo para quem mantém os gastos privados.')}
+          </p>
+        </div>
+
         <Campo
-          rotulo="Qual é a meta"
+          rotulo={t('Qual é a meta')}
           value={nome}
           onChange={(e) => setNome(e.target.value)}
-          placeholder="Viagem de férias, reserva de emergência..."
+          placeholder={t('Viagem de férias, reserva de emergência...')}
         />
         <Campo
-          rotulo="Valor (opcional)"
+          rotulo={t('Valor (opcional)')}
           inputMode="numeric"
           value={mascara(digitos)}
           onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
-          placeholder="R$ 0,00"
-          dica="Pode deixar em branco se ainda não tem um número."
+          placeholder={mascara('')}
+          dica={t('Pode deixar em branco se ainda não tem um número.')}
         />
         <Botao
           larguraTotal
@@ -601,7 +651,7 @@ function PainelNovaMeta({
           carregando={salvando}
           onClick={() => void criar()}
         >
-          Criar meta
+          {t('Criar meta')}
         </Botao>
       </div>
     </Dialogo>

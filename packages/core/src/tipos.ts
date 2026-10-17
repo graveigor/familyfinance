@@ -178,12 +178,14 @@ export interface Evolucao {
   maiorCentavos: number;
 }
 
-/** Meta conjunta do grupo (ex.: "Viagem de férias"). */
+/** Meta do grupo (ex.: "Viagem de férias") ou pessoal, de quem criou. */
 export interface Meta {
   id: string;
   nome: string;
   valorAlvoCentavos: number | null;
   criadoPor: AutorDoGasto;
+  /** Só de quem criou. As do grupo aparecem para a família inteira. */
+  pessoal: boolean;
   criadoEm: string;
 }
 
