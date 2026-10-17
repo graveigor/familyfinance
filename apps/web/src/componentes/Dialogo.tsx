@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Botao } from './ui';
 import { Icone } from './Icone';
+import { AjudaDoPainel } from './Tutorial';
 import { useT } from '../i18n';
 
 /**
@@ -117,14 +118,20 @@ export function Dialogo({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">{titulo}</h2>
-          <button
-            type="button"
-            onClick={aoFechar}
-            aria-label={t('Fechar')}
-            className="-mr-2 flex h-toque w-toque items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
-          >
-            <Icone nome="fechar" tamanho={24} />
-          </button>
+          <div className="-mr-2 flex items-center">
+            {/* O `(?)` flutuante da tela fica ATRÁS deste painel e não aceita
+                toque, então sem este aqui a explicação do painel seria coisa de
+                uma vez só: rodaria na primeira abertura e nunca mais. */}
+            <AjudaDoPainel />
+            <button
+              type="button"
+              onClick={aoFechar}
+              aria-label={t('Fechar')}
+              className="flex h-toque w-toque items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
+            >
+              <Icone nome="fechar" tamanho={24} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>

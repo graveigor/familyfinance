@@ -31,6 +31,18 @@ const PASSOS: PassoDeTutorial[] = [
       'O total e a comparação com o mês passado. Só entra o que é seu e o de quem escolheu compartilhar com o grupo.',
   },
   {
+    alvo: 'resumo-saldo',
+    titulo: 'Entrou, saiu, sobrou',
+    texto:
+      'Aparece quando você registra alguma entrada. Compara o que entrou no mês com o que saiu e diz o que sobrou — ou o que faltou, em vermelho.',
+  },
+  {
+    alvo: 'resumo-orcamento',
+    titulo: 'Seus limites',
+    texto:
+      'Uma barra por categoria com teto definido. Amarelo quando chega a 80% do limite, vermelho quando passa. Os tetos se definem em Ajustes, e só você os vê.',
+  },
+  {
     alvo: 'resumo-categorias',
     titulo: 'Para onde foi o dinheiro',
     texto:
@@ -40,6 +52,12 @@ const PASSOS: PassoDeTutorial[] = [
     alvo: 'resumo-pessoas',
     titulo: 'Quem gastou quanto',
     texto: 'A divisão por pessoa, para quem divide as contas da casa.',
+  },
+  {
+    alvo: 'resumo-previsao',
+    titulo: 'O que o mês que vem já custa',
+    texto:
+      'Soma o que já está marcado para o próximo mês: as parcelas que você assumiu e as contas fixas que ainda vão nascer. Os dois ficam separados porque parcela não dá para cancelar, conta fixa dá.',
   },
   {
     alvo: 'resumo-evolucao',
@@ -169,7 +187,7 @@ function ConteudoDoResumo({ resumo }: { resumo: ResumoMensal }): ReactElement {
           "sobrou -R$ 500" seria uma afirmação falsa sobre a vida de alguém que
           simplesmente não usa esta parte do app. */}
       {resumo.receitasCentavos > 0 && (
-        <section className="cartao p-5" aria-labelledby="titulo-saldo">
+        <section className="cartao p-5" aria-labelledby="titulo-saldo" data-tutorial="resumo-saldo">
           <h2 id="titulo-saldo" className="mb-4 text-base font-semibold text-slate-800">
             {t('Entrou e saiu')}
           </h2>
@@ -358,7 +376,7 @@ function BlocoDePrevisao(): ReactElement | null {
   const { ano, mes, totalCentavos, lancadosCentavos, contasFixasCentavos } = previsao.data;
 
   return (
-    <section className="cartao p-5" aria-labelledby="titulo-previsao">
+    <section className="cartao p-5" aria-labelledby="titulo-previsao" data-tutorial="resumo-previsao">
       {/* `nomeDoMes` devolve minúsculo (é assim que se escreve mês em
           português), mas abrindo título fica estranho. A maiúscula é de
           apresentação, então mora aqui e não no core. */}
@@ -425,7 +443,7 @@ function BlocoDeOrcamento({ ano, mes }: { ano: number; mes: number }): ReactElem
   if (!orcamentos.data || orcamentos.data.length === 0) return null;
 
   return (
-    <section className="cartao p-5" aria-labelledby="titulo-orcamento">
+    <section className="cartao p-5" aria-labelledby="titulo-orcamento" data-tutorial="resumo-orcamento">
       <h2 id="titulo-orcamento" className="mb-1 text-base font-semibold text-slate-800">
         {t('Seus limites')}
       </h2>

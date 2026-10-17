@@ -39,7 +39,13 @@ const PASSOS: PassoDeTutorial[] = [
     alvo: 'ajustes-cartoes',
     titulo: 'Seus cartões',
     texto:
-      'Cadastre os cartões pelo apelido que você usa — "Itaú", "Bradesco" — e marque se é crédito ou débito. Depois dá para lançar o gasto no cartão certo e filtrar por ele.',
+      'Onde ficam os cartões da casa, com o dia de fechamento e vencimento de cada um. Abra que a gente explica lá dentro.',
+  },
+  {
+    alvo: 'ajustes-orcamento',
+    titulo: 'Quanto você quer gastar',
+    texto:
+      'Um teto por mês em cada categoria, só seu. As barras aparecem no Resumo e acendem quando o gasto se aproxima do limite.',
   },
   {
     alvo: 'ajustes-contas-fixas',

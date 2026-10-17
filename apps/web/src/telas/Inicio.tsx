@@ -25,6 +25,12 @@ const PASSOS: PassoDeTutorial[] = [
       'Este é o número que resume o mês, com a comparação com o mês passado logo abaixo. Só entra aqui o que é seu e o de quem escolheu compartilhar com o grupo.',
   },
   {
+    alvo: 'inicio-total',
+    titulo: 'E o que sobrou',
+    texto:
+      'Logo abaixo do total aparece quanto sobrou do que entrou, assim que você registra alguma entrada. Sem entrada registrada, essa linha não aparece — o app não inventa um saldo.',
+  },
+  {
     alvo: 'inicio-ultimos',
     titulo: 'Seus últimos lançamentos',
     texto: 'Os gastos mais recentes ficam aqui. Toque em "Ver todos" para buscar e filtrar.',

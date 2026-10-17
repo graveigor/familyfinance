@@ -5,6 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -23,6 +24,17 @@ import { useT } from '../i18n';
  * Cada passo aponta para um elemento pelo atributo `data-tutorial`, e não por
  * classe ou posição: mexer no visual da tela não quebra o tutorial, e um passo
  * cujo alvo não existe naquele momento é simplesmente pulado.
+ *
+ * As inscrições formam uma PILHA, e não um valor só. A ordem dela é por tempo
+ * de inscrição: como efeito de filho roda antes do de pai, um painel que já
+ * nascesse aberto junto com a tela (link direto, por exemplo) entraria ABAIXO
+ * dela na pilha, e a página ganharia a vez. Hoje não acontece porque painel só
+ * monta depois de alguém tocar nele.
+ * Um painel que abre por
+ * cima da página — orçamento, calculadora, cartões — inscreve o próprio
+ * tutorial, que roda na primeira vez que aquilo é aberto e responde ao `(?)`
+ * enquanto estiver na tela; ao fechar, a página embaixo volta a ser a dona.
+ * Sem a pilha, o `(?)` continuaria explicando o painel que já saiu da tela.
  */
 
 export interface PassoDeTutorial {
@@ -33,9 +45,13 @@ export interface PassoDeTutorial {
 }
 
 interface ContextoTutorial {
-  /** Registra os passos da página aberta e roda na primeira visita. */
-  registrar(pagina: string, passos: PassoDeTutorial[]): void;
-  /** Reabre o tutorial da página atual (botão de ajuda). */
+  /**
+   * Inscreve os passos de uma tela ou painel e roda na primeira visita.
+   * Devolve a função que dá baixa na inscrição — quem inscreveu por último e
+   * sai da tela devolve a vez a quem estava embaixo.
+   */
+  registrar(pagina: string, passos: PassoDeTutorial[]): () => void;
+  /** Reabre o tutorial de quem está por cima (botão de ajuda). */
   reabrir(): void;
   temTutorial: boolean;
 }
@@ -61,16 +77,43 @@ function marcarComoVisto(pagina: string): void {
   }
 }
 
+interface Inscricao {
+  pagina: string;
+  passos: PassoDeTutorial[];
+}
+
 export function ProvedorDeTutorial({ children }: { children: ReactNode }): ReactElement {
-  const [pagina, setPagina] = useState<string | null>(null);
-  const [passos, setPassos] = useState<PassoDeTutorial[]>([]);
+  const [pilha, setPilha] = useState<Inscricao[]>([]);
   const [indice, setIndice] = useState<number | null>(null);
 
+  const dona = pilha[pilha.length - 1];
+  const pagina = dona?.pagina ?? null;
+  const passos = useMemo(() => dona?.passos ?? [], [dona]);
+
   const registrar = useCallback((novaPagina: string, novosPassos: PassoDeTutorial[]) => {
-    setPagina(novaPagina);
-    setPassos(novosPassos);
-    // Espera a tela pintar antes de medir os elementos.
-    setIndice(jaViu(novaPagina) ? null : primeiroPassoVisivel(novosPassos, 0));
+    const inscricao: Inscricao = { pagina: novaPagina, passos: novosPassos };
+    setPilha((atual) => [...atual, inscricao]);
+
+    // A inscrição é imediata; só ABRIR sozinho é que espera um quadro, para os
+    // elementos já estarem no lugar quando forem medidos. Adiar a inscrição
+    // também deixava a pilha vazia por 120 ms a cada troca de tela — e o `(?)`
+    // sumia e voltava, empurrando a calculadora ao lado.
+    let relogio: ReturnType<typeof setTimeout> | null = null;
+    if (jaViu(novaPagina)) {
+      // Painel já visto abrindo por cima de um tutorial em andamento: o passo
+      // da página falaria de um elemento que agora está atrás do painel.
+      setIndice(null);
+    } else {
+      relogio = setTimeout(() => setIndice(primeiroPassoVisivel(novosPassos, 0)), 120);
+    }
+
+    return () => {
+      if (relogio) clearTimeout(relogio);
+      setPilha((atual) => atual.filter((outra) => outra !== inscricao));
+      // Fechar o painel fecha o passo que falava dele: o furo apontaria para um
+      // elemento que não está mais lá.
+      setIndice(null);
+    };
   }, []);
 
   // Se nenhum passo tem alvo na tela, ainda assim abre o primeiro: o botão de
@@ -158,6 +201,14 @@ function Passo({
   const t = useT();
   const passo = passos[indice];
   const [area, setArea] = useState<Retangulo | null>(null);
+  const cartao = useRef<HTMLDivElement>(null);
+
+  // Sem isto o foco fica onde estava — num campo do painel, atrás do
+  // escurecido, invisível e inclicável. Quem navega por teclado ou leitor de
+  // tela ficava tateando o que o tutorial justamente está escondendo.
+  useEffect(() => {
+    cartao.current?.focus();
+  }, [indice]);
 
   // `useLayoutEffect`: mede antes de pintar, para o furo não aparecer no lugar
   // errado por um quadro.
@@ -202,13 +253,21 @@ function Passo({
     };
   }, [passo]);
 
+  // Em captura e cortando o evento ali mesmo: o `Dialogo` embaixo também ouve
+  // Esc no `document`, e sem isto um Esc fecharia o tutorial E o painel que ele
+  // está explicando — além de marcar o tutorial como visto no primeiro passo,
+  // para nunca mais voltar. O `preventDefault` do espaço é pelo mesmo motivo:
+  // o foco ainda está num campo atrás do escurecido.
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent): void => {
+      if (evento.key !== 'Escape' && evento.key !== 'Enter' && evento.key !== ' ') return;
+      evento.preventDefault();
+      evento.stopImmediatePropagation();
       if (evento.key === 'Escape') aoFechar();
-      if (evento.key === 'Enter' || evento.key === ' ') aoAvancar();
+      else aoAvancar();
     };
-    document.addEventListener('keydown', aoTeclar);
-    return () => document.removeEventListener('keydown', aoTeclar);
+    document.addEventListener('keydown', aoTeclar, true);
+    return () => document.removeEventListener('keydown', aoTeclar, true);
   }, [aoAvancar, aoFechar]);
 
   if (!passo) return null;
@@ -251,7 +310,10 @@ function Passo({
       />
 
       <div
-        className="absolute inset-x-4 mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-2xl"
+        ref={cartao}
+        tabIndex={-1}
+        className="absolute inset-x-4 mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-2xl
+          outline-none"
         style={
           area
             ? abaixo
@@ -276,9 +338,12 @@ function Passo({
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <div className="flex gap-1.5" aria-label={t('Passo {atual} de {total}', { atual: indice + 1, total: passos.length })}>
-            {passos.map((outro, i) => (
+            {/* Pelo índice, e não pelo alvo: dois passos seguidos podem explicar
+                partes diferentes do MESMO elemento — na conta fixa, "só vira
+                gasto no dia" e "paga ou atrasada" são a mesma lista. */}
+            {passos.map((_, i) => (
               <span
-                key={outro.alvo}
+                key={i}
                 className={`h-2 w-2 rounded-full ${i === indice ? 'bg-marca-700' : 'bg-slate-300'}`}
               />
             ))}
@@ -310,20 +375,23 @@ function Passo({
 }
 
 /**
- * Declara os passos da página. Chame uma vez, no topo da tela.
+ * Declara os passos de uma tela ou de um painel. Chame uma vez, no topo do
+ * componente; num painel, basta ele só existir enquanto estiver aberto.
  * Os passos precisam ser estáveis entre renderizações — declare fora do
  * componente ou memorize.
  */
 export function useTutorialDaPagina(pagina: string, passos: PassoDeTutorial[]): void {
-  const contexto = useContext(Contexto);
+  // Só o `registrar`, e NÃO o contexto inteiro: `temTutorial` muda justamente
+  // quando alguém se inscreve, então depender do objeto faria este efeito dar
+  // baixa e se reinscrever a cada inscrição — um laço sem fim. `registrar` tem
+  // identidade estável de propósito.
+  const registrar = useContext(Contexto)?.registrar;
 
   useEffect(() => {
-    if (!contexto) return;
-    // Um quadro de espera para os elementos já estarem no lugar quando medirmos.
-    const relogio = setTimeout(() => contexto.registrar(pagina, passos), 120);
-    return () => clearTimeout(relogio);
-    // `contexto.registrar` é estável; `passos` vem de constante de módulo.
-  }, [pagina, passos, contexto]);
+    if (!registrar) return;
+    return registrar(pagina, passos);
+    // `passos` vem de constante de módulo, então não remonta a cada render.
+  }, [pagina, passos, registrar]);
 }
 
 export function useTutorial(): ContextoTutorial {
@@ -353,6 +421,36 @@ export function BotaoDeAjuda(): ReactElement | null {
       className="flex h-11 w-11 items-center justify-center rounded-full border
         border-slate-200 bg-white text-lg font-bold text-marca-700 shadow-sm
         transition-colors hover:bg-marca-50 active:bg-marca-100"
+    >
+      ?
+    </button>
+  );
+}
+
+/**
+ * `(?)` do cabeçalho de um painel.
+ *
+ * O atalho flutuante da tela mora numa camada abaixo do `Dialogo`, coberto
+ * pelo escurecido — então, dentro de um painel, ele não existe. Sem este
+ * botão, a explicação do painel rodaria na primeira abertura e nunca mais.
+ *
+ * Usa o contexto direto em vez do `useTutorial()` para não explodir caso um
+ * `Dialogo` seja montado fora do provedor (num teste, por exemplo): ajuda que
+ * falta é um botão a menos, não uma tela quebrada.
+ */
+export function AjudaDoPainel(): ReactElement | null {
+  const t = useT();
+  const contexto = useContext(Contexto);
+  if (!contexto?.temTutorial) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={contexto.reabrir}
+      aria-label={t('Ajuda desta tela')}
+      title={t('Ajuda desta tela')}
+      className="flex h-toque w-toque items-center justify-center rounded-full
+        text-lg font-bold text-marca-700 hover:bg-marca-50"
     >
       ?
     </button>

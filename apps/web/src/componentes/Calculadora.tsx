@@ -4,6 +4,38 @@ import { Dialogo } from './Dialogo';
 import { Icone } from './Icone';
 import { Botao, useAviso } from './ui';
 import { useIdioma, useT } from '../i18n';
+import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'calculadora-visor',
+    titulo: 'A conta em andamento',
+    texto:
+      'A linha de cima mostra o que já foi digitado e qual operação está esperando o segundo número. Dá para usar o teclado do computador: números, + - × ÷, Enter para o igual.',
+  },
+  {
+    alvo: 'calculadora-teclado',
+    titulo: 'A tecla de porcentagem',
+    texto:
+      'Com uma soma ou subtração pendente, o % é relativo ao primeiro número: "200 + 10 %" dá 220, que é a gorjeta. Sozinho, ele só divide por cem.',
+  },
+  {
+    alvo: 'calculadora-copiar',
+    titulo: 'Levar o resultado',
+    texto:
+      'Copia o número para você colar no valor do gasto. A calculadora é uma ferramenta à parte — ela não lança nada sozinha.',
+  },
+];
+
+/**
+ * Existe só para o tutorial rodar quando a calculadora ABRE, e não quando a
+ * tela que a contém monta. O `Dialogo` não renderiza os filhos enquanto está
+ * fechado, então este componente só vive junto com o painel.
+ */
+function TutorialDaCalculadora(): null {
+  useTutorialDaPagina('calculadora', PASSOS);
+  return null;
+}
 
 /**
  * Calculadora de bolso, para a conta que aparece antes do lançamento: dividir
@@ -399,18 +431,22 @@ export function Calculadora({
       aoFechar={aoFechar}
       titulo={t('Calculadora')}
       rodape={
-        <Botao
-          variante="secundario"
-          larguraTotal
-          icone="copiar"
-          onClick={copiar}
-          disabled={estado.erro !== null}
-        >
-          {t('Copiar resultado')}
-        </Botao>
+        <div data-tutorial="calculadora-copiar">
+          <Botao
+            variante="secundario"
+            larguraTotal
+            icone="copiar"
+            onClick={copiar}
+            disabled={estado.erro !== null}
+          >
+            {t('Copiar resultado')}
+          </Botao>
+        </div>
       }
     >
-      <div className="rounded-2xl bg-marca-800 px-5 py-4">
+      <TutorialDaCalculadora />
+
+      <div className="rounded-2xl bg-marca-800 px-5 py-4" data-tutorial="calculadora-visor">
         {/* Altura fixa: sem ela a caixa pula de tamanho quando a conta começa. */}
         <p className="flex h-6 items-center justify-end text-base text-marca-200 tabular-nums">
           {pendente}
@@ -426,7 +462,7 @@ export function Calculadora({
         </output>
       </div>
 
-      <div className="mt-4 grid grid-cols-4 gap-2">
+      <div className="mt-4 grid grid-cols-4 gap-2" data-tutorial="calculadora-teclado">
         {TECLADO.map((tecla) => {
           const ativa =
             tecla.tipo === 'operacao' &&

@@ -459,8 +459,6 @@ export const EN: Record<string, string> = {
     'Create and delete categories to suit your home. Deleting a category never deletes an expense — the entries simply lose their label.',
   'Seus cartões':
     'Your cards',
-  'Cadastre os cartões pelo apelido que você usa — "Itaú", "Bradesco" — e marque se é crédito ou débito. Depois dá para lançar o gasto no cartão certo e filtrar por ele.':
-    'Add your cards using the nickname you actually use — "Itaú", "Bradesco" — and mark whether it is credit or debit. You can then put each expense on the right card and filter by it.',
   'Contas que se repetem':
     'Bills that repeat',
   'Aluguel, internet, mensalidade: cadastre uma vez e o lançamento entra sozinho todo mês, na data escolhida.':
@@ -653,6 +651,73 @@ export const EN: Record<string, string> = {
   'Trocar o sinal': 'Change the sign',
   Porcentagem: 'Percentage',
   'Separador decimal': 'Decimal separator',
+
+  // --- Passo a passo das funcionalidades novas -------------------------------
+  'Onde ficam os cartões da casa, com o dia de fechamento e vencimento de cada um. Abra que a gente explica lá dentro.':
+    'Where the household cards live, each with its closing and due date. Open it and we explain inside.',
+  'Um teto por mês em cada categoria, só seu. As barras aparecem no Resumo e acendem quando o gasto se aproxima do limite.':
+    'A monthly cap per category, yours alone. The bars show up in the Summary and light up as spending nears the cap.',
+  // Orçamento
+  'Quanto você quer gastar': 'How much you want to spend',
+  'Escolha a categoria e diga o teto do mês. Vale para todo mês daqui em diante — você não precisa recadastrar em janeiro.':
+    'Pick the category and set the monthly cap. It applies to every month from now on — you do not have to set it again in January.',
+  'Onde o limite aparece': 'Where the cap shows up',
+  'Cada teto vira uma barra no Resumo, mostrando quanto do limite já foi. A barra fica amarela quando chega a 80% e vermelha quando passa.':
+    'Each cap becomes a bar in the Summary, showing how much of it is gone. The bar turns amber at 80% and red once you go over.',
+  'O limite é só seu': 'The cap is yours alone',
+  'Ninguém do grupo vê os seus tetos, nem quem administra — e a conta compara com o SEU gasto, não com o da família. Teto é combinado consigo mesmo.':
+    'Nobody in the group sees your caps, not even an admin — and the maths compares them with YOUR spending, not the family\'s. A cap is a deal with yourself.',
+
+  // Cartões e fatura
+  'O apelido que você usa': 'Whatever you call it',
+  'Cadastre pelo nome que você fala — "o do Itaú", "o da farmácia". Depois dá para lançar o gasto no cartão certo e filtrar por ele.':
+    'Add it by the name you actually use — "the Itaú one", "the pharmacy card". Then you can log each expense on the right card and filter by it.',
+  'Fechamento e vencimento': 'Closing and due dates',
+  'Estes dois dias são opcionais, mas são o que faz o app saber em qual fatura a compra caiu: comprou depois do fechamento, entra na fatura do mês seguinte. Os dias estão no app do banco.':
+    'Both days are optional, but they are what lets the app tell which statement a purchase landed on: buy after the closing date and it goes on next month\'s statement. You will find the days in your bank app.',
+
+  // Contas fixas
+  'Cadastre uma vez só': 'Set it up once',
+  'Aluguel, internet, mensalidade: diga o valor e o dia do mês. Se o mês não tiver aquele dia — dia 31 em fevereiro —, o app usa o último dia do mês.':
+    'Rent, internet, tuition: give the amount and the day of the month. When a month has no such day — the 31st in February — the app uses that month\'s last day.',
+  'A conta só vira gasto no dia': 'A bill only counts on its day',
+  'A conta do dia 20 só entra no seu total no dia 20, não no começo do mês. Até lá ela aparece aqui como o que ainda vem pela frente.':
+    'A bill due on the 20th only joins your total on the 20th, not at the start of the month. Until then it shows up here as what is still coming.',
+  'Paga, em aberto ou atrasada': 'Paid, open or overdue',
+  'Toque no botão ao lado de cada conta para marcar que pagou. O que passou do dia e continua em aberto aparece em vermelho, dizendo há quantos dias está atrasada.':
+    'Tap the button beside a bill to mark it paid. Anything past its day and still open turns red, telling you how many days it is overdue.',
+
+  // Calculadora
+  'A conta em andamento': 'The sum in progress',
+  'A linha de cima mostra o que já foi digitado e qual operação está esperando o segundo número. Dá para usar o teclado do computador: números, + - × ÷, Enter para o igual.':
+    'The top line shows what you have typed and which operation is waiting for its second number. Your computer keyboard works too: digits, + - × ÷, and Enter for equals.',
+  'A tecla de porcentagem': 'The percent key',
+  'Com uma soma ou subtração pendente, o % é relativo ao primeiro número: "200 + 10 %" dá 220, que é a gorjeta. Sozinho, ele só divide por cem.':
+    'With a pending plus or minus, % is relative to the first number: "200 + 10 %" gives 220 — the tip included. On its own it just divides by a hundred.',
+  'Levar o resultado': 'Taking the result with you',
+  'Copia o número para você colar no valor do gasto. A calculadora é uma ferramenta à parte — ela não lança nada sozinha.':
+    'Copies the number so you can paste it into an expense. The calculator is a separate tool — it never logs anything by itself.',
+
+  // Resumo e Início
+  'Entrou, saiu, sobrou': 'In, out, left over',
+  'Aparece quando você registra alguma entrada. Compara o que entrou no mês com o que saiu e diz o que sobrou — ou o que faltou, em vermelho.':
+    'Appears once you record some income. It compares what came in against what went out and tells you what is left — or what is missing, in red.',
+  'Uma barra por categoria com teto definido. Amarelo quando chega a 80% do limite, vermelho quando passa. Os tetos se definem em Ajustes, e só você os vê.':
+    'One bar per category with a cap. Amber at 80% of the cap, red once you pass it. Caps are set in Settings, and only you can see them.',
+  'O que o mês que vem já custa': 'What next month already costs',
+  'Soma o que já está marcado para o próximo mês: as parcelas que você assumiu e as contas fixas que ainda vão nascer. Os dois ficam separados porque parcela não dá para cancelar, conta fixa dá.':
+    'Adds up what is already booked for next month: the instalments you took on and the recurring bills still to come. They stay apart because an instalment cannot be cancelled and a recurring bill can.',
+  'E o que sobrou': 'And what is left',
+  'Logo abaixo do total aparece quanto sobrou do que entrou, assim que você registra alguma entrada. Sem entrada registrada, essa linha não aparece — o app não inventa um saldo.':
+    'Right below the total you see how much of your income is left, as soon as you record any. With no income recorded the line stays away — the app will not invent a balance.',
+
+  // Lançamento e entradas
+  'Nem tudo é cartão': 'Not everything is a card',
+  'Em "Mais opções" você diz se foi débito, dinheiro, Pix, boleto ou outro. Serve para saber depois por onde o dinheiro saiu, não só quanto saiu.':
+    'Under "More options" you say whether it was debit, cash, Pix, a bank slip or something else. It is there so you know how the money left, not just how much.',
+  'Categorias de entrada': 'Income categories',
+  'Aqui só aparecem categorias de entrada — "Salário", "Freela" —, nunca as de gasto. São listas separadas de propósito: salário não é despesa de mercado.':
+    'Only income categories show up here — "Salary", "Freelance" — never the spending ones. The two lists are deliberately separate: a salary is not a grocery bill.',
 
   // --- Peças comuns ---------------------------------------------------------
   Cancelar: 'Cancel',

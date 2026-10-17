@@ -39,6 +39,12 @@ const PASSOS: PassoDeTutorial[] = [
     texto: 'Digite só os números: o app põe a vírgula sozinho, como no lançamento de gasto.',
   },
   {
+    alvo: 'receita-categoria',
+    titulo: 'Categorias de entrada',
+    texto:
+      'Aqui só aparecem categorias de entrada — "Salário", "Freela" —, nunca as de gasto. São listas separadas de propósito: salário não é despesa de mercado.',
+  },
+  {
     alvo: 'receita-lista',
     titulo: 'Suas entradas',
     texto:
@@ -145,7 +151,7 @@ export function Receitas(): ReactElement {
           erro={erro.campos.data}
         />
 
-        <div>
+        <div data-tutorial="receita-categoria">
           <label htmlFor="categoria-receita" className="rotulo">
             {t('Categoria')}
           </label>

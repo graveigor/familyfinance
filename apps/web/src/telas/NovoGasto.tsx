@@ -75,6 +75,12 @@ const PASSOS: PassoDeTutorial[] = [
       'Escolha o cartão para saber depois quanto foi em cada um. Se ainda não cadastrou nenhum, dá para criar aqui mesmo.',
   },
   {
+    alvo: 'gasto-forma',
+    titulo: 'Nem tudo é cartão',
+    texto:
+      'Em "Mais opções" você diz se foi débito, dinheiro, Pix, boleto ou outro. Serve para saber depois por onde o dinheiro saiu, não só quanto saiu.',
+  },
+  {
     alvo: 'gasto-parcelas',
     titulo: 'Compra parcelada',
     texto:
@@ -560,7 +566,7 @@ export function NovoGasto(): ReactElement {
 
         {mostrarMais && (
           <div className="mt-4 space-y-4">
-            <div>
+            <div data-tutorial="gasto-forma">
               <p className="rotulo">{t('Forma de pagamento')}</p>
               <div className="flex flex-wrap gap-2">
                 {FORMAS_PAGAMENTO.map((forma) => (

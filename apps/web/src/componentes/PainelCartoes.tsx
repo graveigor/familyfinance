@@ -5,6 +5,22 @@ import { Icone } from './Icone';
 import { Botao, CaixaDeErro, Campo, Carregando, traduzirErro, useAviso } from './ui';
 import { useCartoes, useCriarCartao, useExcluirCartao } from '../consultas';
 import { useT } from '../i18n';
+import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'cartoes-novo',
+    titulo: 'O apelido que você usa',
+    texto:
+      'Cadastre pelo nome que você fala — "o do Itaú", "o da farmácia". Depois dá para lançar o gasto no cartão certo e filtrar por ele.',
+  },
+  {
+    alvo: 'cartoes-fatura',
+    titulo: 'Fechamento e vencimento',
+    texto:
+      'Estes dois dias são opcionais, mas são o que faz o app saber em qual fatura a compra caiu: comprou depois do fechamento, entra na fatura do mês seguinte. Os dias estão no app do banco.',
+  },
+];
 
 const CORES = ['#334155', '#EA580C', '#DC2626', '#7C3AED', '#0891B2', '#16A34A'];
 
@@ -14,6 +30,7 @@ const CORES = ['#334155', '#EA580C', '#DC2626', '#7C3AED', '#0891B2', '#16A34A']
  * etiqueta a mais, para dois cartões do mesmo banco não se confundirem.
  */
 export function PainelCartoes(): ReactElement {
+  useTutorialDaPagina('cartoes', PASSOS);
   const t = useT();
   const lista = useCartoes();
   const criar = useCriarCartao();
@@ -108,7 +125,7 @@ export function PainelCartoes(): ReactElement {
         </ul>
       )}
 
-      <div className="space-y-3 rounded-xl bg-slate-50 p-4">
+      <div className="space-y-3 rounded-xl bg-slate-50 p-4" data-tutorial="cartoes-novo">
         <p className="text-base font-semibold text-slate-800">{t('Novo cartão')}</p>
         <CaixaDeErro mensagem={erro} />
 
@@ -141,7 +158,7 @@ export function PainelCartoes(): ReactElement {
         </div>
 
         {tipo === 'CREDITO' && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3" data-tutorial="cartoes-fatura">
             <Campo
               rotulo={t('Fecha dia')}
               type="number"

@@ -10,6 +10,33 @@ import {
 } from '../consultas';
 import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
+import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+
+/**
+ * Explicação que roda na primeira vez que alguém abre o orçamento. Fica aqui,
+ * e não na tela de Ajustes, porque quem abre um painel quer saber como AQUILO
+ * funciona — e o passo a passo da página de Ajustes só diz que a seção existe.
+ */
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'orcamento-novo',
+    titulo: 'Quanto você quer gastar',
+    texto:
+      'Escolha a categoria e diga o teto do mês. Vale para todo mês daqui em diante — você não precisa recadastrar em janeiro.',
+  },
+  {
+    alvo: 'orcamento-lista',
+    titulo: 'Onde o limite aparece',
+    texto:
+      'Cada teto vira uma barra no Resumo, mostrando quanto do limite já foi. A barra fica amarela quando chega a 80% e vermelha quando passa.',
+  },
+  {
+    alvo: 'orcamento-privacidade',
+    titulo: 'O limite é só seu',
+    texto:
+      'Ninguém do grupo vê os seus tetos, nem quem administra — e a conta compara com o SEU gasto, não com o da família. Teto é combinado consigo mesmo.',
+  },
+];
 
 /**
  * Onde a pessoa define o teto de cada categoria.
@@ -19,6 +46,7 @@ import { useIdioma } from '../i18n';
  * oposta.
  */
 export function PainelOrcamento(): ReactElement {
+  useTutorialDaPagina('orcamento', PASSOS);
   const { t } = useIdioma();
   const { mascara } = useDinheiro();
   const aviso = useAviso();
@@ -63,7 +91,7 @@ export function PainelOrcamento(): ReactElement {
       {lista.isPending ? (
         <Carregando />
       ) : lista.data && lista.data.length > 0 ? (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-slate-100" data-tutorial="orcamento-lista">
           {lista.data.map((item) => (
             <LinhaDoTeto
               key={item.categoria.id}
@@ -76,12 +104,15 @@ export function PainelOrcamento(): ReactElement {
           ))}
         </ul>
       ) : (
-        <p className="rounded-xl bg-slate-50 p-4 text-base text-slate-600">
+        <p
+          className="rounded-xl bg-slate-50 p-4 text-base text-slate-600"
+          data-tutorial="orcamento-lista"
+        >
           {t('Nenhum limite definido ainda.')}
         </p>
       )}
 
-      <div className="space-y-3 rounded-xl bg-slate-50 p-4">
+      <div className="space-y-3 rounded-xl bg-slate-50 p-4" data-tutorial="orcamento-novo">
         <p className="text-base font-semibold text-slate-800">{t('Novo limite')}</p>
         <CaixaDeErro mensagem={erro.mensagem} />
 
@@ -128,12 +159,14 @@ export function PainelOrcamento(): ReactElement {
         </Botao>
       </div>
 
-      <p className="text-sm text-slate-600">
-        {t('O aviso acende quando o gasto chega a 80% do limite.')}
-      </p>
-      <p className="text-sm text-slate-600">
-        {t('O limite compara com o SEU gasto, não com o da família.')}
-      </p>
+      <div className="space-y-1" data-tutorial="orcamento-privacidade">
+        <p className="text-sm text-slate-600">
+          {t('O aviso acende quando o gasto chega a 80% do limite.')}
+        </p>
+        <p className="text-sm text-slate-600">
+          {t('O limite compara com o SEU gasto, não com o da família.')}
+        </p>
+      </div>
     </div>
   );
 }

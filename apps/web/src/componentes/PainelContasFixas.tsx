@@ -19,12 +19,35 @@ import {
 } from '../consultas';
 import { useDinheiro } from '../i18n/dinheiro';
 import { useIdioma } from '../i18n';
+import { useTutorialDaPagina, type PassoDeTutorial } from './Tutorial';
+
+const PASSOS: PassoDeTutorial[] = [
+  {
+    alvo: 'contas-fixas-nova',
+    titulo: 'Cadastre uma vez só',
+    texto:
+      'Aluguel, internet, mensalidade: diga o valor e o dia do mês. Se o mês não tiver aquele dia — dia 31 em fevereiro —, o app usa o último dia do mês.',
+  },
+  {
+    alvo: 'contas-fixas-lista',
+    titulo: 'A conta só vira gasto no dia',
+    texto:
+      'A conta do dia 20 só entra no seu total no dia 20, não no começo do mês. Até lá ela aparece aqui como o que ainda vem pela frente.',
+  },
+  {
+    alvo: 'contas-fixas-lista',
+    titulo: 'Paga, em aberto ou atrasada',
+    texto:
+      'Toque no botão ao lado de cada conta para marcar que pagou. O que passou do dia e continua em aberto aparece em vermelho, dizendo há quantos dias está atrasada.',
+  },
+];
 
 /**
  * Contas fixas: o que se repete todo mês (aluguel, internet, mensalidade).
  * O lançamento do mês é criado quando alguém abre o app — nada roda escondido.
  */
 export function PainelContasFixas(): ReactElement {
+  useTutorialDaPagina('contas-fixas', PASSOS);
   const { dinheiro, mascara } = useDinheiro();
   const { t, tp, idioma } = useIdioma();
   const lista = useRecorrencias();
@@ -99,11 +122,14 @@ export function PainelContasFixas(): ReactElement {
       ) : lista.isError ? (
         <CaixaDeErro mensagem={traduzirErro(lista.error).mensagem} />
       ) : lista.data.length === 0 ? (
-        <p className="rounded-xl bg-slate-50 p-4 text-base text-slate-600">
+        <p
+          className="rounded-xl bg-slate-50 p-4 text-base text-slate-600"
+          data-tutorial="contas-fixas-lista"
+        >
           {t('Nenhuma conta fixa ainda.')}
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-slate-100" data-tutorial="contas-fixas-lista">
           {lista.data.map((recorrencia) => {
             const proximo = recorrencia.proximoEm ? parseData(recorrencia.proximoEm) : null;
             const lancamento = recorrencia.lancamentoDoMes;
@@ -225,7 +251,7 @@ export function PainelContasFixas(): ReactElement {
         </ul>
       )}
 
-      <div className="space-y-3 rounded-xl bg-slate-50 p-4">
+      <div className="space-y-3 rounded-xl bg-slate-50 p-4" data-tutorial="contas-fixas-nova">
         <p className="text-base font-semibold text-slate-800">{t('Nova conta fixa')}</p>
         <CaixaDeErro mensagem={erro.mensagem || null} />
 
