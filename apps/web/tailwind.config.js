@@ -40,8 +40,17 @@ export default {
         base: ['1rem', { lineHeight: '1.5rem' }],
         valor: ['1.125rem', { lineHeight: '1.5rem', fontWeight: '600' }],
       },
+      // 48px é o alvo de toque mínimo. `minHeight`/`minWidth` servem ao botão
+      // que cresce com o texto; `height`/`width` ao botão só de ícone.
+      //
+      // Faltavam os dois últimos, e `h-toque w-toque` — usado em 17 botões de
+      // ícone (fechar painel, excluir, remover do grupo) — não gerava CSS
+      // nenhum: eles ficavam do tamanho do desenho, 24px, num app feito para
+      // celular. Classe que não existe some calada; por isso o comentário.
       minHeight: { toque: '48px' },
       minWidth: { toque: '48px' },
+      height: { toque: '48px' },
+      width: { toque: '48px' },
     },
   },
   plugins: [],
